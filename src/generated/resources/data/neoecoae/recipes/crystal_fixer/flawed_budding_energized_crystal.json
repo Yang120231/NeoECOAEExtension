@@ -13,11 +13,9 @@
     }
   },
   "input": {
-    "count": 1,
-    "id": "neoecoae:chipped_budding_energized_crystal"
+    "count": 1
   },
   "output": {
-    "count": 1,
-    "id": "neoecoae:flawed_budding_energized_crystal"
+    "count": 1
   }
 }

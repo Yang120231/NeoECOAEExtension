@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -19,7 +19,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "neoecoae:crafting_vent",
-    "item": "neoecoae:crafting_vent"
+"item": "neoecoae:crafting_vent"
   }
 }

@@ -11,7 +11,6 @@
     "tag": "forge:ingots/black_tungsten_alloy"
   },
   "output": {
-    "count": 1,
-    "id": "neoecoae:black_tungsten_alloy_dust"
+    "count": 1
   }
 }

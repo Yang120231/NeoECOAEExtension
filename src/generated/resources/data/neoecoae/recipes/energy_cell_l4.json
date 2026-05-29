@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -16,7 +16,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "neoecoae:energy_cell_l4",
-    "item": "neoecoae:energy_cell_l4"
+"item": "neoecoae:energy_cell_l4"
   }
 }

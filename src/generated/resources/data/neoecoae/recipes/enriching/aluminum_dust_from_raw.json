@@ -11,7 +11,6 @@
     "tag": "forge:raw_materials/aluminum"
   },
   "output": {
-    "count": 4,
-    "id": "neoecoae:aluminum_dust"
+    "count": 4
   }
 }

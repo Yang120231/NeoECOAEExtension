@@ -9,12 +9,10 @@
   "cell": "neoecoae:eco_chemical_storage_cell_64m",
   "cell_disassembly_items": [
     {
-      "count": 1,
-      "id": "neoecoae:eco_chemical_cell_housing"
-    },
+      "count": 1
+  },
     {
-      "count": 1,
-      "id": "neoecoae:eco_cell_component_64m"
-    }
+      "count": 1
+  }
   ]
 }

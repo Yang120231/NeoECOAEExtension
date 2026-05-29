@@ -1,4 +1,4 @@
-﻿{
+{
   "type": "minecraft:crafting_shaped",
   "category": "misc",
   "key": {
@@ -13,7 +13,6 @@
   ],
   "result": {
     "count": 1,
-    "id": "neoecoae:energized_superconductive_block",
-    "item": "neoecoae:energized_superconductive_block"
+"item": "neoecoae:energized_superconductive_block"
   }
 }

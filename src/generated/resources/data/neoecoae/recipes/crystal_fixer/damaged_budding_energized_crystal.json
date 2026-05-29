@@ -13,11 +13,9 @@
     }
   },
   "input": {
-    "count": 1,
-    "id": "neoecoae:energized_crystal_block"
+    "count": 1
   },
   "output": {
-    "count": 1,
-    "id": "neoecoae:damaged_budding_energized_crystal"
+    "count": 1
   }
 }

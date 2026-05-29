@@ -37,8 +37,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntity<ECOCraftingPatternBusBlockEntity>
-    implements InternalInventoryHost, ICraftingProvider, PatternContainer, IECOPatternStorage {
-
+        implements InternalInventoryHost, ICraftingProvider, PatternContainer, IECOPatternStorage {
 
     public static final int ROW_SIZE = 9;
     public static final int COL_SIZE = 7;
@@ -107,17 +106,15 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
             var block = cluster.getController().getBlockState().getBlock();
             if (block != Blocks.AIR) {
                 return new PatternContainerGroup(
-                    AEItemKey.of(block.asItem()),
-                    block.getName(),
-                    List.of()
-                );
+                        AEItemKey.of(block.asItem()),
+                        block.getName(),
+                        List.of());
             }
         }
         return new PatternContainerGroup(
-            AEItemKey.of(NEBlocks.CRAFTING_PATTERN_BUS.asStack()),
-            NEBlocks.CRAFTING_PATTERN_BUS.get().getName(),
-            List.of()
-        );
+                AEItemKey.of(NEBlocks.CRAFTING_PATTERN_BUS.asStack()),
+                NEBlocks.CRAFTING_PATTERN_BUS.get().getName(),
+                List.of());
     }
 
     @Override
@@ -140,7 +137,7 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
         this.itemHandler = new AppEngInternalInventoryItemHandler(this.inventory);
         this.itemHandlerCap = LazyOptional.of(() -> this.itemHandler);
         this.getMainNode().addService(ICraftingProvider.class, this)
-            .addService(IECOPatternStorage.class, this);
+                .addService(IECOPatternStorage.class, this);
     }
 
     public void saveChangedInventory(AppEngInternalInventory inv) {
@@ -183,9 +180,9 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
         super.addAdditionalDrops(level, pos, drops);
         IntStream.range(0, ROW_SIZE * COL_SIZE)
-            .mapToObj(inventory::getStackInSlot)
-            .filter(s -> !s.isEmpty())
-            .forEach(drops::add);
+                .mapToObj(inventory::getStackInSlot)
+                .filter(s -> !s.isEmpty())
+                .forEach(drops::add);
     }
 
     @Override
