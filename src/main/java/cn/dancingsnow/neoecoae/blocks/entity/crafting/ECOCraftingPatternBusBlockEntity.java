@@ -137,7 +137,7 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
         super(type, pos, blockState);
         this.inventory = new AppEngInternalInventory(this, ROW_SIZE * COL_SIZE);
         this.inventory.setFilter(new AEEncodedPatternFilter());
-        this.itemHandler = (IItemHandlerModifiable) inventory.toItemHandler();
+        this.itemHandler = new AppEngInternalInventoryItemHandler(this.inventory);
         this.itemHandlerCap = LazyOptional.of(() -> this.itemHandler);
         this.getMainNode().addService(ICraftingProvider.class, this)
             .addService(IECOPatternStorage.class, this);
@@ -212,5 +212,103 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     public void invalidateCaps() {
         super.invalidateCaps();
         itemHandlerCap.invalidate();
+    }
+
+    private static final class AppEngInternalInventoryItemHandler implements IItemHandlerModifiable {
+        private final AppEngInternalInventory inventory;
+
+        private AppEngInternalInventoryItemHandler(AppEngInternalInventory inventory) {
+            this.inventory = inventory;
+        }
+
+        @Override
+        public int getSlots() {
+            return inventory.size();
+        }
+
+        @Override
+        public ItemStack getStackInSlot(int slot) {
+            validateSlotIndex(slot);
+            return inventory.getStackInSlot(slot);
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            validateSlotIndex(slot);
+
+            if (stack.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+
+            if (!inventory.isItemValid(slot, stack)) {
+                return stack;
+            }
+
+            ItemStack existing = inventory.getStackInSlot(slot);
+            int limit = Math.min(inventory.getSlotLimit(slot), stack.getMaxStackSize());
+
+            if (!existing.isEmpty()) {
+                if (!ItemStack.isSameItemSameTags(existing, stack)) {
+                    return stack;
+                }
+                limit -= existing.getCount();
+            }
+
+            if (limit <= 0) {
+                return stack;
+            }
+
+            int inserted = Math.min(limit, stack.getCount());
+
+            if (!simulate) {
+                if (existing.isEmpty()) {
+                    ItemStack copy = stack.copy();
+                    copy.setCount(inserted);
+                    inventory.setItemDirect(slot, copy);
+                } else {
+                    ItemStack copy = existing.copy();
+                    copy.grow(inserted);
+                    inventory.setItemDirect(slot, copy);
+                }
+            }
+
+            if (inserted >= stack.getCount()) {
+                return ItemStack.EMPTY;
+            }
+
+            ItemStack remainder = stack.copy();
+            remainder.shrink(inserted);
+            return remainder;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            validateSlotIndex(slot);
+            return inventory.extractItem(slot, amount, simulate);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            validateSlotIndex(slot);
+            return inventory.getSlotLimit(slot);
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            validateSlotIndex(slot);
+            return inventory.isItemValid(slot, stack);
+        }
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
+            validateSlotIndex(slot);
+            inventory.setItemDirect(slot, stack);
+        }
+
+        private void validateSlotIndex(int slot) {
+            if (slot < 0 || slot >= inventory.size()) {
+                throw new IllegalArgumentException("Slot " + slot + " not in valid range [0," + inventory.size() + ")");
+            }
+        }
     }
 }
