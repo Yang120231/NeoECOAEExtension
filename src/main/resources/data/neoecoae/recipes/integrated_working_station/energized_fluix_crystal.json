@@ -15,8 +15,5 @@
       "tag": "forge:gems/fluix"
     }
   ],
-  "itemOutput": {
-    "count": 8,
-    "id": "neoecoae:energized_fluix_crystal"
-  }
+  "itemOutput": { "item": "neoecoae:energized_fluix_crystal", "count": 8}
 }

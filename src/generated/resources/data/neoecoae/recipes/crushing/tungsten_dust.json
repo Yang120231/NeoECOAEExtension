@@ -10,7 +10,5 @@
     "count": 1,
     "tag": "forge:ingots/tungsten"
   },
-  "output": {
-    "count": 1
-  }
+  "output": { "item": "neoecoae:tungsten_dust", "count": 1 }
 }

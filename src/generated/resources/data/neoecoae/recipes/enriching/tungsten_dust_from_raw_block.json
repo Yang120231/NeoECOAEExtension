@@ -11,7 +11,5 @@
       "tag": "forge:storage_blocks/raw_tungsten"
     }
   },
-  "output": {
-    "count": 12
-  }
+  "output": { "item": "neoecoae:tungsten_dust", "count": 12 }
 }

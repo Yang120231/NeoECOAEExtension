@@ -19,7 +19,6 @@
       "item": "neoecoae:superconducting_processor"
     }
   ],
-  "itemOutput": {
-    "count": 1
+  "itemOutput": { "item": "neoecoae:storage_system_l9", "count": 1
   }
 }

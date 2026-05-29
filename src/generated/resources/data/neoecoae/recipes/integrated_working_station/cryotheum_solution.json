@@ -1,8 +1,7 @@
 {
   "type": "neoecoae:integrated_working_station",
   "energy": 1000,
-  "fluidOutput": {
-    "amount": 1000
+  "fluidOutput": { "fluid": "neoecoae:cryotheum_solution", "amount": 1000
   },
   "inputFluid": {
     "amount": 1000,

@@ -10,7 +10,5 @@
     "count": 1,
     "tag": "forge:storage_blocks/raw_aluminum"
   },
-  "output": {
-    "count": 12
-  }
+  "output": { "item": "neoecoae:aluminum_dust", "count": 12 }
 }

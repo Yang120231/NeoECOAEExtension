@@ -17,7 +17,5 @@
       "item": "neoecoae:damaged_budding_energized_crystal"
     }
   },
-  "output": {
-    "count": 1
-  }
+  "output": { "item": "neoecoae:chipped_budding_energized_crystal", "count": 1 }
 }

@@ -10,7 +10,5 @@
     "count": 1,
     "tag": "forge:ores/tungsten"
   },
-  "output": {
-    "count": 2
-  }
+  "output": { "item": "neoecoae:tungsten_dust", "count": 2 }
 }

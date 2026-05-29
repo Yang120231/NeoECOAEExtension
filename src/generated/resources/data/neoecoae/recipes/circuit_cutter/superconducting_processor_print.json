@@ -11,7 +11,5 @@
       "item": "neoecoae:energized_superconductive_block"
     }
   },
-  "output": {
-    "count": 9
-  }
+  "output": { "item": "neoecoae:superconducting_processor_print", "count": 9 }
 }

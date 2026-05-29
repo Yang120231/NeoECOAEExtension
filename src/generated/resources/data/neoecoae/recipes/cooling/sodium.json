@@ -12,7 +12,5 @@
     "tag": "forge:dusts/sodium"
   },
   "max_overclock": 6,
-  "output": {
-    "amount": 100
-  }
+  "output": { "fluid": "neoecoae:sodium", "amount": 100 }
 }

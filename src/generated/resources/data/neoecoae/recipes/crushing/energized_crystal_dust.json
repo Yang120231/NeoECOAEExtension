@@ -10,7 +10,5 @@
     "count": 1,
     "tag": "forge:gems/energized_crystal"
   },
-  "output": {
-    "count": 1
-  }
+  "output": { "item": "neoecoae:energized_crystal_dust", "count": 1 }
 }

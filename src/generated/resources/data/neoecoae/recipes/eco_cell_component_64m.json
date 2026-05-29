@@ -19,7 +19,6 @@
       "item": "neoecoae:crystal_ingot"
     }
   ],
-  "itemOutput": {
-    "count": 1
+  "itemOutput": { "item": "neoecoae:eco_cell_component_64m", "count": 1
   }
 }

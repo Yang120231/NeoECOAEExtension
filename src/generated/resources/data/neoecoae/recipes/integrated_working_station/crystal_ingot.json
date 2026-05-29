@@ -23,7 +23,6 @@
       "tag": "neoecoae:crystal_ingot_base"
     }
   ],
-  "itemOutput": {
-    "count": 4
+  "itemOutput": { "item": "neoecoae:crystal_ingot", "count": 4
   }
 }

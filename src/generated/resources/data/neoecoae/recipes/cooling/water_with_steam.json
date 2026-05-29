@@ -12,7 +12,5 @@
     "tag": "minecraft:water"
   },
   "max_overclock": 2,
-  "output": {
-    "amount": 100
-  }
+  "output": { "fluid": "neoecoae:water_with_steam", "amount": 100 }
 }

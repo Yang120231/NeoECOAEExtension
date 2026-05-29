@@ -19,7 +19,6 @@
       "item": "neoecoae:superconducting_processor"
     }
   ],
-  "itemOutput": {
-    "count": 1
+  "itemOutput": { "item": "neoecoae:crafting_system_l4", "count": 1
   }
 }

@@ -10,7 +10,5 @@
     "count": 1,
     "tag": "forge:ores/aluminum"
   },
-  "output": {
-    "count": 2
-  }
+  "output": { "item": "neoecoae:aluminum_dust", "count": 2 }
 }

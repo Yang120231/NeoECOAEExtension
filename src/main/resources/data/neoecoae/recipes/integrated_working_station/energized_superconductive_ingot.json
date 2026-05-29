@@ -23,8 +23,5 @@
       "tag": "neoecoae:superconductive_ingot_base"
     }
   ],
-  "itemOutput": {
-    "count": 4,
-    "id": "neoecoae:energized_superconductive_ingot"
-  }
+  "itemOutput": { "item": "neoecoae:energized_superconductive_ingot", "count": 4}
 }

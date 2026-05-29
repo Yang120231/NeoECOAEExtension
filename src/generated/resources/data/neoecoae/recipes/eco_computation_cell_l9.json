@@ -19,7 +19,6 @@
       "item": "neoecoae:crystal_matrix"
     }
   ],
-  "itemOutput": {
-    "count": 1
+  "itemOutput": { "item": "neoecoae:eco_computation_cell_l9", "count": 1
   }
 }

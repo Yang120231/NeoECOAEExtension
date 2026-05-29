@@ -11,7 +11,5 @@
       "tag": "forge:raw_materials/tungsten"
     }
   },
-  "output": {
-    "count": 4
-  }
+  "output": { "item": "neoecoae:tungsten_dust", "count": 4 }
 }

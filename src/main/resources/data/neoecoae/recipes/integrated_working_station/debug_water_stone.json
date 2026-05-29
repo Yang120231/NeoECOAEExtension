@@ -8,11 +8,6 @@
     }
   ],
   "inputFluid": {
-    "amount": 1000,
-    "id": "minecraft:water"
-  },
-  "itemOutput": {
-    "count": 1,
-    "id": "minecraft:stone"
-  }
+    "amount": 1000},
+  "itemOutput": { "item": "minecraft:stone", "count": 1}
 }

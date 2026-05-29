@@ -15,7 +15,5 @@
   "input": {
     "count": 1
   },
-  "output": {
-    "count": 1
-  }
+  "output": { "item": "neoecoae:damaged_budding_energized_crystal", "count": 1 }
 }
