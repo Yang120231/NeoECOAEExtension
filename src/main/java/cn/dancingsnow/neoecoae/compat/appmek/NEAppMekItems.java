@@ -24,11 +24,12 @@ import static cn.dancingsnow.neoecoae.NeoECOAE.REGISTRATE;
  * Registers Applied Mekanistics chemical storage cell housing and cells.
  * <p>
  * Item registration only occurs when the {@code appmek} mod is loaded,
- * via the
- * {@link cn.dancingsnow.neoecoae.api.integration.Integration @Integration}
- * annotation on {@link AppMekIntegration}. Recipes are therefore safe
- * to register unconditionally — they reference only NeoECOAE and
- * vanilla items.
+ * via the {@link cn.dancingsnow.neoecoae.api.integration.Integration @Integration}
+ * annotation on {@link AppMekIntegration}.
+ * <p>
+ * All AppMek recipe outputs (including disassembly recipes) are guarded by
+ * {@code forge:mod_loaded("appmek")} via {@link ConditionalRecipe}
+ * during datagen.
  * </p>
  */
 public class NEAppMekItems {
@@ -83,11 +84,14 @@ public class NEAppMekItems {
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
-                                StorageCellDisassemblyRecipe recipe = new StorageCellDisassemblyRecipe(
+                                StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
                                                 ctx.get(),
                                                 List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
                                                                 NEItems.ECO_CELL_COMPONENT_16M.asStack()));
-                                prov.accept(recipe);
+                                ConditionalRecipe.builder()
+                                                .addCondition(new ModLoadedCondition("appmek"))
+                                                .addRecipe(r -> prov.accept(disassembly))
+                                                .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE4 Storage Matrix (Chemical)")
                         .register();
@@ -106,11 +110,14 @@ public class NEAppMekItems {
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
-                                StorageCellDisassemblyRecipe recipe = new StorageCellDisassemblyRecipe(
+                                StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
                                                 ctx.get(),
                                                 List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
                                                                 NEItems.ECO_CELL_COMPONENT_64M.asStack()));
-                                prov.accept(recipe);
+                                ConditionalRecipe.builder()
+                                                .addCondition(new ModLoadedCondition("appmek"))
+                                                .addRecipe(r -> prov.accept(disassembly))
+                                                .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE6 Storage Matrix (Chemical)")
                         .register();
@@ -129,11 +136,14 @@ public class NEAppMekItems {
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
-                                StorageCellDisassemblyRecipe recipe = new StorageCellDisassemblyRecipe(
+                                StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
                                                 ctx.get(),
                                                 List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
                                                                 NEItems.ECO_CELL_COMPONENT_256M.asStack()));
-                                prov.accept(recipe);
+                                ConditionalRecipe.builder()
+                                                .addCondition(new ModLoadedCondition("appmek"))
+                                                .addRecipe(r -> prov.accept(disassembly))
+                                                .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE9 Storage Matrix (Chemical)")
                         .register();
