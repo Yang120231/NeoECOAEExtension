@@ -1,13 +1,10 @@
 package cn.dancingsnow.neoecoae.gui.nativeui.screen;
 
-import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationSystemBlockEntity;
-import cn.dancingsnow.neoecoae.gui.nativeui.NENativeUiConstants;
 import cn.dancingsnow.neoecoae.gui.nativeui.menu.NEComputationControllerMenu;
 import cn.dancingsnow.neoecoae.network.NEComputationUiState;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.level.block.entity.BlockEntity;
 
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -43,11 +40,22 @@ public class NEComputationControllerScreen extends NEBaseMachineScreen<NEComputa
     private boolean hasComputationState;
     private NEComputationUiState computationState;
 
+    // Cached display strings (updated only on state change)
+    private long cachedUsedThreads;
+    private long cachedMaxThreads;
+    private String cachedParallelLine = "";
+    private long cachedAvailStorage;
+    private long cachedTotalStorage;
+    private String cachedAcceleratorLine = "";
+    private boolean cachedActive;
+    private boolean cachedFormed;
+
     public NEComputationControllerScreen(NEComputationControllerMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title, NEMachineScreenConfig.COMPUTATION_CONTROLLER);
         this.imageWidth = 300;
         this.imageHeight = 170;
         this.computationState = NEComputationUiState.empty(menu.getMachinePos());
+        updateCachedStrings(this.computationState);
     }
 
     /**
@@ -57,6 +65,18 @@ public class NEComputationControllerScreen extends NEBaseMachineScreen<NEComputa
     public void setComputationUiState(NEComputationUiState state) {
         this.hasComputationState = true;
         this.computationState = state;
+        updateCachedStrings(state);
+    }
+
+    private void updateCachedStrings(NEComputationUiState s) {
+        cachedUsedThreads = s.usedThreads();
+        cachedMaxThreads = s.maxThreads();
+        cachedParallelLine = "并行数: " + fmt(s.parallelCount());
+        cachedAvailStorage = s.availableStorage();
+        cachedTotalStorage = s.totalStorage();
+        cachedAcceleratorLine = "加速器: " + fmt(s.accelerators());
+        cachedActive = s.active();
+        cachedFormed = s.formed();
     }
 
     @Override
@@ -66,30 +86,6 @@ public class NEComputationControllerScreen extends NEBaseMachineScreen<NEComputa
 
     @Override
     protected void renderAdditionalLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        NEComputationUiState s;
-
-        if (hasComputationState) {
-            s = this.computationState;
-        } else {
-            // Opening-time fallback: read client BE once while waiting for the
-            // first S2C packet. Not used for live refresh.
-            ECOComputationSystemBlockEntity be = getComputationBE();
-            if (be != null) {
-                s = new NEComputationUiState(
-                        menu.getMachinePos(),
-                        be.isFormed(),
-                        false, // active not reliably readable from client BE
-                        be.getUsedThread(),
-                        be.getTotalThread(),
-                        be.getAvailableBytes(),
-                        be.getTotalBytes(),
-                        be.getParallelCount(),
-                        be.getAcceleratorCount());
-            } else {
-                s = this.computationState;
-            }
-        }
-
         // ── Main dark panel ──
         drawDarkInsetRect(guiGraphics, MAIN_PANEL_X, MAIN_PANEL_Y, MAIN_PANEL_W, MAIN_PANEL_H);
 
@@ -97,32 +93,21 @@ public class NEComputationControllerScreen extends NEBaseMachineScreen<NEComputa
         int y = MAIN_PANEL_Y + 8;
         int line = 12;
 
-        drawPairLine(guiGraphics, "已用线程: ", s.usedThreads(), s.maxThreads(), "", x, y);
+        drawPairLine(guiGraphics, "已用线程: ", cachedUsedThreads, cachedMaxThreads, "", x, y);
         y += line;
-        drawLine(guiGraphics, "并行数: " + fmt(s.parallelCount()), x, y, DARK_TEXT_PRIMARY);
-        y += line;
-
+        drawLine(guiGraphics, cachedParallelLine, x, y, DARK_TEXT_PRIMARY);
         y += line;
 
-        drawPairLine(guiGraphics, "已用存储: ", s.availableStorage(), s.totalStorage(), "", x, y);
         y += line;
-        drawLine(guiGraphics, "加速器: " + fmt(s.accelerators()), x, y, DARK_TEXT_PRIMARY);
+
+        drawPairLine(guiGraphics, "已用存储: ", cachedAvailStorage, cachedTotalStorage, "", x, y);
         y += line;
-        drawBooleanLine(guiGraphics, "活动: ", s.active(), x, y);
+        drawLine(guiGraphics, cachedAcceleratorLine, x, y, DARK_TEXT_PRIMARY);
+        y += line;
+        drawBooleanLine(guiGraphics, "活动: ", cachedActive, x, y);
 
         // ── Formed status bar ──
-        drawFormedStatusBar(guiGraphics, s.formed(), imageWidth, imageHeight);
-    }
-
-    private ECOComputationSystemBlockEntity getComputationBE() {
-        if (minecraft == null || minecraft.level == null) {
-            return null;
-        }
-        BlockEntity be = minecraft.level.getBlockEntity(menu.getMachinePos());
-        if (be instanceof ECOComputationSystemBlockEntity comp) {
-            return comp;
-        }
-        return null;
+        drawFormedStatusBar(guiGraphics, cachedFormed, imageWidth, imageHeight);
     }
 
     // ── Shared drawing helpers ──

@@ -17,28 +17,38 @@ public class CellHostItemHandler implements IItemHandler {
 
     @Override
     public ItemStack getStackInSlot(int slot) {
+        if (slot != 0) {
+            return ItemStack.EMPTY;
+        }
         return host.getCellStack() != null ? host.getCellStack().copyWithCount(1) : ItemStack.EMPTY;
     }
 
     @Override
     public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+        if (slot != 0 || stack.isEmpty()) {
+            return stack;
+        }
         if (host.getCellStack() != null) {
             return stack;
-        } else {
-            if (stack.isEmpty()) {
-                return ItemStack.EMPTY;
-            }
-            if (!simulate) {
-                host.setCellStack(stack.copyWithCount(1));
-            }
-            ItemStack copy = stack.copy();
-            copy.shrink(1);
-            return copy;
         }
+        if (!host.isItemValid(stack)) {
+            return stack;
+        }
+
+        if (!simulate) {
+            host.setCellStack(stack.copyWithCount(1));
+        }
+
+        ItemStack copy = stack.copy();
+        copy.shrink(1);
+        return copy;
     }
 
     @Override
     public ItemStack extractItem(int slot, int amount, boolean simulate) {
+        if (slot != 0) {
+            return ItemStack.EMPTY;
+        }
         if (host.getCellStack() == null) {
             return ItemStack.EMPTY;
         }

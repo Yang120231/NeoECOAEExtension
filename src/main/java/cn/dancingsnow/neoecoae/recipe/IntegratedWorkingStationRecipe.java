@@ -1,30 +1,35 @@
 package cn.dancingsnow.neoecoae.recipe;
 
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
+import cn.dancingsnow.neoecoae.compat.crafting.FluidIngredient;
+import cn.dancingsnow.neoecoae.compat.crafting.SizedFluidIngredient;
+import cn.dancingsnow.neoecoae.compat.crafting.SizedIngredient;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.data.recipes.FinishedRecipe;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.Level;
-import cn.dancingsnow.neoecoae.compat.crafting.SizedIngredient;
-import net.minecraftforge.fluids.FluidStack;
-import cn.dancingsnow.neoecoae.compat.crafting.FluidIngredient;
-import cn.dancingsnow.neoecoae.compat.crafting.SizedFluidIngredient;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
+import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public record IntegratedWorkingStationRecipe(
     ResourceLocation id,
@@ -40,15 +45,213 @@ public record IntegratedWorkingStationRecipe(
     }
 
     public static class Builder {
-        public Builder require(Object ingredient) { return this; }
-        public Builder require(Object ingredient, int count) { return this; }
-        public Builder requireFluid(Object fluid, int amount) { return this; }
-        public Builder itemOutput(Object output) { return this; }
-        public Builder itemOutput(Object output, int count) { return this; }
-        public Builder fluidOutput(Object output, int amount) { return this; }
-        public Builder energy(int energy) { return this; }
-        public void save(Object provider) {}
-        public void save(Object provider, ResourceLocation id) {}
+        private final List<SizedIngredient> inputItems = new ArrayList<>();
+        private SizedFluidIngredient inputFluid = new SizedFluidIngredient(FluidIngredient.empty(), 0);
+        private ItemStack itemOutput = ItemStack.EMPTY;
+        private FluidStack fluidOutput = FluidStack.EMPTY;
+        private int energy = 0;
+
+        // ── require (item inputs) ──
+
+        public Builder require(Object ingredient) {
+            return require(ingredient, 1);
+        }
+
+        public Builder require(Object ingredient, int count) {
+            if (ingredient instanceof SizedIngredient si) {
+                inputItems.add(si);
+            } else if (ingredient instanceof Ingredient ing) {
+                inputItems.add(new SizedIngredient(ing, count));
+            } else if (ingredient instanceof ItemLike itemLike) {
+                inputItems.add(SizedIngredient.of(itemLike, count));
+            } else if (ingredient instanceof ItemStack stack) {
+                inputItems.add(SizedIngredient.of(stack.getItem(), count));
+            } else if (ingredient instanceof TagKey<?> tag) {
+                @SuppressWarnings("unchecked")
+                TagKey<Item> itemTag = (TagKey<Item>) tag;
+                inputItems.add(SizedIngredient.of(itemTag, count));
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported IWS require() type: " + ingredient.getClass().getName());
+            }
+            return this;
+        }
+
+        // ── requireFluid ──
+
+        public Builder requireFluid(Object fluid, int amount) {
+            if (fluid instanceof SizedFluidIngredient sfi) {
+                inputFluid = sfi;
+            } else if (fluid instanceof FluidStack fs) {
+                inputFluid = SizedFluidIngredient.of(fs);
+            } else if (fluid instanceof Fluid f) {
+                inputFluid = SizedFluidIngredient.of(f, amount);
+            } else if (fluid instanceof TagKey<?> tag) {
+                @SuppressWarnings("unchecked")
+                TagKey<Fluid> fluidTag = (TagKey<Fluid>) tag;
+                inputFluid = SizedFluidIngredient.of(fluidTag, amount);
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported IWS requireFluid() type: " + fluid.getClass().getName());
+            }
+            return this;
+        }
+
+        // ── itemOutput ──
+
+        public Builder itemOutput(Object output) {
+            return itemOutput(output, 1);
+        }
+
+        public Builder itemOutput(Object output, int count) {
+            if (output instanceof ItemStack stack) {
+                itemOutput = stack.copy();
+                itemOutput.setCount(count);
+            } else if (output instanceof ItemLike itemLike) {
+                itemOutput = new ItemStack(itemLike, count);
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported IWS itemOutput() type: " + output.getClass().getName());
+            }
+            return this;
+        }
+
+        // ── fluidOutput ──
+
+        public Builder fluidOutput(Object output, int amount) {
+            if (output instanceof FluidStack fs) {
+                fluidOutput = fs.copy();
+                fluidOutput.setAmount(amount);
+            } else if (output instanceof Fluid f) {
+                fluidOutput = new FluidStack(f, amount);
+            } else {
+                throw new IllegalArgumentException(
+                        "Unsupported IWS fluidOutput() type: " + output.getClass().getName());
+            }
+            return this;
+        }
+
+        // ── energy ──
+
+        public Builder energy(int energy) {
+            this.energy = energy;
+            return this;
+        }
+
+        // ── save ──
+
+        public void save(Consumer<FinishedRecipe> provider) {
+            ResourceLocation id = resolveDefaultId();
+            save(provider, id);
+        }
+
+        public void save(Consumer<FinishedRecipe> provider, ResourceLocation id) {
+            provider.accept(new Result(id, List.copyOf(inputItems), inputFluid,
+                    itemOutput.copy(), fluidOutput.copy(), energy));
+        }
+
+        /** Fallback for callers that pass an untyped Object reference. */
+        @SuppressWarnings("unchecked")
+        public void save(Object provider) {
+            save((Consumer<FinishedRecipe>) provider);
+        }
+
+        /** Fallback for callers that pass untyped Object + ResourceLocation. */
+        @SuppressWarnings("unchecked")
+        public void save(Object provider, ResourceLocation id) {
+            save((Consumer<FinishedRecipe>) provider, id);
+        }
+
+        private ResourceLocation resolveDefaultId() {
+            if (!itemOutput.isEmpty()) {
+                ResourceLocation rl = ForgeRegistries.ITEMS.getKey(itemOutput.getItem());
+                if (rl != null) {
+                    return rl.withPrefix("integrated_working_station/");
+                }
+            }
+            if (!fluidOutput.isEmpty()) {
+                ResourceLocation rl = ForgeRegistries.FLUIDS.getKey(fluidOutput.getFluid());
+                if (rl != null) {
+                    return rl.withPrefix("integrated_working_station/");
+                }
+            }
+            throw new IllegalStateException(
+                    "IntegratedWorkingStationRecipe builder must have an output before calling save()");
+        }
+    }
+
+    // ── FinishedRecipe for datagen ──
+
+    private record Result(
+            ResourceLocation id,
+            List<SizedIngredient> inputItems,
+            SizedFluidIngredient inputFluid,
+            ItemStack itemOutput,
+            FluidStack fluidOutput,
+            int energy) implements FinishedRecipe {
+
+        @Override
+        public void serializeRecipeData(JsonObject json) {
+            if (!inputItems.isEmpty()) {
+                JsonArray arr = new JsonArray();
+                for (SizedIngredient input : inputItems) {
+                    arr.add(input.toJson());
+                }
+                json.add("inputItems", arr);
+            }
+
+            if (inputFluid != null && !inputFluid.ingredient().isEmpty()) {
+                json.add("inputFluid", inputFluid.toJson());
+            }
+
+            if (!itemOutput.isEmpty()) {
+                JsonObject out = new JsonObject();
+                ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(itemOutput.getItem());
+                if (itemId == null) {
+                    throw new IllegalStateException("Unknown IWS item output: " + itemOutput);
+                }
+                out.addProperty("item", itemId.toString());
+                if (itemOutput.getCount() != 1) {
+                    out.addProperty("count", itemOutput.getCount());
+                }
+                json.add("itemOutput", out);
+            }
+
+            if (!fluidOutput.isEmpty()) {
+                JsonObject out = new JsonObject();
+                ResourceLocation fluidId = ForgeRegistries.FLUIDS.getKey(fluidOutput.getFluid());
+                if (fluidId == null) {
+                    throw new IllegalStateException("Unknown IWS fluid output: " + fluidOutput);
+                }
+                out.addProperty("fluid", fluidId.toString());
+                out.addProperty("amount", fluidOutput.getAmount());
+                json.add("fluidOutput", out);
+            }
+
+            if (energy > 0) {
+                json.addProperty("energy", energy);
+            }
+        }
+
+        @Override
+        public ResourceLocation getId() {
+            return id;
+        }
+
+        @Override
+        public RecipeSerializer<?> getType() {
+            return NERecipeTypes.INTEGRATED_WORKING_STATION_SERIALIZER.get();
+        }
+
+        @Override
+        public JsonObject serializeAdvancement() {
+            return null;
+        }
+
+        @Override
+        public ResourceLocation getAdvancementId() {
+            return null;
+        }
     }
 
     @Override

@@ -61,6 +61,19 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
     private boolean hasCraftingState;
     private NECraftingUiState craftingState;
 
+    // Cached display strings (updated only on state change)
+    private String cachedPatternBusLine = "";
+    private String cachedParallelCoreLine = "";
+    private String cachedWorkerLine = "";
+    private String cachedThreadLine = "";
+    private String cachedTotalParallelLine = "";
+    private String cachedOverclockLine = "";
+    private String cachedActiveCoolingLine = "";
+    private long cachedThreadCurrent;
+    private long cachedThreadMax;
+    private boolean cachedOverclocked;
+    private boolean cachedActiveCooling;
+
     // Toggle buttons (left side, stacked vertically)
     private NEAe2IconButton overclockBtn;
     private NEAe2IconButton coolingBtn;
@@ -71,6 +84,7 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
         this.imageWidth = 300;
         this.imageHeight = 170;
         this.craftingState = NECraftingUiState.empty(menu.getMachinePos());
+        updateCachedStrings(this.craftingState);
     }
 
     /**
@@ -80,6 +94,30 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
     public void setCraftingUiState(NECraftingUiState state) {
         this.hasCraftingState = true;
         this.craftingState = state;
+        updateCachedStrings(state);
+        updateButtonStates(state);
+    }
+
+    private void updateCachedStrings(NECraftingUiState s) {
+        cachedPatternBusLine = "样板总线数量: " + fmt(s.patternBusCount());
+        cachedParallelCoreLine = "并行核心数量: " + fmt(s.parallelCount());
+        cachedWorkerLine = "工作核心数量: " + fmt(s.workerCount());
+        cachedThreadCurrent = s.runningThreadCount();
+        cachedThreadMax = s.threadCount();
+        cachedTotalParallelLine = "总并行数: " + fmt(s.threadCount());
+        cachedOverclocked = s.overclocked();
+        cachedActiveCooling = s.activeCooling();
+        cachedOverclockLine = "超频: ";
+        cachedActiveCoolingLine = "主动冷却: ";
+    }
+
+    private void updateButtonStates(NECraftingUiState s) {
+        if (overclockBtn != null) {
+            overclockBtn.setToggled(s.overclocked());
+        }
+        if (coolingBtn != null) {
+            coolingBtn.setToggled(s.activeCooling());
+        }
     }
 
     @Override
@@ -119,35 +157,6 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
 
     @Override
     protected void renderAdditionalLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        NECraftingUiState s;
-
-        if (hasCraftingState) {
-            s = this.craftingState;
-        } else {
-            ECOCraftingSystemBlockEntity be = getCraftingBE();
-            if (be != null) {
-                s = be.createCraftingUiState();
-            } else {
-                s = this.craftingState;
-            }
-        }
-
-        // Update toggle button states
-        if (overclockBtn != null) {
-            overclockBtn.setToggled(s.overclocked());
-            overclockBtn.setTooltip(Tooltip.create(Component.translatable(
-                    "gui.neoecoae.crafting.overclocked.tooltip")));
-        }
-        if (coolingBtn != null) {
-            coolingBtn.setToggled(s.activeCooling());
-            coolingBtn.setTooltip(Tooltip.create(Component.translatable(
-                    "gui.neoecoae.crafting.active_cooling.tooltip")));
-        }
-        if (clearCoolantBtn != null) {
-            clearCoolantBtn.setTooltip(Tooltip.create(Component.translatable(
-                    "gui.neoecoae.crafting.clear_coolant.tooltip")));
-        }
-
         // ── Main dark panel ──
         drawDarkInsetRect(guiGraphics, MAIN_PANEL_X, MAIN_PANEL_Y, MAIN_PANEL_W, MAIN_PANEL_H);
 
@@ -155,25 +164,25 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
         int y = MAIN_PANEL_Y + 8;
         int line = 12;
 
-        drawLine(guiGraphics, "样板总线数量: " + fmt(s.patternBusCount()), x, y, DARK_TEXT_PRIMARY);
+        drawLine(guiGraphics, cachedPatternBusLine, x, y, DARK_TEXT_PRIMARY);
         y += line;
-        drawLine(guiGraphics, "并行核心数量: " + fmt(s.parallelCount()), x, y, DARK_TEXT_PRIMARY);
+        drawLine(guiGraphics, cachedParallelCoreLine, x, y, DARK_TEXT_PRIMARY);
         y += line;
-        drawLine(guiGraphics, "工作核心数量: " + fmt(s.workerCount()), x, y, DARK_TEXT_PRIMARY);
-        y += line;
-
+        drawLine(guiGraphics, cachedWorkerLine, x, y, DARK_TEXT_PRIMARY);
         y += line;
 
-        drawPairLine(guiGraphics, "工作线程: ", s.runningThreadCount(), s.threadCount(), " (0%)", x, y);
         y += line;
-        drawLine(guiGraphics, "总并行数: " + fmt(s.threadCount()), x, y, DARK_TEXT_PRIMARY);
+
+        drawPairLine(guiGraphics, "工作线程: ", cachedThreadCurrent, cachedThreadMax, " (0%)", x, y);
         y += line;
-        drawBooleanLine(guiGraphics, "超频: ", s.overclocked(), x, y);
+        drawLine(guiGraphics, cachedTotalParallelLine, x, y, DARK_TEXT_PRIMARY);
         y += line;
-        drawBooleanLine(guiGraphics, "主动冷却: ", s.activeCooling(), x, y);
+        drawBooleanLine(guiGraphics, cachedOverclockLine, cachedOverclocked, x, y);
+        y += line;
+        drawBooleanLine(guiGraphics, cachedActiveCoolingLine, cachedActiveCooling, x, y);
 
         // ── Formed status bar ──
-        drawFormedStatusBar(guiGraphics, s.formed(), imageWidth, imageHeight);
+        drawFormedStatusBar(guiGraphics, craftingState.formed(), imageWidth, imageHeight);
     }
 
     private ECOCraftingSystemBlockEntity getCraftingBE() {

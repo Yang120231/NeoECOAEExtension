@@ -1,6 +1,5 @@
 package cn.dancingsnow.neoecoae.gui.nativeui.screen;
 
-import cn.dancingsnow.neoecoae.blocks.entity.storage.ECOStorageSystemBlockEntity;
 import cn.dancingsnow.neoecoae.gui.nativeui.menu.NEStorageControllerMenu;
 import cn.dancingsnow.neoecoae.network.NEStorageUiState;
 import cn.dancingsnow.neoecoae.network.NEStorageUiTypeState;
@@ -9,11 +8,9 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.fml.ModList;
 
 import java.text.NumberFormat;
-import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
@@ -69,6 +66,10 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
     private boolean hasStorageState;
     private NEStorageUiState storageState;
 
+    // Cached values (updated only on state change)
+    private StorageMetrics cachedMetrics;
+    private final boolean chemicalMode; // immutable for session
+
     private double animatedEnergyPct = -1.0D;
     private double animatedItemPct = -1.0D;
     private double animatedFluidPct = -1.0D;
@@ -79,7 +80,9 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
         super(menu, playerInv, title, NEMachineScreenConfig.STORAGE_CONTROLLER);
         this.imageWidth = 358;
         this.imageHeight = 220;
+        this.chemicalMode = hasChemicalStorageIntegration();
         this.storageState = NEStorageUiState.empty(menu.getMachinePos());
+        this.cachedMetrics = buildStorageMetrics(this.storageState);
     }
 
     /**
@@ -89,6 +92,7 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
     public void setStorageUiState(NEStorageUiState state) {
         this.hasStorageState = true;
         this.storageState = state;
+        this.cachedMetrics = buildStorageMetrics(state);
     }
 
     @Override
@@ -99,9 +103,7 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
 
     @Override
     protected void renderAdditionalLabels(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        boolean chemicalMode = hasChemicalStorageIntegration();
-        NEStorageUiState s = resolveStorageState();
-        StorageMetrics metrics = buildStorageMetrics(s);
+        StorageMetrics metrics = this.cachedMetrics;
 
         animatedEnergyPct = animateTo(animatedEnergyPct, metrics.energy().percent());
         animatedItemPct = animateTo(animatedItemPct, metrics.items().percent());
@@ -135,35 +137,11 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
         }
 
         drawFormedStatusBar(guiGraphics,
-                s.formed(),
+                storageState.formed(),
                 LEFT_PANEL_X,
                 FORMED_BAR_Y,
                 RIGHT_PANEL_X + RIGHT_PANEL_W - LEFT_PANEL_X,
                 FORMED_BAR_H);
-    }
-
-    private NEStorageUiState resolveStorageState() {
-        if (hasStorageState) {
-            return this.storageState;
-        }
-
-        // Opening-time fallback: read client BE once while waiting for the
-        // first S2C packet. Not used for live refresh.
-        ECOStorageSystemBlockEntity be = getStorageBE();
-        if (be != null) {
-            // Wrap legacy BE getters into a single "unknown" type row.
-            NEStorageUiTypeState fallbackType = new NEStorageUiTypeState(
-                    ResourceLocation.fromNamespaceAndPath("neoecoae", "legacy"),
-                    "Storage",
-                    be.getTotalUsedTypes(), be.getTotalTypes(),
-                    be.getTotalUsedBytes(), be.getTotalBytes());
-            return new NEStorageUiState(
-                    menu.getMachinePos(),
-                    Collections.singletonList(fallbackType),
-                    be.getStoredEnergy(), be.getMaxEnergy(),
-                    be.isFormed());
-        }
-        return this.storageState;
     }
 
     private StorageMetrics buildStorageMetrics(NEStorageUiState s) {
@@ -353,17 +331,6 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
 
     private void drawCenteredComponent(GuiGraphics g, Component text, int x, int y, int w, int color) {
         g.drawString(font, text, x + (w - font.width(text)) / 2, y, color, false);
-    }
-
-    private ECOStorageSystemBlockEntity getStorageBE() {
-        if (minecraft == null || minecraft.level == null) {
-            return null;
-        }
-        BlockEntity be = minecraft.level.getBlockEntity(menu.getMachinePos());
-        if (be instanceof ECOStorageSystemBlockEntity storage) {
-            return storage;
-        }
-        return null;
     }
 
     private static boolean hasChemicalStorageIntegration() {

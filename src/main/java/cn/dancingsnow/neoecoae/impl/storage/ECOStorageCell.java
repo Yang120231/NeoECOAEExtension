@@ -29,11 +29,15 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ECOStorageCell implements IECOStorageCell {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ECOStorageCell.class);
+
     @Nullable
     private final ISaveProvider container;
     private final IBasicECOCellItem cellType;
@@ -186,6 +190,15 @@ public class ECOStorageCell implements IECOStorageCell {
     private void loadCellItems() {
         var stacks = getStoredStacks();
         for (var stack : stacks) {
+            if (stack.what() == null || !keyType.contains(stack.what())) {
+                // skip incompatible legacy/corrupt entry
+                LOGGER.debug("Skipping incompatible stored entry in cell {}: key {} (type {}) does not match cell type {}",
+                    cellStack.getHoverName().getString(),
+                    stack.what(),
+                    stack.what() != null ? stack.what().getType() : "null",
+                    keyType);
+                continue;
+            }
             storedAmounts.put(stack.what(), stack.amount());
         }
     }
@@ -241,7 +254,15 @@ public class ECOStorageCell implements IECOStorageCell {
 
     @Override
     public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
-        if (amount == 0 || !keyType.contains(what)) {
+        if (amount == 0) {
+            return 0;
+        }
+        if (!keyType.contains(what)) {
+            LOGGER.debug("Rejected storage insert into cell {}: key {} has incompatible type {}, expected {}",
+                cellStack.getHoverName().getString(),
+                what,
+                what.getType(),
+                keyType);
             return 0;
         }
 

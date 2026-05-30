@@ -803,7 +803,7 @@ public final class NENetwork {
                 }
                 crafting.setChanged();
                 crafting.markForUpdate();
-                menu.broadcastChanges();
+                menu.sendStateNow(sender);
             });
             ctx.setPacketHandled(true);
         }
