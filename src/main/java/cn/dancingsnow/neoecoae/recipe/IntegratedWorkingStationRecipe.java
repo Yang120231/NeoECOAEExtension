@@ -32,13 +32,12 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public record IntegratedWorkingStationRecipe(
-    ResourceLocation id,
-    List<SizedIngredient> inputItems,
-    SizedFluidIngredient inputFluid,
-    ItemStack itemOutput,
-    FluidStack fluidOutput,
-    int energy
-) implements Recipe<IntegratedWorkingStationRecipe.Input> {
+        ResourceLocation id,
+        List<SizedIngredient> inputItems,
+        SizedFluidIngredient inputFluid,
+        ItemStack itemOutput,
+        FluidStack fluidOutput,
+        int energy) implements Recipe<IntegratedWorkingStationRecipe.Input> {
 
     public static Builder builder() {
         return new Builder();
@@ -346,18 +345,18 @@ public record IntegratedWorkingStationRecipe(
             SizedFluidIngredient inputFluid;
             try {
                 inputFluid = json.has("inputFluid")
-                    ? SizedFluidIngredient.fromJson(json.get("inputFluid"))
-                    : new SizedFluidIngredient(FluidIngredient.empty(), 0);
+                        ? SizedFluidIngredient.fromJson(json.get("inputFluid"))
+                        : new SizedFluidIngredient(FluidIngredient.empty(), 0);
             } catch (JsonParseException e) {
                 throw new JsonParseException("Recipe " + id + " inputFluid " + e.getMessage(), e);
             }
 
             ItemStack itemOutput = json.has("itemOutput")
-                ? readItemStack(id, json.getAsJsonObject("itemOutput"))
-                : ItemStack.EMPTY;
+                    ? readItemStack(id, json.getAsJsonObject("itemOutput"))
+                    : ItemStack.EMPTY;
             FluidStack fluidOutput = json.has("fluidOutput")
-                ? readFluidStack(id, json.getAsJsonObject("fluidOutput"))
-                : FluidStack.EMPTY;
+                    ? readFluidStack(id, json.getAsJsonObject("fluidOutput"))
+                    : FluidStack.EMPTY;
             int energy = json.has("energy") ? json.get("energy").getAsInt() : 0;
             return new IntegratedWorkingStationRecipe(id, inputItems, inputFluid, itemOutput, fluidOutput, energy);
         }
@@ -404,13 +403,12 @@ public record IntegratedWorkingStationRecipe(
                 inputItems.add(SizedIngredient.fromNetwork(buffer));
             }
             return new IntegratedWorkingStationRecipe(
-                id,
-                inputItems,
-                SizedFluidIngredient.fromNetwork(buffer),
-                buffer.readItem(),
-                FluidStack.readFromPacket(buffer),
-                buffer.readVarInt()
-            );
+                    id,
+                    inputItems,
+                    SizedFluidIngredient.fromNetwork(buffer),
+                    buffer.readItem(),
+                    FluidStack.readFromPacket(buffer),
+                    buffer.readVarInt());
         }
 
         @Override

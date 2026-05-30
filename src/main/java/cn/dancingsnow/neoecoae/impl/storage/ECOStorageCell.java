@@ -75,7 +75,8 @@ public class ECOStorageCell implements IECOStorageCell {
             this.cellType = c;
             this.tier = c.getTier();
 
-            // Updates the partition list and mode based on installed upgrades and the configured filter.
+            // Updates the partition list and mode based on installed upgrades and the
+            // configured filter.
             var builder = IPartitionList.builder();
 
             var upgrades = getUpgradesInventory();
@@ -156,7 +157,9 @@ public class ECOStorageCell implements IECOStorageCell {
 
     private boolean canHoldNewItem() {
         final long bytesFree = this.getFreeBytes();
-        return (bytesFree > this.getBytesPerType() || bytesFree == this.getBytesPerType() && this.getUnusedItemCount() > 0) && this.getRemainingItemTypes() > 0;
+        return (bytesFree > this.getBytesPerType()
+                || bytesFree == this.getBytesPerType() && this.getUnusedItemCount() > 0)
+                && this.getRemainingItemTypes() > 0;
     }
 
     public long getStoredItemTypes() {
@@ -192,11 +195,12 @@ public class ECOStorageCell implements IECOStorageCell {
         for (var stack : stacks) {
             if (stack.what() == null || !keyType.contains(stack.what())) {
                 // skip incompatible legacy/corrupt entry
-                LOGGER.debug("Skipping incompatible stored entry in cell {}: key {} (type {}) does not match cell type {}",
-                    cellStack.getHoverName().getString(),
-                    stack.what(),
-                    stack.what() != null ? stack.what().getType() : "null",
-                    keyType);
+                LOGGER.debug(
+                        "Skipping incompatible stored entry in cell {}: key {} (type {}) does not match cell type {}",
+                        cellStack.getHoverName().getString(),
+                        stack.what(),
+                        stack.what() != null ? stack.what().getType() : "null",
+                        keyType);
                 continue;
             }
             storedAmounts.put(stack.what(), stack.amount());
@@ -259,10 +263,10 @@ public class ECOStorageCell implements IECOStorageCell {
         }
         if (!keyType.contains(what)) {
             LOGGER.debug("Rejected storage insert into cell {}: key {} has incompatible type {}, expected {}",
-                cellStack.getHoverName().getString(),
-                what,
-                what.getType(),
-                keyType);
+                    cellStack.getHoverName().getString(),
+                    what,
+                    what.getType(),
+                    keyType);
             return 0;
         }
 
@@ -277,7 +281,8 @@ public class ECOStorageCell implements IECOStorageCell {
         // Run regular insert logic and then apply void upgrade to the returned value.
         long inserted = innerInsert(what, amount, mode);
 
-        // In the event that a void card is being used on a (full) unformatted cell, ensure it doesn't void any items
+        // In the event that a void card is being used on a (full) unformatted cell,
+        // ensure it doesn't void any items
         // that the cell isn't even storing and cannot store to begin with
         if (partitionList.isEmpty() && hasVoidUpgrade && !canHoldNewItem()) {
             return getCellItems().containsKey(what) ? amount : inserted;

@@ -266,7 +266,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         public boolean isCell(ItemStack stack) {
             if (stack.getItem() instanceof ECOStorageCellItem item) {
                 return item.getCellType() == cn.dancingsnow.neoecoae.all.NECellTypes.ITEM.get()
-                    && item.getKeyType() == AEKeyType.items();
+                        && item.getKeyType() == AEKeyType.items();
             }
             return false;
         }
@@ -286,7 +286,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         public boolean isCell(ItemStack stack) {
             if (stack.getItem() instanceof ECOStorageCellItem item) {
                 return item.getCellType() == cn.dancingsnow.neoecoae.all.NECellTypes.FLUID.get()
-                    && item.getKeyType() == AEKeyType.fluids();
+                        && item.getKeyType() == AEKeyType.fluids();
             }
             return false;
         }
@@ -314,7 +314,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         public boolean isCell(ItemStack stack) {
             if (stack.getItem() instanceof ECOStorageCellItem item) {
                 return item.getCellType().id().equals(cn.dancingsnow.neoecoae.NeoECOAE.id("chemicals"))
-                    && item.getKeyType() == me.ramidzkh.mekae2.ae2.MekanismKeyType.TYPE;
+                        && item.getKeyType() == me.ramidzkh.mekae2.ae2.MekanismKeyType.TYPE;
             }
             return false;
         }
