@@ -45,16 +45,19 @@ public class CoolingEmiRecipe implements EmiRecipe {
     @Override
     public List<dev.emi.emi.api.stack.EmiIngredient> getInputs() {
         SizedFluidIngredient input = recipe.input();
-        if (input.ingredient().isEmpty()) return List.of();
+        if (input.ingredient().isEmpty())
+            return List.of();
         FluidStack[] fluids = input.getFluids();
-        if (fluids == null || fluids.length == 0) return List.of();
+        if (fluids == null || fluids.length == 0)
+            return List.of();
         return List.of(NeoECOAEEmiPlugin.of(input));
     }
 
     @Override
     public List<EmiStack> getOutputs() {
         FluidStack output = recipe.output();
-        if (output.isEmpty()) return List.of();
+        if (output.isEmpty())
+            return List.of();
         return List.of(EmiStack.of(output.getFluid(), output.getAmount()));
     }
 
@@ -78,29 +81,29 @@ public class CoolingEmiRecipe implements EmiRecipe {
         // Input fluid tank
         SizedFluidIngredient input = recipe.input();
         widgets.addTank(NeoECOAEEmiPlugin.of(input), 8, 8, 20, 36, input.amount())
-            .drawBack(false);
+                .drawBack(false);
 
         // Progress arrow texture + animation
         widgets.addTexture(
-            NeoECOAE.id("textures/gui/jei/cooling_progress_empty.png"),
-            36, 6, 30, 30, 0, 0, 30, 30, 30, 30);
+                NeoECOAE.id("textures/gui/jei/cooling_progress_empty.png"),
+                36, 6, 30, 30, 0, 0, 30, 30, 30, 30);
         widgets.addAnimatedTexture(
-            NeoECOAE.id("textures/gui/jei/cooling_progress.png"),
-            36, 6, 30, 30, 0, 0, 30, 30, 30, 30, 2000, false, true, false);
+                NeoECOAE.id("textures/gui/jei/cooling_progress.png"),
+                36, 6, 30, 30, 0, 0, 30, 30, 30, 30, 2000, false, true, false);
 
         // Output fluid tank
         FluidStack output = recipe.output();
         if (!output.isEmpty()) {
             widgets.addTank(
-                EmiStack.of(output.getFluid(), output.getAmount()),
-                74, 8, 20, 36, output.getAmount())
-                .drawBack(false)
-                .recipeContext(this);
+                    EmiStack.of(output.getFluid(), output.getAmount()),
+                    74, 8, 20, 36, output.getAmount())
+                    .drawBack(false)
+                    .recipeContext(this);
         }
 
         // Coolant info
         widgets.addText(
-            Component.translatable("category.neoecoae.cooling.coolant", recipe.coolant()),
-            6, 44, 0x404040, false);
+                Component.translatable("category.neoecoae.cooling.coolant", recipe.coolant()),
+                6, 44, 0x404040, false);
     }
 }
