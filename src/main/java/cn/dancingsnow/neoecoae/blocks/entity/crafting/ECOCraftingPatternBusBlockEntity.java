@@ -48,6 +48,9 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     public final IItemHandlerModifiable itemHandler;
     private final LazyOptional<IItemHandlerModifiable> itemHandlerCap;
 
+    /** Round-robin index for worker allocation. Transient (not persisted). */
+    private int nextWorkerIndex = 0;
+
     @Override
     public List<IPatternDetails> getAvailablePatterns() {
         return patternDetails;
@@ -58,11 +61,22 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
         if (!(patternDetails instanceof IMolecularAssemblerSupportedPattern supportedPattern)) {
             return false;
         }
-        if (cluster != null) {
-            for (ECOCraftingWorkerBlockEntity worker : cluster.getWorkers()) {
-                if (worker.pushPattern(supportedPattern, inputHolder)) {
-                    return true;
-                }
+        if (cluster == null) {
+            return false;
+        }
+        List<ECOCraftingWorkerBlockEntity> workers = cluster.getWorkers();
+        if (workers.isEmpty()) {
+            return false;
+        }
+        // Round-robin: start from last successful worker to spread load.
+        int size = workers.size();
+        int startIndex = nextWorkerIndex % size;
+        for (int i = 0; i < size; i++) {
+            int idx = (startIndex + i) % size;
+            ECOCraftingWorkerBlockEntity worker = workers.get(idx);
+            if (worker.pushPattern(supportedPattern, inputHolder)) {
+                nextWorkerIndex = (idx + 1) % size;
+                return true;
             }
         }
         return false;

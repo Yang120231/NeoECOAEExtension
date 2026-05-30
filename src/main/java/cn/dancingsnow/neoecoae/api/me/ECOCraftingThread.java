@@ -92,6 +92,17 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
     }
 
     /**
+     * Provides a snapshot of the current output for cache population.
+     * Only valid immediately after a successful {@link #calcPattern} call.
+     */
+    public CompiledPatternResult snapshotResult() {
+        if (outputItem.isEmpty()) {
+            return null;
+        }
+        return new CompiledPatternResult(outputItem, remainingItems);
+    }
+
+    /**
      * 鎻愪氦鏍锋澘
      *
      * @param pattern    瑕佹彁浜ょ殑鏍锋澘
@@ -104,6 +115,43 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
         }
 
         return calcPattern(pattern, table, controller);
+    }
+
+    /**
+     * Fast-path push that uses a pre-computed {@link CompiledPatternResult}
+     * instead of re-running {@code fillCraftingGrid / assemble / getRemainingItems}.
+     * <p>
+     * Coolant consumption still happens here (via {@link #pushPattern} calling
+     * {@link #calcPattern}). If the cache hit path is taken, the coolant check
+     * MUST have already passed before this method is called.
+     * </p>
+     *
+     * @param cachedResult the pre-computed output (must not be empty)
+     * @param controller   the crafting system controller (for coolant check)
+     * @return true if the pattern was accepted
+     */
+    public boolean pushPatternCached(CompiledPatternResult cachedResult, ECOCraftingSystemBlockEntity controller) {
+        if (isBusy) {
+            return false;
+        }
+        // Coolant check still required; cache does not skip cooling cost.
+        if (controller.isActiveCooling()) {
+            if (!controller.tryConsumeCoolant(5, controller.getEffectiveOverclockTimes())) {
+                return false;
+            }
+        }
+        ItemStack out = cachedResult.copyOutput();
+        if (out.isEmpty()) {
+            return false;
+        }
+        this.outputItem = out;
+        remainingItems.clear();
+        remainingItems.addAll(cachedResult.copyRemaining());
+        worker.onThreadWork();
+        isBusy = true;
+        reboot = true;
+        setChanged();
+        return true;
     }
 
     private boolean calcPattern(IMolecularAssemblerSupportedPattern pattern, KeyCounter[] table, ECOCraftingSystemBlockEntity controller) {
