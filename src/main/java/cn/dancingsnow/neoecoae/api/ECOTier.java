@@ -101,4 +101,16 @@ public enum ECOTier implements IECOTier {
     public ResourceLocation getCPUOverlayTexture() {
         return cpuOverlayTexture;
     }
+
+    /**
+     * Returns a display-friendly tier name for the AE2 CPU selection list.
+     * L4 → "C4", L6 → "C6", L9 → "C9".
+     */
+    public String getComputationDisplayTier() {
+        return switch (this) {
+            case L4 -> "C4";
+            case L6 -> "C6";
+            case L9 -> "C9";
+        };
+    }
 }

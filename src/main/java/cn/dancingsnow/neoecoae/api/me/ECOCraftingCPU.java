@@ -9,6 +9,7 @@ import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.GenericStack;
 import appeng.crafting.CraftingPlan;
+import cn.dancingsnow.neoecoae.api.ECOTier;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationThreadingCoreBlockEntity;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NEComputationCluster;
@@ -91,7 +92,8 @@ public class ECOCraftingCPU implements ICraftingCPU {
 
     @Override
     public @Nullable Component getName() {
-        return Component.translatable("gui.neoecoae.cpu.eco", tier.toString());
+        return Component.translatable("gui.neoecoae.cpu.eco",
+                tier instanceof ECOTier ecoTier ? ecoTier.getComputationDisplayTier() : tier.toString());
     }
 
     @Override
