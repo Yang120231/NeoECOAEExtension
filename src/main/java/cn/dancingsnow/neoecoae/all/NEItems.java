@@ -16,6 +16,7 @@ import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.items.ECOComputationCellItem;
 import cn.dancingsnow.neoecoae.items.ECOStorageCellItem;
 import cn.dancingsnow.neoecoae.items.StructureTerminalItem;
+import cn.dancingsnow.neoecoae.items.NESmithingTemplateItem;
 import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import com.tterrag.registrate.providers.RegistrateRecipeProvider;
 import com.tterrag.registrate.util.DataIngredient;
@@ -34,7 +35,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.PickaxeItem;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.ShovelItem;
-import net.minecraft.world.item.SmithingTemplateItem;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraftforge.common.Tags;
@@ -198,8 +198,9 @@ public class NEItems {
             })
             .register();
 
-    public static final ItemEntry<SmithingTemplateItem> ALUMINUM_ALLOY_UPGRADE_SMITHING_TEMPLATE = REGISTRATE
-            .item("aluminum_alloy_upgrade_smithing_template", p -> new SmithingTemplateItem(
+    public static final ItemEntry<NESmithingTemplateItem> ALUMINUM_ALLOY_UPGRADE_SMITHING_TEMPLATE = REGISTRATE
+            .item("aluminum_alloy_upgrade_smithing_template", p -> new NESmithingTemplateItem(
+                    "item.neoecoae.aluminum_alloy_upgrade_smithing_template",
                     REGISTRATE.addLang("item", NeoECOAE.id("smithing_template.aluminum_alloy_upgrade.applies_to"),
                             "Aluminum Equipment").withStyle(ChatFormatting.BLUE),
                     REGISTRATE.addLang("item", NeoECOAE.id("smithing_template.aluminum_alloy_upgrade.ingredients"),
@@ -220,6 +221,7 @@ public class NEItems {
                             ResourceLocation.withDefaultNamespace("item/empty_slot_pickaxe")),
                     List.of(
                             ResourceLocation.withDefaultNamespace("item/empty_slot_ingot"))))
+            .lang("Aluminum Alloy Upgrade Smithing Template")
             .recipe((ctx, prov) -> {
                 ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NETags.Items.ALUMINUM_ALLOY_INGOT)
@@ -305,8 +307,9 @@ public class NEItems {
             })
             .register();
 
-    public static final ItemEntry<SmithingTemplateItem> BLACK_TUNGSTEN_ALLOY_UPGRADE_SMITHING_TEMPLATE = REGISTRATE
-            .item("black_tungsten_alloy_upgrade_smithing_template", p -> new SmithingTemplateItem(
+    public static final ItemEntry<NESmithingTemplateItem> BLACK_TUNGSTEN_ALLOY_UPGRADE_SMITHING_TEMPLATE = REGISTRATE
+            .item("black_tungsten_alloy_upgrade_smithing_template", p -> new NESmithingTemplateItem(
+                    "item.neoecoae.black_tungsten_alloy_upgrade_smithing_template",
                     REGISTRATE.addLang("item", NeoECOAE.id("smithing_template.black_tungsten_alloy_upgrade.applies_to"),
                             "Tungsten Equipment").withStyle(ChatFormatting.BLUE),
                     REGISTRATE
@@ -329,6 +332,7 @@ public class NEItems {
                             ResourceLocation.withDefaultNamespace("item/empty_slot_pickaxe")),
                     List.of(
                             ResourceLocation.withDefaultNamespace("item/empty_slot_ingot"))))
+            .lang("Black Tungsten Alloy Upgrade Smithing Template")
             .recipe((ctx, prov) -> {
                 ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NETags.Items.BLACK_TUNGSTEN_ALLOY_INGOT)
