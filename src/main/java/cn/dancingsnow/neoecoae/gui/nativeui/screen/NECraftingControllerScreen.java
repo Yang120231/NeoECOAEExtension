@@ -1,10 +1,14 @@
 package cn.dancingsnow.neoecoae.gui.nativeui.screen;
 
+import appeng.client.gui.Icon;
 import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingSystemBlockEntity;
 import cn.dancingsnow.neoecoae.gui.nativeui.NENativeUiConstants;
 import cn.dancingsnow.neoecoae.gui.nativeui.menu.NECraftingControllerMenu;
+import cn.dancingsnow.neoecoae.gui.nativeui.widget.NEAe2IconButton;
 import cn.dancingsnow.neoecoae.network.NECraftingUiState;
+import cn.dancingsnow.neoecoae.network.NENetwork;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -49,6 +53,11 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
     private boolean hasCraftingState;
     private NECraftingUiState craftingState;
 
+    // Toggle buttons (top-left, 7px spacing)
+    private NEAe2IconButton overclockBtn;
+    private NEAe2IconButton coolingBtn;
+    private NEAe2IconButton clearCoolantBtn;
+
     public NECraftingControllerScreen(NECraftingControllerMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title, NEMachineScreenConfig.CRAFTING_CONTROLLER);
         this.imageWidth = 300;
@@ -68,6 +77,36 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
     @Override
     protected void init() {
         super.init();
+
+        int btnSize = 20;
+        int gap = 7;
+        int btnX = leftPos + 9;
+        int btnY = topPos + 5;
+
+        // Overclock toggle
+        overclockBtn = new NEAe2IconButton(btnX, btnY, btnSize, btnSize,
+                Component.translatable("gui.neoecoae.crafting.enable_overlock"),
+                btn -> sendAction(NENetwork.CraftingAction.TOGGLE_OVERCLOCK));
+        overclockBtn.setIcons(Icon.AUTO_EXPORT_ON, Icon.AUTO_EXPORT_OFF);
+        addRenderableWidget(overclockBtn);
+
+        // Active cooling toggle
+        coolingBtn = new NEAe2IconButton(btnX + btnSize + gap, btnY, btnSize, btnSize,
+                Component.translatable("gui.neoecoae.crafting.enable_active_cooling"),
+                btn -> sendAction(NENetwork.CraftingAction.TOGGLE_ACTIVE_COOLING));
+        coolingBtn.setIcons(Icon.AUTO_EXPORT_ON, Icon.AUTO_EXPORT_OFF);
+        addRenderableWidget(coolingBtn);
+
+        // Clear coolant
+        clearCoolantBtn = new NEAe2IconButton(btnX + (btnSize + gap) * 2, btnY, btnSize, btnSize,
+                Component.translatable("gui.neoecoae.crafting.clear_coolant"),
+                btn -> sendAction(NENetwork.CraftingAction.CLEAR_COOLANT));
+        clearCoolantBtn.setIcon(Icon.AUTO_EXPORT_OFF);
+        addRenderableWidget(clearCoolantBtn);
+    }
+
+    private void sendAction(NENetwork.CraftingAction action) {
+        NENetwork.CHANNEL.sendToServer(new NENetwork.NECraftingActionPacket(menu.getMachinePos(), action));
     }
 
     @Override
@@ -83,6 +122,22 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
             } else {
                 s = this.craftingState;
             }
+        }
+
+        // Update toggle button states
+        if (overclockBtn != null) {
+            overclockBtn.setToggled(s.overclocked());
+            overclockBtn.setTooltip(Tooltip.create(Component.translatable(
+                    "gui.neoecoae.crafting.overclocked.tooltip")));
+        }
+        if (coolingBtn != null) {
+            coolingBtn.setToggled(s.activeCooling());
+            coolingBtn.setTooltip(Tooltip.create(Component.translatable(
+                    "gui.neoecoae.crafting.active_cooling.tooltip")));
+        }
+        if (clearCoolantBtn != null) {
+            clearCoolantBtn.setTooltip(Tooltip.create(Component.translatable(
+                    "gui.neoecoae.crafting.clear_coolant.tooltip")));
         }
 
         // ── Main dark panel ──

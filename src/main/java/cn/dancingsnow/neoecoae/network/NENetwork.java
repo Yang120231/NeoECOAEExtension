@@ -108,6 +108,11 @@ public final class NENetwork {
             NEIntegratedWorkingStationActionPacket::decode,
             NEIntegratedWorkingStationActionPacket::handle);
 
+        registerC2S(NECraftingActionPacket.class,
+            NECraftingActionPacket::encode,
+            NECraftingActionPacket::decode,
+            NECraftingActionPacket::handle);
+
         registerS2C(NEIWSStatePacket.class,
             NEIWSStatePacket::encode,
             NEIWSStatePacket::decode,
@@ -715,6 +720,59 @@ public final class NENetwork {
                 menu.broadcastChanges();
                 // Send updated state back to this client immediately
                 sendIwsStateTo(sender, iws);
+            });
+            ctx.setPacketHandled(true);
+        }
+    }
+
+    // ── Crafting Controller action packet ──
+
+    public enum CraftingAction {
+        TOGGLE_OVERCLOCK,
+        TOGGLE_ACTIVE_COOLING,
+        CLEAR_COOLANT
+    }
+
+    public record NECraftingActionPacket(BlockPos pos, CraftingAction action) {
+
+        public static void encode(NECraftingActionPacket pkt, FriendlyByteBuf buf) {
+            buf.writeBlockPos(pkt.pos());
+            buf.writeEnum(pkt.action());
+        }
+
+        public static NECraftingActionPacket decode(FriendlyByteBuf buf) {
+            return new NECraftingActionPacket(buf.readBlockPos(), buf.readEnum(CraftingAction.class));
+        }
+
+        public static void handle(NECraftingActionPacket pkt, Supplier<NetworkEvent.Context> ctxSupplier) {
+            NetworkEvent.Context ctx = ctxSupplier.get();
+            var sender = ctx.getSender();
+            if (sender == null) {
+                ctx.setPacketHandled(true);
+                return;
+            }
+            ctx.enqueueWork(() -> {
+                if (!(sender.containerMenu instanceof NECraftingControllerMenu menu)) {
+                    return;
+                }
+                if (!menu.getMachinePos().equals(pkt.pos())) {
+                    return;
+                }
+                if (!menu.stillValid(sender)) {
+                    return;
+                }
+                var be = sender.level().getBlockEntity(pkt.pos());
+                if (!(be instanceof ECOCraftingSystemBlockEntity crafting)) {
+                    return;
+                }
+                switch (pkt.action()) {
+                    case TOGGLE_OVERCLOCK -> crafting.toggleOverclock();
+                    case TOGGLE_ACTIVE_COOLING -> crafting.toggleActiveCooling();
+                    case CLEAR_COOLANT -> crafting.clearCoolant();
+                }
+                crafting.setChanged();
+                crafting.markForUpdate();
+                menu.broadcastChanges();
             });
             ctx.setPacketHandled(true);
         }

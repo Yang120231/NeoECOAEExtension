@@ -283,6 +283,20 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         markForUpdate();
     }
 
+    public void toggleOverclock() {
+        overclocked = !overclocked;
+        updateInfo();
+        setChanged();
+        markForUpdate();
+    }
+
+    public void toggleActiveCooling() {
+        activeCooling = !activeCooling;
+        updateInfo();
+        setChanged();
+        markForUpdate();
+    }
+
     private double getOverflowThreadsPercentage() {
         double totalThread = threadCount;
         return totalThread > 0 ? getOverflowThreads() / totalThread : 0.0;
