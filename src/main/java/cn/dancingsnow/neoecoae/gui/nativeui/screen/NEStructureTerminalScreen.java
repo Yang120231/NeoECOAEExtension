@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.fml.ModList;
 
+import java.util.List;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -56,10 +57,14 @@ public class NEStructureTerminalScreen extends AbstractContainerScreen<NEStructu
     private int minLength = 1;
     private int maxLength = 12;
 
-    // Toggle states (client-only, not synced)
+    // Toggle states (client-only, not synced to server directly)
     private boolean buildMode = true;
     private boolean dismantleMode = false;
     private boolean expansionMode = false;
+
+    // Server-authoritative mode + materials
+    private cn.dancingsnow.neoecoae.items.StructureTerminalMode mode = cn.dancingsnow.neoecoae.items.StructureTerminalMode.BUILD;
+    private List<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry> materials = List.of();
 
     public NEStructureTerminalScreen(NEStructureTerminalMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title);
@@ -72,6 +77,20 @@ public class NEStructureTerminalScreen extends AbstractContainerScreen<NEStructu
         this.displayBuildLength = length;
         this.minLength = min;
         this.maxLength = max;
+    }
+
+    public void setConfig(int length, int min, int max,
+                          cn.dancingsnow.neoecoae.items.StructureTerminalMode mode,
+                          List<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry> materials) {
+        this.displayBuildLength = length;
+        this.minLength = min;
+        this.maxLength = max;
+        this.mode = mode != null ? mode : cn.dancingsnow.neoecoae.items.StructureTerminalMode.BUILD;
+        this.materials = materials != null ? materials : List.of();
+
+        this.buildMode = this.mode == cn.dancingsnow.neoecoae.items.StructureTerminalMode.BUILD;
+        this.dismantleMode = this.mode == cn.dancingsnow.neoecoae.items.StructureTerminalMode.DISMANTLE;
+        this.expansionMode = this.mode == cn.dancingsnow.neoecoae.items.StructureTerminalMode.EXPAND;
     }
 
     @Override

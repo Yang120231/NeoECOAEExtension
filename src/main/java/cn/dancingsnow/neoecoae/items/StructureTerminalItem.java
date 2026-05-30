@@ -3,6 +3,7 @@ package cn.dancingsnow.neoecoae.items;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.nativeui.menu.NEStructureTerminalMenu;
 import cn.dancingsnow.neoecoae.multiblock.INEMultiblockBuildHost;
+import cn.dancingsnow.neoecoae.multiblock.StructureTerminalActionExecutor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -20,6 +21,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.network.NetworkHooks;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Structure Terminal — a handheld tool for configuring and executing
@@ -39,6 +41,7 @@ import net.minecraftforge.network.NetworkHooks;
 public class StructureTerminalItem extends Item {
 
     public static final String TAG_BUILD_LENGTH = "BuildLength";
+    public static final String TAG_MODE = "Mode";
     public static final int DEFAULT_BUILD_LENGTH = 1;
     public static final int MIN_BUILD_LENGTH = 1;
 
@@ -69,6 +72,24 @@ public class StructureTerminalItem extends Item {
     public static void setBuildLength(ItemStack stack, int length) {
         stack.getOrCreateTag().putInt(TAG_BUILD_LENGTH,
             Mth.clamp(length, MIN_BUILD_LENGTH, getGlobalMaxBuildLength()));
+    }
+
+    // ── Mode NBT helpers ──
+
+    public static StructureTerminalMode getMode(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_MODE)) {
+            return StructureTerminalMode.BUILD;
+        }
+        try {
+            return StructureTerminalMode.valueOf(tag.getString(TAG_MODE));
+        } catch (IllegalArgumentException ex) {
+            return StructureTerminalMode.BUILD;
+        }
+    }
+
+    public static void setMode(ItemStack stack, StructureTerminalMode mode) {
+        stack.getOrCreateTag().putString(TAG_MODE, mode.name());
     }
 
     // ── Item behaviour ──
@@ -118,20 +139,21 @@ public class StructureTerminalItem extends Item {
         BlockPos pos = ctx.getClickedPos();
 
         if (!player.isShiftKeyDown()) {
-            // Normal right-click on any block → open config UI
+            // Normal right-click on any block → open config UI (with hostPos if host)
             if (level.isClientSide()) {
                 return InteractionResult.SUCCESS;
             }
             if (player instanceof ServerPlayer serverPlayer) {
-                openTerminalConfig(serverPlayer, ctx.getHand());
+                BlockEntity be = level.getBlockEntity(pos);
+                BlockPos hostPos = be instanceof INEMultiblockBuildHost ? pos : null;
+                openTerminalConfig(serverPlayer, ctx.getHand(), hostPos);
             }
             return InteractionResult.CONSUME;
         }
 
-        // Shift + right-click → try to build
+        // Shift + right-click → mode-based execution
         BlockEntity be = level.getBlockEntity(pos);
         if (!(be instanceof INEMultiblockBuildHost host)) {
-            // Not a host → consume to block block's own interaction / UI
             return InteractionResult.CONSUME;
         }
 
@@ -140,8 +162,14 @@ public class StructureTerminalItem extends Item {
         }
 
         int requestedLength = StructureTerminalItem.getBuildLength(stack);
+        StructureTerminalMode mode = StructureTerminalItem.getMode(stack);
         ServerPlayer serverPlayer = (ServerPlayer) player;
-        host.autoBuild(serverPlayer, requestedLength);
+
+        switch (mode) {
+            case BUILD -> StructureTerminalActionExecutor.build(serverPlayer, host, requestedLength);
+            case DISMANTLE -> StructureTerminalActionExecutor.dismantle(serverPlayer, host);
+            case EXPAND -> StructureTerminalActionExecutor.expand(serverPlayer, host, requestedLength);
+        }
 
         return InteractionResult.CONSUME;
     }
@@ -149,13 +177,23 @@ public class StructureTerminalItem extends Item {
     // ── Internal ──
 
     private void openTerminalConfig(ServerPlayer player, InteractionHand hand) {
+        openTerminalConfig(player, hand, null);
+    }
+
+    private void openTerminalConfig(ServerPlayer player, InteractionHand hand, @Nullable BlockPos hostPos) {
         NetworkHooks.openScreen(
             player,
             new SimpleMenuProvider(
-                (windowId, inv, p) -> new NEStructureTerminalMenu(windowId, inv, hand),
+                (windowId, inv, p) -> new NEStructureTerminalMenu(windowId, inv, hand, hostPos),
                 Component.translatable("item.neoecoae.structure_terminal")
             ),
-            buf -> buf.writeEnum(hand)
+            buf -> {
+                buf.writeEnum(hand);
+                buf.writeBoolean(hostPos != null);
+                if (hostPos != null) {
+                    buf.writeBlockPos(hostPos);
+                }
+            }
         );
     }
 }
