@@ -99,7 +99,7 @@ public class GuiLangs {
         provider.add("gui.neoecoae.computation.storage_info", "Storage Used: %s / %s");
 
         // cpu
-        provider.add("gui.neoecoae.cpu.eco", "ECO - %s Crafting CPU");
+        provider.add("gui.neoecoae.cpu.eco", "ECO %s");
 
         // crafting
         provider.add("gui.neoecoae.crafting.pattern_bus_count", "Pattern Buses: %d");

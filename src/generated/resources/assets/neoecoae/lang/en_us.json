@@ -138,5 +138,5 @@
   "itemGroup.neoecoae.main": "Neo ECO AE Extension",
   "upgrade.neoecoae.aluminum_alloy_upgrade": "Aluminum Alloy Upgrade",
   "upgrade.neoecoae.black_tungsten_alloy_upgrade": "Black Tungsten Alloy Upgrade",
-  "gui.neoecoae.cpu.eco": "ECO - %s Crafting CPU"
+  "gui.neoecoae.cpu.eco": "ECO %s"
 }
