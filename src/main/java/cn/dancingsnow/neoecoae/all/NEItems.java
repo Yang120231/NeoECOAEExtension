@@ -1104,8 +1104,6 @@ public class NEItems {
                                                 .save(prov);
                         })
                         .lang("Structure Terminal")
-                        .model((ctx, prov) -> {
-                        })
                         .register();
 
         public static void register() {
