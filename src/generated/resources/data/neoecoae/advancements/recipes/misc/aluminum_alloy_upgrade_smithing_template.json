@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "#c:ingots/aluminum_alloy"
+            "tag": "forge:ingots/aluminum_alloy"
           }
         ]
       },
@@ -20,13 +20,14 @@
   },
   "requirements": [
     [
-      "has_the_recipe",
-      "has_aliminim_alloy_ingot"
+      "has_aliminim_alloy_ingot",
+      "has_the_recipe"
     ]
   ],
   "rewards": {
     "recipes": [
       "neoecoae:aluminum_alloy_upgrade_smithing_template"
     ]
-  }
+  },
+  "sends_telemetry_event": false
 }

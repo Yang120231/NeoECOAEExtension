@@ -11,7 +11,7 @@
       "conditions": {
         "items": [
           {
-            "items": "#c:storage_blocks/tungsten"
+            "tag": "forge:storage_blocks/tungsten"
           }
         ]
       },
@@ -20,13 +20,14 @@
   },
   "requirements": [
     [
-      "has_the_recipe",
-      "has_tungsten_block"
+      "has_tungsten_block",
+      "has_the_recipe"
     ]
   ],
   "rewards": {
     "recipes": [
       "neoecoae:tungsten_ingot"
     ]
-  }
+  },
+  "sends_telemetry_event": false
 }

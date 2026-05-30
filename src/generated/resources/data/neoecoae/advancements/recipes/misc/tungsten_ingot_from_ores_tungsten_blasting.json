@@ -5,7 +5,7 @@
       "conditions": {
         "items": [
           {
-            "items": "#c:ores/tungsten"
+            "tag": "forge:ores/tungsten"
           }
         ]
       },
@@ -20,13 +20,14 @@
   },
   "requirements": [
     [
-      "has_the_recipe",
-      "has_ores_tungsten"
+      "has_ores_tungsten",
+      "has_the_recipe"
     ]
   ],
   "rewards": {
     "recipes": [
       "neoecoae:tungsten_ingot_from_ores_tungsten_blasting"
     ]
-  }
+  },
+  "sends_telemetry_event": false
 }
