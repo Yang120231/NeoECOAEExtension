@@ -73,6 +73,7 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
     private double animatedItemPct = -1.0D;
     private double animatedFluidPct = -1.0D;
     private double animatedChemicalPct = -1.0D;
+    private double openAnimationPct = 0.0D;
 
     public NEStorageControllerScreen(NEStorageControllerMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title, NEMachineScreenConfig.STORAGE_CONTROLLER);
@@ -93,6 +94,7 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
     @Override
     protected void init() {
         super.init();
+        this.openAnimationPct = 0.0D;
     }
 
     @Override
@@ -106,6 +108,11 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
         animatedFluidPct = animateTo(animatedFluidPct, metrics.fluids().percent());
         animatedChemicalPct = animateTo(animatedChemicalPct, metrics.chemicals().percent());
 
+        openAnimationPct = animateTo(openAnimationPct, 1.0D);
+        if (openAnimationPct > 0.995D) {
+            openAnimationPct = 1.0D;
+        }
+
         drawInsetGroupPanel(guiGraphics, LEFT_PANEL_X, LEFT_PANEL_Y, LEFT_PANEL_W, LEFT_PANEL_H);
         drawInsetGroupPanel(guiGraphics, RIGHT_PANEL_X, RIGHT_PANEL_Y, RIGHT_PANEL_W, RIGHT_PANEL_H);
         drawStorageTextLines(guiGraphics, metrics, chemicalMode);
@@ -113,11 +120,18 @@ public class NEStorageControllerScreen extends NEBaseMachineScreen<NEStorageCont
         if (chemicalMode) {
             drawBoundMetricColumns(guiGraphics,
                     new Metric[] { metrics.items(), metrics.fluids(), metrics.chemicals() },
-                    new double[] { animatedItemPct, animatedFluidPct, animatedChemicalPct });
+                    new double[] {
+                            animatedItemPct * openAnimationPct,
+                            animatedFluidPct * openAnimationPct,
+                            animatedChemicalPct * openAnimationPct
+                    });
         } else {
             drawBoundMetricColumns(guiGraphics,
                     new Metric[] { metrics.items(), metrics.fluids() },
-                    new double[] { animatedItemPct, animatedFluidPct });
+                    new double[] {
+                            animatedItemPct * openAnimationPct,
+                            animatedFluidPct * openAnimationPct
+                    });
         }
 
         drawFormedStatusBar(guiGraphics,
