@@ -8,7 +8,8 @@ import net.minecraft.world.item.SmithingTemplateItem;
 import java.util.List;
 
 /**
- * Custom {@link SmithingTemplateItem} subclass that uses a unique description ID
+ * Custom {@link SmithingTemplateItem} subclass that uses a unique description
+ * ID
  * per smithing template instead of sharing the vanilla
  * {@code item.minecraft.smithing_template} key.
  * <p>
