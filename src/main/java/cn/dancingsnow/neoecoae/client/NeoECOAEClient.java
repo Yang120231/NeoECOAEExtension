@@ -45,17 +45,18 @@ public class NeoECOAEClient {
         MenuScreens.register(NENativeMenus.CRAFTING_PATTERN_BUS.get(), NECraftingPatternBusScreen::new);
         MenuScreens.register(NENativeMenus.FLUID_HATCH.get(), NEFluidHatchScreen::new);
         MenuScreens.register(NENativeMenus.STRUCTURE_TERMINAL.get(), NEStructureTerminalScreen::new);
+
+        // Neoecoae EMI recipes are injected via EmiRecipesMixin (see forge/mixin/)
+        // which hooks into EmiRecipes.bake() to add recipes before the bake step.
     }
 
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(
-            NEBlockEntities.COMPUTATION_DRIVE.get(),
-            ECOComputationDriveRenderer::new
-        );
+                NEBlockEntities.COMPUTATION_DRIVE.get(),
+                ECOComputationDriveRenderer::new);
         event.registerBlockEntityRenderer(
-            NEBlockEntities.ECO_DRIVE.get(),
-            ECODriveRenderer::new
-        );
+                NEBlockEntities.ECO_DRIVE.get(),
+                ECODriveRenderer::new);
     }
 }
