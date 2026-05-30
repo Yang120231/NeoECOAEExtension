@@ -103,7 +103,7 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
 
         drawPairLine(guiGraphics, "工作线程: ", s.runningThreadCount(), s.threadCount(), " (0%)", x, y);
         y += line;
-        drawLine(guiGraphics, "总并行数: " + fmt(s.parallelCount()), x, y, DARK_TEXT_PRIMARY);
+        drawLine(guiGraphics, "总并行数: " + fmt(s.threadCount()), x, y, DARK_TEXT_PRIMARY);
         y += line;
         drawBooleanLine(guiGraphics, "超频: ", s.overclocked(), x, y);
         y += line;
