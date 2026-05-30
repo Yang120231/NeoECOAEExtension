@@ -50,10 +50,18 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
     private static final int FORMED_BAR_H = 25;
     private static final int FORMED_BAR_BOTTOM_GAP = 7;
 
+    // Side-mounted toggle buttons (left of main panel, AE2-style)
+    private static final int SIDE_BUTTON_X = -18;
+    private static final int SIDE_BUTTON_W = 14;
+    private static final int SIDE_BUTTON_H = 14;
+    private static final int OVERCLOCK_BUTTON_Y = 3;
+    private static final int ACTIVE_COOLING_BUTTON_Y = 21;
+    private static final int CLEAR_COOLANT_BUTTON_Y = 39;
+
     private boolean hasCraftingState;
     private NECraftingUiState craftingState;
 
-    // Toggle buttons (top-left, 7px spacing)
+    // Toggle buttons (left side, stacked vertically)
     private NEAe2IconButton overclockBtn;
     private NEAe2IconButton coolingBtn;
     private NEAe2IconButton clearCoolantBtn;
@@ -78,27 +86,27 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
     protected void init() {
         super.init();
 
-        int btnSize = 20;
-        int gap = 7;
-        int btnX = leftPos + 9;
-        int btnY = topPos + 5;
+        int bx = leftPos + SIDE_BUTTON_X;
 
         // Overclock toggle
-        overclockBtn = new NEAe2IconButton(btnX, btnY, btnSize, btnSize,
+        overclockBtn = new NEAe2IconButton(bx, topPos + OVERCLOCK_BUTTON_Y,
+                SIDE_BUTTON_W, SIDE_BUTTON_H,
                 Component.translatable("gui.neoecoae.crafting.enable_overlock"),
                 btn -> sendAction(NENetwork.CraftingAction.TOGGLE_OVERCLOCK));
         overclockBtn.setIcons(Icon.AUTO_EXPORT_ON, Icon.AUTO_EXPORT_OFF);
         addRenderableWidget(overclockBtn);
 
         // Active cooling toggle
-        coolingBtn = new NEAe2IconButton(btnX + btnSize + gap, btnY, btnSize, btnSize,
+        coolingBtn = new NEAe2IconButton(bx, topPos + ACTIVE_COOLING_BUTTON_Y,
+                SIDE_BUTTON_W, SIDE_BUTTON_H,
                 Component.translatable("gui.neoecoae.crafting.enable_active_cooling"),
                 btn -> sendAction(NENetwork.CraftingAction.TOGGLE_ACTIVE_COOLING));
         coolingBtn.setIcons(Icon.AUTO_EXPORT_ON, Icon.AUTO_EXPORT_OFF);
         addRenderableWidget(coolingBtn);
 
         // Clear coolant
-        clearCoolantBtn = new NEAe2IconButton(btnX + (btnSize + gap) * 2, btnY, btnSize, btnSize,
+        clearCoolantBtn = new NEAe2IconButton(bx, topPos + CLEAR_COOLANT_BUTTON_Y,
+                SIDE_BUTTON_W, SIDE_BUTTON_H,
                 Component.translatable("gui.neoecoae.crafting.clear_coolant"),
                 btn -> sendAction(NENetwork.CraftingAction.CLEAR_COOLANT));
         clearCoolantBtn.setIcon(Icon.AUTO_EXPORT_OFF);
@@ -177,6 +185,24 @@ public class NECraftingControllerScreen extends NEBaseMachineScreen<NECraftingCo
             return crafting;
         }
         return null;
+    }
+
+    @Override
+    public boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
+        // Treat the left side button area as inside the GUI
+        if (isInsideSideButtonArea(mouseX, mouseY, guiLeft, guiTop)) {
+            return false;
+        }
+        return super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton);
+    }
+
+    private boolean isInsideSideButtonArea(double mouseX, double mouseY, int guiLeft, int guiTop) {
+        int x = guiLeft + SIDE_BUTTON_X;
+        int y = guiTop + OVERCLOCK_BUTTON_Y;
+        int w = SIDE_BUTTON_W;
+        int h = CLEAR_COOLANT_BUTTON_Y + SIDE_BUTTON_H - OVERCLOCK_BUTTON_Y;
+        return mouseX >= x && mouseX < x + w
+                && mouseY >= y && mouseY < y + h;
     }
 
     // ── Shared drawing helpers ──
