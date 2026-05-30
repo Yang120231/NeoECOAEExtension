@@ -13,6 +13,8 @@ import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.data.recipes.ShapelessRecipeBuilder;
 import net.minecraft.world.item.Rarity;
 import net.minecraftforge.common.Tags;
+import net.minecraftforge.common.crafting.conditions.ModLoadedCondition;
+import net.minecraftforge.common.crafting.ConditionalRecipe;
 
 import java.util.List;
 
@@ -41,7 +43,7 @@ public class NEAppMekItems {
     public static final ItemEntry<net.minecraft.world.item.Item> ECO_CHEMICAL_CELL_HOUSING = REGISTRATE
             .item("eco_chemical_cell_housing", net.minecraft.world.item.Item::new)
             .recipe((ctx, prov) -> {
-                ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
+                var shaped = ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
                         .pattern("ABA")
                         .pattern("B B")
                         .pattern("CCC")
@@ -51,8 +53,11 @@ public class NEAppMekItems {
                         .unlockedBy("has_crystal_matrix", RegistrateRecipeProvider.has(NEItems.CRYSTAL_MATRIX))
                         .unlockedBy("has_redstone", RegistrateRecipeProvider.has(Tags.Items.DUSTS_REDSTONE))
                         .unlockedBy("has_black_tungsten_alloy",
-                                RegistrateRecipeProvider.has(NETags.Items.BLACK_TUNGSTEN_ALLOY_INGOT))
-                        .save(prov);
+                                RegistrateRecipeProvider.has(NETags.Items.BLACK_TUNGSTEN_ALLOY_INGOT));
+                ConditionalRecipe.builder()
+                        .addCondition(new ModLoadedCondition("appmek"))
+                        .addRecipe(shaped::save)
+                        .build(prov, ctx.getId());
             })
             .lang("ECO Storage Matrix Housing (Chemical)")
             .register();
@@ -66,11 +71,14 @@ public class NEAppMekItems {
                     p.stacksTo(1).rarity(Rarity.UNCOMMON),
                     ECOTier.L4))
             .recipe((ctx, prov) -> {
-                ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
+                var shapeless = ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING)
                         .requires(NEItems.ECO_CELL_COMPONENT_16M)
-                        .unlockedBy("has_16m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_16M))
-                        .save(prov);
+                        .unlockedBy("has_16m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_16M));
+                ConditionalRecipe.builder()
+                        .addCondition(new ModLoadedCondition("appmek"))
+                        .addRecipe(shapeless::save)
+                        .build(prov, ctx.getId());
                 StorageCellDisassemblyRecipe recipe = new StorageCellDisassemblyRecipe(
                         ctx.get(),
                         List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
@@ -85,11 +93,14 @@ public class NEAppMekItems {
                     p.stacksTo(1).rarity(Rarity.RARE),
                     ECOTier.L6))
             .recipe((ctx, prov) -> {
-                ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
+                var shapeless = ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING)
                         .requires(NEItems.ECO_CELL_COMPONENT_64M)
-                        .unlockedBy("has_64m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_64M))
-                        .save(prov);
+                        .unlockedBy("has_64m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_64M));
+                ConditionalRecipe.builder()
+                        .addCondition(new ModLoadedCondition("appmek"))
+                        .addRecipe(shapeless::save)
+                        .build(prov, ctx.getId());
                 StorageCellDisassemblyRecipe recipe = new StorageCellDisassemblyRecipe(
                         ctx.get(),
                         List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
@@ -104,11 +115,14 @@ public class NEAppMekItems {
                     p.stacksTo(1).rarity(Rarity.EPIC),
                     ECOTier.L9))
             .recipe((ctx, prov) -> {
-                ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
+                var shapeless = ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING)
                         .requires(NEItems.ECO_CELL_COMPONENT_256M)
-                        .unlockedBy("has_256m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_256M))
-                        .save(prov);
+                        .unlockedBy("has_256m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_256M));
+                ConditionalRecipe.builder()
+                        .addCondition(new ModLoadedCondition("appmek"))
+                        .addRecipe(shapeless::save)
+                        .build(prov, ctx.getId());
                 StorageCellDisassemblyRecipe recipe = new StorageCellDisassemblyRecipe(
                         ctx.get(),
                         List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),

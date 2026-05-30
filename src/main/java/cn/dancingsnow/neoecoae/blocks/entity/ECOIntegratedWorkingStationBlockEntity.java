@@ -27,7 +27,6 @@ import appeng.api.util.AECableType;
 import appeng.api.util.IConfigManager;
 import appeng.api.util.IConfigurableObject;
 import appeng.blockentity.grid.AENetworkPowerBlockEntity;
-import appeng.client.gui.Icon;
 import appeng.core.AppEng;
 import appeng.core.definitions.AEItems;
 import appeng.core.localization.ButtonToolTips;
@@ -44,8 +43,6 @@ import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEBlocks;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
 import cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation;
-import cn.dancingsnow.neoecoae.gui.AETextures;
-import cn.dancingsnow.neoecoae.gui.NETextures;
 import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import guideme.GuidesCommon;
 import guideme.PageAnchor;
@@ -99,10 +96,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockEntity
-    implements IGridTickable, IUpgradeableObject, IConfigurableObject {
+        implements IGridTickable, IUpgradeableObject, IConfigurableObject {
     private static final Logger LOGGER = LoggerFactory.getLogger(NeoECOAE.MOD_ID);
-    private static final ResourceLocation AUTO_EXPORT_ON = AETextures.icon(Icon.AUTO_EXPORT_ON);
-
 
     private static final int MAX_INPUT_SLOTS = 9;
     private static final int MAX_PROCESSING_STEPS = 200;
@@ -116,8 +111,10 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     private final AppEngInternalInventory outputInv = new AppEngInternalInventory(this, 1, 64);
     private final InternalInventory inv = new CombinedInternalInventory(this.inputInv, this.outputInv);
 
-    private final FilteredInternalInventory inputExposed = new FilteredInternalInventory(this.inputInv, AEItemFilters.INSERT_ONLY);
-    private final FilteredInternalInventory outputExposed = new FilteredInternalInventory(this.outputInv, AEItemFilters.EXTRACT_ONLY);
+    private final FilteredInternalInventory inputExposed = new FilteredInternalInventory(this.inputInv,
+            AEItemFilters.INSERT_ONLY);
+    private final FilteredInternalInventory outputExposed = new FilteredInternalInventory(this.outputInv,
+            AEItemFilters.EXTRACT_ONLY);
     private final InternalInventory invExposed = new CombinedInternalInventory(this.inputExposed, this.outputExposed);
     private final IItemHandler exposedItemHandler = (IItemHandler) this.invExposed.toItemHandler();
 
@@ -140,7 +137,9 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
 
     boolean shouldAutoExport;
 
-    public boolean isShouldAutoExport() { return shouldAutoExport; }
+    public boolean isShouldAutoExport() {
+        return shouldAutoExport;
+    }
 
     @Getter
     private final IFluidHandler fluidCombined = new IFluidHandler() {
@@ -181,7 +180,6 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     };
     private final LazyOptional<IItemHandler> itemHandlerCap = LazyOptional.of(() -> exposedItemHandler);
     private final LazyOptional<IFluidHandler> fluidHandlerCap = LazyOptional.of(() -> fluidCombined);
-
 
     @Getter
     private boolean working = false;
@@ -254,7 +252,9 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
         return (IItemHandler) inputExposed.toItemHandler();
     }
 
-    /** Returns a GUI-safe input handler that allows extraction (not insert-only). */
+    /**
+     * Returns a GUI-safe input handler that allows extraction (not insert-only).
+     */
     public IItemHandler getInputGuiItemHandler() {
         return (IItemHandler) this.inputInv.toItemHandler();
     }
@@ -404,7 +404,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     }
 
     private boolean hasAutoExportWork() {
-        return configManager.getSetting(Settings.AUTO_EXPORT) == YesNo.YES && (!this.outputInv.getStackInSlot(0).isEmpty() || !this.outputTank.getFluid().isEmpty());
+        return configManager.getSetting(Settings.AUTO_EXPORT) == YesNo.YES
+                && (!this.outputInv.getStackInSlot(0).isEmpty() || !this.outputTank.getFluid().isEmpty());
     }
 
     private boolean hasCraftWork() {
@@ -449,9 +450,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
         if (this.dirty) {
             IntegratedWorkingStationRecipe newTask = level == null ? null : findRecipe(level);
             if (!Objects.equals(
-                cachedTask == null ? null : cachedTask.getId(),
-                newTask == null ? null : newTask.getId()
-            )) {
+                    cachedTask == null ? null : cachedTask.getId(),
+                    newTask == null ? null : newTask.getId())) {
                 this.setProcessingTime(0);
             }
             this.cachedTask = newTask;
@@ -468,15 +468,14 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
                 IEnergyService eg = grid.getEnergyService();
                 IEnergySource src = this;
 
-                final int speedFactor =
-                    switch (this.upgrades.getInstalledUpgrades(AEItems.SPEED_CARD)) {
-                        case 0 -> 2; // 100 ticks
-                        case 1 -> 3; // 66 ticks
-                        case 2 -> 5; // 40 ticks
-                        case 3 -> 10; // 20 ticks
-                        case 4 -> 50; // 4 ticks
-                        default -> 2; // 100 ticks
-                    };
+                final int speedFactor = switch (this.upgrades.getInstalledUpgrades(AEItems.SPEED_CARD)) {
+                    case 0 -> 2; // 100 ticks
+                    case 1 -> 3; // 66 ticks
+                    case 2 -> 5; // 40 ticks
+                    case 3 -> 10; // 20 ticks
+                    case 4 -> 50; // 4 ticks
+                    default -> 2; // 100 ticks
+                };
 
                 final int progressReq = MAX_PROCESSING_STEPS - this.getProcessingTime();
                 final float powerRatio = progressReq < speedFactor ? (float) progressReq / speedFactor : 1;
@@ -502,15 +501,15 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
                     setShowWarning(false);
                 } else if (powerReq != 0) {
                     var progressRatio = src == this
-                        ? powerReq / powerConsumption
-                        : (powerReq - 10 * eg.getIdlePowerUsage()) / powerConsumption;
+                            ? powerReq / powerConsumption
+                            : (powerReq - 10 * eg.getIdlePowerUsage()) / powerConsumption;
                     var factor = Mth.floor(progressRatio * speedFactor);
 
                     if (factor > 1) {
                         var extracted = src.extractAEPower(
-                            (double) (powerConsumption * factor) / speedFactor,
-                            Actionable.MODULATE,
-                            PowerMultiplier.CONFIG);
+                                (double) (powerConsumption * factor) / speedFactor,
+                                Actionable.MODULATE,
+                                PowerMultiplier.CONFIG);
                         var actualFactor = (int) Math.floor(extracted / powerConsumption * speedFactor);
                         this.setProcessingTime(this.getProcessingTime() + actualFactor);
                     }
@@ -533,10 +532,12 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
                     }
 
                     if (!fluidOut.isEmpty()) {
-                        fluidCanInsert = this.outputTank.fill(fluidOut, IFluidHandler.FluidAction.SIMULATE) >= fluidOut.getAmount() - 0.01;
+                        fluidCanInsert = this.outputTank.fill(fluidOut,
+                                IFluidHandler.FluidAction.SIMULATE) >= fluidOut.getAmount() - 0.01;
                     }
 
-                    // Only execute if both outputs can be placed; otherwise keep progress to retry later
+                    // Only execute if both outputs can be placed; otherwise keep progress to retry
+                    // later
                     if (itemCanInsert && fluidCanInsert) {
                         // perform actual insertion
                         boolean itemInserted = true;
@@ -576,7 +577,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
 
                             FluidStack fluidStack = this.inputTank.getFluid();
                             if (out.inputFluid().test(fluidStack)) {
-                                inputTank.drain(new FluidStack(fluidStack, out.inputFluid().amount()), IFluidHandler.FluidAction.EXECUTE);
+                                inputTank.drain(new FluidStack(fluidStack, out.inputFluid().amount()),
+                                        IFluidHandler.FluidAction.EXECUTE);
                             }
 
                             this.setProcessingTime(0);
@@ -595,7 +597,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
             return TickRateModulation.URGENT;
         }
 
-        return this.hasCraftWork() ? TickRateModulation.URGENT : this.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
+        return this.hasCraftWork() ? TickRateModulation.URGENT
+                : this.hasAutoExportWork() ? TickRateModulation.SLOWER : TickRateModulation.SLEEP;
     }
 
     private boolean pushOutResult() {
@@ -612,7 +615,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
                 var genStack = GenericStack.fromItemStack(this.outputInv.getStackInSlot(0));
                 if (genStack != null && genStack.what() != null) {
                     var extractedStack = this.outputInv.extractItem(0, 64, false);
-                    var inserted = target.insert(genStack.what(), extractedStack.getCount(), Actionable.MODULATE, source);
+                    var inserted = target.insert(genStack.what(), extractedStack.getCount(), Actionable.MODULATE,
+                            source);
                     extractedStack.setCount(extractedStack.getCount() - (int) inserted);
                     this.outputInv.insertItem(0, extractedStack, false);
                     movedStacks |= inserted > 0;
@@ -623,9 +627,11 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
                 if (fluid != null && fluid.what() != null) {
                     var extracted = this.outputTank.drain(outFluid, IFluidHandler.FluidAction.EXECUTE).getAmount();
                     var inserted = target.insert(fluid.what(), extracted, Actionable.MODULATE, source);
-                    this.outputTank.fill(new FluidStack(outFluid, (int) (extracted - inserted)), IFluidHandler.FluidAction.EXECUTE);
+                    this.outputTank.fill(new FluidStack(outFluid, (int) (extracted - inserted)),
+                            IFluidHandler.FluidAction.EXECUTE);
 
-                    if (this.outputTank.getFluidAmount() == 0) clearFluidOut();
+                    if (this.outputTank.getFluidAmount() == 0)
+                        clearFluidOut();
 
                     movedStacks |= inserted > 0;
                 }
@@ -643,7 +649,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     private @Nullable CompositeStorage getTarget(Direction dir) {
         if (this.exportStrategies.get(dir) == null) {
             var be = this.getBlockEntity();
-            this.exportStrategies.put(dir, StackWorldBehaviors.createExternalStorageStrategies((ServerLevel) be.getLevel(), be.getBlockPos().relative(dir), dir.getOpposite()));
+            this.exportStrategies.put(dir, StackWorldBehaviors.createExternalStorageStrategies(
+                    (ServerLevel) be.getLevel(), be.getBlockPos().relative(dir), dir.getOpposite()));
         }
 
         var externalStorages = new IdentityHashMap<AEKeyType, MEStorage>(2);
@@ -720,9 +727,11 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
      * if that fails, tries to fill an empty container from the input tank.
      */
     public void handleInputTankContainerClick(ServerPlayer player) {
-        if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide)
+            return;
         ItemStack carried = player.containerMenu.getCarried();
-        if (carried.isEmpty()) return;
+        if (carried.isEmpty())
+            return;
 
         int BUCKET_VOLUME = 1000;
         // Try to empty held container into input tank
@@ -775,11 +784,16 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     }
 
     private void readUiSyncTag(CompoundTag tag) {
-        if (tag.contains("neo_inputTank")) inputTank.readFromNBT(tag.getCompound("neo_inputTank"));
-        if (tag.contains("neo_outputTank")) outputTank.readFromNBT(tag.getCompound("neo_outputTank"));
-        if (tag.contains("neo_processingTime")) processingTime = tag.getInt("neo_processingTime");
-        if (tag.contains("neo_working")) working = tag.getBoolean("neo_working");
-        if (tag.contains("neo_autoExport")) shouldAutoExport = tag.getBoolean("neo_autoExport");
+        if (tag.contains("neo_inputTank"))
+            inputTank.readFromNBT(tag.getCompound("neo_inputTank"));
+        if (tag.contains("neo_outputTank"))
+            outputTank.readFromNBT(tag.getCompound("neo_outputTank"));
+        if (tag.contains("neo_processingTime"))
+            processingTime = tag.getInt("neo_processingTime");
+        if (tag.contains("neo_working"))
+            working = tag.getBoolean("neo_working");
+        if (tag.contains("neo_autoExport"))
+            shouldAutoExport = tag.getBoolean("neo_autoExport");
     }
 
     @Override

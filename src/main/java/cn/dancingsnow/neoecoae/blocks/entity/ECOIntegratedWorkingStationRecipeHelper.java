@@ -16,7 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Extracts recipe-finding logic from {@link ECOIntegratedWorkingStationBlockEntity}
+ * Extracts recipe-finding logic from
+ * {@link ECOIntegratedWorkingStationBlockEntity}
  * to reduce responsibilities in the main BE class.
  */
 final class ECOIntegratedWorkingStationRecipeHelper {
@@ -37,10 +38,9 @@ final class ECOIntegratedWorkingStationRecipeHelper {
             inputs.add(inputInv.getStackInSlot(x));
         }
         return level.getRecipeManager().getRecipeFor(
-            NERecipeTypes.INTEGRATED_WORKING_STATION.get(),
-            new IntegratedWorkingStationRecipe.Input(inputs, inputFluid),
-            level
-        ).orElse(null);
+                NERecipeTypes.INTEGRATED_WORKING_STATION.get(),
+                new IntegratedWorkingStationRecipe.Input(inputs, inputFluid),
+                level).orElse(null);
     }
 
     private static void logRecipeCounts(Level level) {
@@ -50,15 +50,14 @@ final class ECOIntegratedWorkingStationRecipeHelper {
         loggedRecipeCounts = true;
 
         int integratedCount = level.getRecipeManager()
-            .getAllRecipesFor(NERecipeTypes.INTEGRATED_WORKING_STATION.get()).size();
+                .getAllRecipesFor(NERecipeTypes.INTEGRATED_WORKING_STATION.get()).size();
         int coolingCount = level.getRecipeManager()
-            .getAllRecipesFor(NERecipeTypes.COOLING.get()).size();
+                .getAllRecipesFor(NERecipeTypes.COOLING.get()).size();
 
         LOGGER.info(
-            "NeoECOAE recipe counts: integrated_working_station={}, cooling={}",
-            integratedCount,
-            coolingCount
-        );
+                "NeoECOAE recipe counts: integrated_working_station={}, cooling={}",
+                integratedCount,
+                coolingCount);
 
         if (integratedCount == 0) {
             LOGGER.warn("Integrated Working Station recipes are not loaded. Check data/neoecoae/recipes path.");
