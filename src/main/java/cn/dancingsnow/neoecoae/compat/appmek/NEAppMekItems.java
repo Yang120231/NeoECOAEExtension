@@ -24,7 +24,8 @@ import static cn.dancingsnow.neoecoae.NeoECOAE.REGISTRATE;
  * Registers Applied Mekanistics chemical storage cell housing and cells.
  * <p>
  * Item registration only occurs when the {@code appmek} mod is loaded,
- * via the {@link cn.dancingsnow.neoecoae.api.integration.Integration @Integration}
+ * via the
+ * {@link cn.dancingsnow.neoecoae.api.integration.Integration @Integration}
  * annotation on {@link AppMekIntegration}.
  * <p>
  * All AppMek recipe outputs (including disassembly recipes) are guarded by
