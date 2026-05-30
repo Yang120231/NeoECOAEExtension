@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "F": {
+      "item": "ae2:fluix_crystal"
+    },
+    "G": {
+      "item": "ae2:quartz_glass"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "P": {
+      "item": "ae2:logic_processor"
+    }
+  },
+  "pattern": [
+    " G ",
+    "FPF",
+    " I "
+  ],
+  "result": {
+    "item": "neoecoae:structure_terminal"
+  },
+  "show_notification": true
+}

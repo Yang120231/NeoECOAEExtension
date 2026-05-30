@@ -2,6 +2,7 @@ package cn.dancingsnow.neoecoae.all;
 
 import appeng.api.ids.AETags;
 import appeng.api.stacks.AEKeyType;
+import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.datagen.providers.tags.ConventionTags;
 import appeng.items.materials.MaterialItem;
@@ -1089,6 +1090,19 @@ public class NEItems {
 
         public static final ItemEntry<StructureTerminalItem> STRUCTURE_TERMINAL = REGISTRATE
                         .item("structure_terminal", StructureTerminalItem::new)
+                        .recipe((ctx, prov) -> {
+                                ShapedRecipeBuilder.shaped(RecipeCategory.MISC, ctx.get())
+                                                .pattern(" G ")
+                                                .pattern("FPF")
+                                                .pattern(" I ")
+                                                .define('G', AEBlocks.QUARTZ_GLASS)
+                                                .define('F', AEItems.FLUIX_CRYSTAL)
+                                                .define('P', AEItems.LOGIC_PROCESSOR)
+                                                .define('I', Items.IRON_INGOT)
+                                                .unlockedBy("has_fluix_crystal",
+                                                                RegistrateRecipeProvider.has(AEItems.FLUIX_CRYSTAL))
+                                                .save(prov);
+                        })
                         .lang("Structure Terminal")
                         .model((ctx, prov) -> {
                         })
