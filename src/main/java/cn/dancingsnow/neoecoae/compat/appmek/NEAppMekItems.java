@@ -11,6 +11,7 @@ import com.tterrag.registrate.util.entry.ItemEntry;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.data.recipes.ShapelessRecipeBuilder;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraftforge.common.Tags;
 import net.minecraftforge.common.crafting.conditions.ModLoadedCondition;
@@ -86,9 +87,8 @@ public class NEAppMekItems {
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
                                 StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
-                                                ctx.get(),
-                                                List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
-                                                                NEItems.ECO_CELL_COMPONENT_16M.asStack()));
+                                                NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.get(),
+                                                List.of(new ItemStack(ctx.get())));
                                 ConditionalRecipe.builder()
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(consumer -> consumer.accept(disassembly))
@@ -112,9 +112,8 @@ public class NEAppMekItems {
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
                                 StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
-                                                ctx.get(),
-                                                List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
-                                                                NEItems.ECO_CELL_COMPONENT_64M.asStack()));
+                                                NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.get(),
+                                                List.of(new ItemStack(ctx.get())));
                                 ConditionalRecipe.builder()
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(consumer -> consumer.accept(disassembly))
@@ -138,9 +137,8 @@ public class NEAppMekItems {
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
                                 StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
-                                                ctx.get(),
-                                                List.of(NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.asStack(),
-                                                                NEItems.ECO_CELL_COMPONENT_256M.asStack()));
+                                                NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.get(),
+                                                List.of(new ItemStack(ctx.get())));
                                 ConditionalRecipe.builder()
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(consumer -> consumer.accept(disassembly))

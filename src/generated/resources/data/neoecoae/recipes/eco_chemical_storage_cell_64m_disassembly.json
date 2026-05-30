@@ -9,7 +9,16 @@
         }
       ],
       "recipe": {
-        "type": "minecraft:crafting_shapeless"
+        "type": "minecraft:crafting_shapeless",
+        "ingredients": [
+          {
+            "item": "neoecoae:eco_chemical_storage_cell_64m"
+          }
+        ],
+        "result": {
+          "count": 1,
+          "item": "neoecoae:eco_chemical_cell_housing"
+        }
       }
     }
   ]

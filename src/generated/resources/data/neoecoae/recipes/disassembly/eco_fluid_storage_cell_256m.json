@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "neoecoae:eco_fluid_storage_cell_256m"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "item": "neoecoae:eco_fluid_cell_housing"
+  }
+}
