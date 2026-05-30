@@ -4,14 +4,12 @@ import cn.dancingsnow.neoecoae.all.NECreativeTabs;
 import cn.dancingsnow.neoecoae.all.NEItems;
 import cn.dancingsnow.neoecoae.all.NETags;
 import cn.dancingsnow.neoecoae.api.ECOTier;
-import cn.dancingsnow.neoecoae.compat.ae2.StorageCellDisassemblyRecipe;
 import cn.dancingsnow.neoecoae.compat.appmek.item.ECOChemicalStorageCellItem;
 import com.tterrag.registrate.providers.RegistrateRecipeProvider;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
 import net.minecraft.data.recipes.ShapelessRecipeBuilder;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraftforge.common.Tags;
 import net.minecraftforge.common.crafting.conditions.ModLoadedCondition;
@@ -86,13 +84,6 @@ public class NEAppMekItems {
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
-                                StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
-                                                NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.get(),
-                                                List.of(new ItemStack(ctx.get())));
-                                ConditionalRecipe.builder()
-                                                .addCondition(new ModLoadedCondition("appmek"))
-                                                .addRecipe(consumer -> consumer.accept(disassembly))
-                                                .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE4 Storage Matrix (Chemical)")
                         .register();
@@ -111,13 +102,6 @@ public class NEAppMekItems {
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
-                                StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
-                                                NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.get(),
-                                                List.of(new ItemStack(ctx.get())));
-                                ConditionalRecipe.builder()
-                                                .addCondition(new ModLoadedCondition("appmek"))
-                                                .addRecipe(consumer -> consumer.accept(disassembly))
-                                                .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE6 Storage Matrix (Chemical)")
                         .register();
@@ -136,13 +120,6 @@ public class NEAppMekItems {
                                                 .addCondition(new ModLoadedCondition("appmek"))
                                                 .addRecipe(shapeless::save)
                                                 .build(prov, ctx.getId());
-                                StorageCellDisassemblyRecipe disassembly = new StorageCellDisassemblyRecipe(
-                                                NEAppMekItems.ECO_CHEMICAL_CELL_HOUSING.get(),
-                                                List.of(new ItemStack(ctx.get())));
-                                ConditionalRecipe.builder()
-                                                .addCondition(new ModLoadedCondition("appmek"))
-                                                .addRecipe(consumer -> consumer.accept(disassembly))
-                                                .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE9 Storage Matrix (Chemical)")
                         .register();
