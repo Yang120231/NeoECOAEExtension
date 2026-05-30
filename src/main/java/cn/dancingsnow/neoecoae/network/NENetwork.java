@@ -601,7 +601,8 @@ public final class NENetwork {
             int max = buf.readInt();
             var mode = buf.readEnum(cn.dancingsnow.neoecoae.items.StructureTerminalMode.class);
             int count = buf.readVarInt();
-            var materials = new ArrayList<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry>(count);
+            var materials = new ArrayList<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry>(
+                    count);
             for (int i = 0; i < count; i++) {
                 materials.add(new cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry(
                         buf.readItem(), buf.readInt(), buf.readInt()));
@@ -670,10 +671,14 @@ public final class NENetwork {
                         int cur = StructureTerminalItem.getBuildLength(stack);
                         StructureTerminalItem.setBuildLength(stack, cur - 1);
                     }
-                    case RESET -> StructureTerminalItem.setBuildLength(stack, StructureTerminalItem.DEFAULT_BUILD_LENGTH);
-                    case SET_BUILD_MODE -> StructureTerminalItem.setMode(stack, cn.dancingsnow.neoecoae.items.StructureTerminalMode.BUILD);
-                    case SET_DISMANTLE_MODE -> StructureTerminalItem.setMode(stack, cn.dancingsnow.neoecoae.items.StructureTerminalMode.DISMANTLE);
-                    case SET_EXPAND_MODE -> StructureTerminalItem.setMode(stack, cn.dancingsnow.neoecoae.items.StructureTerminalMode.EXPAND);
+                    case RESET ->
+                        StructureTerminalItem.setBuildLength(stack, StructureTerminalItem.DEFAULT_BUILD_LENGTH);
+                    case SET_BUILD_MODE ->
+                        StructureTerminalItem.setMode(stack, cn.dancingsnow.neoecoae.items.StructureTerminalMode.BUILD);
+                    case SET_DISMANTLE_MODE -> StructureTerminalItem.setMode(stack,
+                            cn.dancingsnow.neoecoae.items.StructureTerminalMode.DISMANTLE);
+                    case SET_EXPAND_MODE -> StructureTerminalItem.setMode(stack,
+                            cn.dancingsnow.neoecoae.items.StructureTerminalMode.EXPAND);
                 }
 
                 // Sync fresh value from NBT (not cached value) to client

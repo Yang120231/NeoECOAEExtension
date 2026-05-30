@@ -90,14 +90,19 @@ public final class NEClientUiPacketHandlers {
     /** Handles the IWS state sync packet from server to client. */
     public static void handleIwsStatePacket(NENetwork.NEIWSStatePacket pkt) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.player == null) return;
-        if (!(mc.player.containerMenu instanceof NEIntegratedWorkingStationMenu menu)) return;
-        if (!menu.getMachinePos().equals(pkt.pos())) return;
+        if (mc.player == null)
+            return;
+        if (!(mc.player.containerMenu instanceof NEIntegratedWorkingStationMenu menu))
+            return;
+        if (!menu.getMachinePos().equals(pkt.pos()))
+            return;
 
         var inputTank = new FluidTank(16000);
         var outputTank = new FluidTank(16000);
-        if (pkt.inputTankTag() != null) inputTank.readFromNBT(pkt.inputTankTag());
-        if (pkt.outputTankTag() != null) outputTank.readFromNBT(pkt.outputTankTag());
+        if (pkt.inputTankTag() != null)
+            inputTank.readFromNBT(pkt.inputTankTag());
+        if (pkt.outputTankTag() != null)
+            outputTank.readFromNBT(pkt.outputTankTag());
         menu.updateClientState(inputTank.getFluid(), outputTank.getFluid(), pkt.autoExport());
     }
 }

@@ -27,15 +27,16 @@ import org.jetbrains.annotations.Nullable;
  * Structure Terminal — a handheld tool for configuring and executing
  * multiblock structure builds.
  *
- * <p>Behaviour:
+ * <p>
+ * Behaviour:
  * <ul>
- *   <li><b>Right-click (air or block, no shift)</b>: Opens the terminal
- *       config UI to set the build length. The length is stored in the
- *       item's NBT under key {@value #TAG_BUILD_LENGTH}.</li>
- *   <li><b>Shift + right-click on a multiblock host</b>: Executes
- *       {@link INEMultiblockBuildHost#autoBuild(ServerPlayer, int)}
- *       using the length stored in this item.</li>
- *   <li><b>Shift + right-click on a non-host block</b>: Passes through.</li>
+ * <li><b>Right-click (air or block, no shift)</b>: Opens the terminal
+ * config UI to set the build length. The length is stored in the
+ * item's NBT under key {@value #TAG_BUILD_LENGTH}.</li>
+ * <li><b>Shift + right-click on a multiblock host</b>: Executes
+ * {@link INEMultiblockBuildHost#autoBuild(ServerPlayer, int)}
+ * using the length stored in this item.</li>
+ * <li><b>Shift + right-click on a non-host block</b>: Passes through.</li>
  * </ul>
  */
 public class StructureTerminalItem extends Item {
@@ -71,7 +72,7 @@ public class StructureTerminalItem extends Item {
 
     public static void setBuildLength(ItemStack stack, int length) {
         stack.getOrCreateTag().putInt(TAG_BUILD_LENGTH,
-            Mth.clamp(length, MIN_BUILD_LENGTH, getGlobalMaxBuildLength()));
+                Mth.clamp(length, MIN_BUILD_LENGTH, getGlobalMaxBuildLength()));
     }
 
     // ── Mode NBT helpers ──
@@ -122,9 +123,9 @@ public class StructureTerminalItem extends Item {
     /**
      * Right-click on a block.
      * <ul>
-     *   <li>No shift → open terminal config UI (same as air right-click).</li>
-     *   <li>Shift + host → execute auto-build with stored length.</li>
-     *   <li>Shift + non-host → PASS.</li>
+     * <li>No shift → open terminal config UI (same as air right-click).</li>
+     * <li>Shift + host → execute auto-build with stored length.</li>
+     * <li>Shift + non-host → PASS.</li>
      * </ul>
      */
     @Override
@@ -182,18 +183,16 @@ public class StructureTerminalItem extends Item {
 
     private void openTerminalConfig(ServerPlayer player, InteractionHand hand, @Nullable BlockPos hostPos) {
         NetworkHooks.openScreen(
-            player,
-            new SimpleMenuProvider(
-                (windowId, inv, p) -> new NEStructureTerminalMenu(windowId, inv, hand, hostPos),
-                Component.translatable("item.neoecoae.structure_terminal")
-            ),
-            buf -> {
-                buf.writeEnum(hand);
-                buf.writeBoolean(hostPos != null);
-                if (hostPos != null) {
-                    buf.writeBlockPos(hostPos);
-                }
-            }
-        );
+                player,
+                new SimpleMenuProvider(
+                        (windowId, inv, p) -> new NEStructureTerminalMenu(windowId, inv, hand, hostPos),
+                        Component.translatable("item.neoecoae.structure_terminal")),
+                buf -> {
+                    buf.writeEnum(hand);
+                    buf.writeBoolean(hostPos != null);
+                    if (hostPos != null) {
+                        buf.writeBlockPos(hostPos);
+                    }
+                });
     }
 }

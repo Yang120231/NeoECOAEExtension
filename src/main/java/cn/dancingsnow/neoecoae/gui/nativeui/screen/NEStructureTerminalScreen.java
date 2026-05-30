@@ -64,7 +64,8 @@ public class NEStructureTerminalScreen extends AbstractContainerScreen<NEStructu
 
     // Server-authoritative mode + materials
     private cn.dancingsnow.neoecoae.items.StructureTerminalMode mode = cn.dancingsnow.neoecoae.items.StructureTerminalMode.BUILD;
-    private List<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry> materials = List.of();
+    private List<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry> materials = List
+            .of();
 
     public NEStructureTerminalScreen(NEStructureTerminalMenu menu, Inventory playerInv, Component title) {
         super(menu, playerInv, title);
@@ -80,8 +81,8 @@ public class NEStructureTerminalScreen extends AbstractContainerScreen<NEStructu
     }
 
     public void setConfig(int length, int min, int max,
-                          cn.dancingsnow.neoecoae.items.StructureTerminalMode mode,
-                          List<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry> materials) {
+            cn.dancingsnow.neoecoae.items.StructureTerminalMode mode,
+            List<cn.dancingsnow.neoecoae.multiblock.NEStructureTerminalUiState.BuildMaterialEntry> materials) {
         this.displayBuildLength = length;
         this.minLength = min;
         this.maxLength = max;

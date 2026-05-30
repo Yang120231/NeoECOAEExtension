@@ -20,7 +20,8 @@ public final class StructureTerminalActionExecutor {
 
     private static final BlockPos RELATIVE_HOST_POS = new BlockPos(1, 1, 0);
 
-    private StructureTerminalActionExecutor() {}
+    private StructureTerminalActionExecutor() {
+    }
 
     /**
      * Builds a multiblock structure at the given length.
@@ -51,10 +52,12 @@ public final class StructureTerminalActionExecutor {
                     relativePos.getX() - RELATIVE_HOST_POS.getX(),
                     relativePos.getY() - RELATIVE_HOST_POS.getY(),
                     relativePos.getZ() - RELATIVE_HOST_POS.getZ());
-            if (worldPos.equals(hostPos)) continue;
+            if (worldPos.equals(hostPos))
+                continue;
 
             BlockState state = player.level().getBlockState(worldPos);
-            if (state.isAir()) continue;
+            if (state.isAir())
+                continue;
 
             ItemStack drop = state.getBlock().asItem().getDefaultInstance();
             player.level().setBlockAndUpdate(worldPos, Blocks.AIR.defaultBlockState());
@@ -66,7 +69,7 @@ public final class StructureTerminalActionExecutor {
         }
 
         // Clear formed state if possible
-        if (host instanceof cn.dancingsnow.neoecoae.blocks.entity.NEBlockEntity<?,?> neBe) {
+        if (host instanceof cn.dancingsnow.neoecoae.blocks.entity.NEBlockEntity<?, ?> neBe) {
             neBe.setFormed(false);
         }
         host.setSelectedBuildLength(currentLength); // keep length, just clear formed
@@ -78,7 +81,8 @@ public final class StructureTerminalActionExecutor {
     public static void expand(ServerPlayer player, INEMultiblockBuildHost host, int requestedLength) {
         int oldLength = host.getSelectedBuildLength();
         if (requestedLength <= oldLength) {
-            player.displayClientMessage(Component.literal("New length not greater than current, no expansion needed."), true);
+            player.displayClientMessage(Component.literal("New length not greater than current, no expansion needed."),
+                    true);
             return;
         }
         // For now, delegate to build with the new length (autoBuild handles delta)

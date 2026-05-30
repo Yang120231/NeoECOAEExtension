@@ -14,7 +14,8 @@ import java.util.List;
  */
 public final class StructureTerminalMaterialRequirements {
 
-    private StructureTerminalMaterialRequirements() {}
+    private StructureTerminalMaterialRequirements() {
+    }
 
     /**
      * Computes the material list for a player building a structure of the
@@ -39,7 +40,8 @@ public final class StructureTerminalMaterialRequirements {
         List<NEStructureTerminalUiState.BuildMaterialEntry> result = new ArrayList<>();
 
         for (ItemStack required : raw) {
-            if (required.isEmpty()) continue;
+            if (required.isEmpty())
+                continue;
             int available = countAvailable(player, required);
             result.add(new NEStructureTerminalUiState.BuildMaterialEntry(required, required.getCount(), available));
         }

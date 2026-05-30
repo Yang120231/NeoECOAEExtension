@@ -42,7 +42,8 @@ public class NEStructureTerminalMenu extends AbstractContainerMenu {
         this(containerId, playerInv, hand, null);
     }
 
-    public NEStructureTerminalMenu(int containerId, Inventory playerInv, InteractionHand hand, @Nullable BlockPos hostPos) {
+    public NEStructureTerminalMenu(int containerId, Inventory playerInv, InteractionHand hand,
+            @Nullable BlockPos hostPos) {
         super(NENativeMenus.STRUCTURE_TERMINAL.get(), containerId);
         this.hand = hand;
         this.hostPos = hostPos;
@@ -71,7 +72,8 @@ public class NEStructureTerminalMenu extends AbstractContainerMenu {
 
     @Nullable
     public INEMultiblockBuildHost getHost(Player player) {
-        if (hostPos == null) return null;
+        if (hostPos == null)
+            return null;
         BlockEntity be = player.level().getBlockEntity(hostPos);
         return be instanceof INEMultiblockBuildHost host ? host : null;
     }
@@ -100,7 +102,8 @@ public class NEStructureTerminalMenu extends AbstractContainerMenu {
      */
     public void syncToClient(ServerPlayer player) {
         ItemStack stack = getTerminalStack(player);
-        int length = stack != null ? StructureTerminalItem.getBuildLength(stack) : StructureTerminalItem.DEFAULT_BUILD_LENGTH;
+        int length = stack != null ? StructureTerminalItem.getBuildLength(stack)
+                : StructureTerminalItem.DEFAULT_BUILD_LENGTH;
         int min = StructureTerminalItem.MIN_BUILD_LENGTH;
         int max = StructureTerminalItem.getGlobalMaxBuildLength();
         StructureTerminalMode mode = stack != null ? StructureTerminalItem.getMode(stack) : StructureTerminalMode.BUILD;
@@ -114,8 +117,8 @@ public class NEStructureTerminalMenu extends AbstractContainerMenu {
             }
         }
 
-        NENetwork.NEStructureTerminalConfigPacket pkt =
-                new NENetwork.NEStructureTerminalConfigPacket(length, min, max, mode, materials);
+        NENetwork.NEStructureTerminalConfigPacket pkt = new NENetwork.NEStructureTerminalConfigPacket(length, min, max,
+                mode, materials);
         NENetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), pkt);
     }
 }

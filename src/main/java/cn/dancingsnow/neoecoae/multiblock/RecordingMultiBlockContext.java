@@ -76,7 +76,8 @@ public final class RecordingMultiBlockContext extends MultiBlockContext {
     }
 
     private void addRequired(ItemStack itemStack) {
-        if (itemStack.isEmpty()) return;
+        if (itemStack.isEmpty())
+            return;
         for (ItemStack stack : requiredItems) {
             if (ItemStack.isSameItemSameTags(itemStack, stack)) {
                 if (stack.getCount() + itemStack.getCount() <= stack.getMaxStackSize()) {
