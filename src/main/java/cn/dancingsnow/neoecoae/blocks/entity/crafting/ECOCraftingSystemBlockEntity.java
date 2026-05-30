@@ -465,8 +465,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
      * </p>
      */
     private static boolean sameInputFluidForCoolingRecipe(FluidStack cached, FluidStack current) {
-        if (cached.isEmpty() && current.isEmpty()) return true;
-        if (cached.isEmpty() || current.isEmpty()) return false;
+        if (cached.isEmpty() && current.isEmpty())
+            return true;
+        if (cached.isEmpty() || current.isEmpty())
+            return false;
         return cached.isFluidEqual(current) && cached.getAmount() == current.getAmount();
     }
 
@@ -478,8 +480,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
      * </p>
      */
     private static boolean sameOutputFluidForCoolingRecipe(FluidStack cached, FluidStack current) {
-        if (cached.isEmpty() && current.isEmpty()) return true;
-        if (cached.isEmpty() || current.isEmpty()) return false;
+        if (cached.isEmpty() && current.isEmpty())
+            return true;
+        if (cached.isEmpty() || current.isEmpty())
+            return false;
         return cached.isFluidEqual(current);
     }
 
