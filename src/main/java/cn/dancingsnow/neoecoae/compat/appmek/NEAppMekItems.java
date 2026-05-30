@@ -91,7 +91,7 @@ public class NEAppMekItems {
                                                                 NEItems.ECO_CELL_COMPONENT_16M.asStack()));
                                 ConditionalRecipe.builder()
                                                 .addCondition(new ModLoadedCondition("appmek"))
-                                                .addRecipe(r -> prov.accept(disassembly))
+                                                .addRecipe(consumer -> consumer.accept(disassembly))
                                                 .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE4 Storage Matrix (Chemical)")
@@ -117,7 +117,7 @@ public class NEAppMekItems {
                                                                 NEItems.ECO_CELL_COMPONENT_64M.asStack()));
                                 ConditionalRecipe.builder()
                                                 .addCondition(new ModLoadedCondition("appmek"))
-                                                .addRecipe(r -> prov.accept(disassembly))
+                                                .addRecipe(consumer -> consumer.accept(disassembly))
                                                 .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE6 Storage Matrix (Chemical)")
@@ -143,7 +143,7 @@ public class NEAppMekItems {
                                                                 NEItems.ECO_CELL_COMPONENT_256M.asStack()));
                                 ConditionalRecipe.builder()
                                                 .addCondition(new ModLoadedCondition("appmek"))
-                                                .addRecipe(r -> prov.accept(disassembly))
+                                                .addRecipe(consumer -> consumer.accept(disassembly))
                                                 .build(prov, ctx.getId().withSuffix("_disassembly"));
                         })
                         .lang("ECO - LE9 Storage Matrix (Chemical)")
