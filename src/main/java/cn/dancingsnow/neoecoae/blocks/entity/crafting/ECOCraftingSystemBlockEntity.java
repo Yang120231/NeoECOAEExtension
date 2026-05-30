@@ -89,6 +89,13 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     private transient MultiBlockBuildSession buildSession;
     private transient UUID buildPlayerId;
 
+    // ── CoolingRecipe cache ──
+    @Nullable
+    private CoolingRecipe cachedCoolingRecipe;
+    private FluidStack cachedCoolingInputFluid = FluidStack.EMPTY;
+    private FluidStack cachedCoolingOutputFluid = FluidStack.EMPTY;
+    private boolean coolingRecipeDirty = true;
+
     public ECOCraftingSystemBlockEntity(
         BlockEntityType<?> type,
         BlockPos pos,
@@ -153,6 +160,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     public void updateState(boolean updateExposed) {
         super.updateState(updateExposed);
         if (updateExposed) {
+            invalidateCoolingRecipeCache();
             updateInfo();
         }
     }
@@ -446,6 +454,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         return getAvailableThreads() * 100L;
     }
 
+    private void invalidateCoolingRecipeCache() {
+        this.coolingRecipeDirty = true;
+    }
+
     @Nullable
     private CoolingRecipe getCoolingRecipe() {
         if (cluster == null || cluster.getInputHatch() == null || cluster.getOutputHatch() == null || getLevel() == null) {
@@ -453,14 +465,31 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         }
         FluidTank inputHatch = cluster.getInputHatch().tank;
         if (inputHatch.getFluidAmount() <= 0) {
+            cachedCoolingRecipe = null;
+            cachedCoolingInputFluid = FluidStack.EMPTY;
+            cachedCoolingOutputFluid = FluidStack.EMPTY;
+            coolingRecipeDirty = false;
             return null;
         }
         FluidTank outputHatch = cluster.getOutputHatch().tank;
-        return getLevel().getRecipeManager().getRecipeFor(
+        FluidStack inputFluid = inputHatch.getFluid();
+        FluidStack outputFluid = outputHatch.getFluid();
+
+        if (!coolingRecipeDirty
+            && cachedCoolingInputFluid.isFluidEqual(inputFluid)
+            && cachedCoolingOutputFluid.isFluidEqual(outputFluid)) {
+            return cachedCoolingRecipe;
+        }
+
+        cachedCoolingRecipe = getLevel().getRecipeManager().getRecipeFor(
             NERecipeTypes.COOLING.get(),
-            new CoolingRecipe.Input(inputHatch.getFluid(), outputHatch.getFluid()),
+            new CoolingRecipe.Input(inputFluid, outputFluid),
             getLevel()
         ).orElse(null);
+        cachedCoolingInputFluid = inputFluid.copy();
+        cachedCoolingOutputFluid = outputFluid.copy();
+        coolingRecipeDirty = false;
+        return cachedCoolingRecipe;
     }
 
     private boolean canRefillWith(int maxOverclock) {

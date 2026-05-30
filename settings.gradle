@@ -1,6 +1,8 @@
 pluginManagement {
     repositories {
-        mavenLocal()
+        if (System.getenv("CI") == null) {
+            mavenLocal()
+        }
         maven { url = 'https://maven.aliyun.com/repository/public' }
         maven { url = 'https://maven.aliyun.com/repository/central' }
         gradlePluginPortal()

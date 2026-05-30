@@ -20,7 +20,9 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 repositories {
-    mavenLocal()
+    if (System.getenv("CI") == null) {
+        mavenLocal()
+    }
     maven {
         name = "Aliyun Public"
         url = "https://maven.aliyun.com/repository/public"
@@ -182,7 +184,7 @@ sourceSets.main.resources {
 }
 
 def forge120JavaExcludes = [
-        'cn/dancingsnow/neoecoae/integration/**',
+        // integration/** moved to legacy/1.21-porting/ — 1.21.x NeoForge porting reference
         'cn/dancingsnow/neoecoae/mixins/**',
         'cn/dancingsnow/neoecoae/client/model/**',
         'cn/dancingsnow/neoecoae/client/all/NEBuiltinModels.java',

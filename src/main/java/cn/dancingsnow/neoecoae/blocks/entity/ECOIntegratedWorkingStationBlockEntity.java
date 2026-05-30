@@ -101,8 +101,6 @@ import java.util.function.Function;
 public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockEntity
     implements IGridTickable, IUpgradeableObject, IConfigurableObject {
     private static final Logger LOGGER = LoggerFactory.getLogger(NeoECOAE.MOD_ID);
-    private static boolean loggedRecipeCounts = false;
-    private static final ResourceLocation AUTO_EXPORT_OFF = AETextures.icon(Icon.AUTO_EXPORT_OFF);
     private static final ResourceLocation AUTO_EXPORT_ON = AETextures.icon(Icon.AUTO_EXPORT_ON);
 
 
@@ -438,36 +436,7 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     }
 
     private @Nullable IntegratedWorkingStationRecipe findRecipe(Level level) {
-        logRecipeCounts(level);
-        List<ItemStack> inputs = new ArrayList<>();
-        for (var x = 0; x < this.inputInv.size(); x++) {
-            inputs.add(this.inputInv.getStackInSlot(x));
-        }
-        return level.getRecipeManager().getRecipeFor(
-            NERecipeTypes.INTEGRATED_WORKING_STATION.get(),
-            new IntegratedWorkingStationRecipe.Input(inputs, this.inputTank.getFluid()),
-            level
-        ).orElse(null);
-    }
-
-    private static void logRecipeCounts(Level level) {
-        if (FMLEnvironment.production || loggedRecipeCounts) {
-            return;
-        }
-        loggedRecipeCounts = true;
-
-        int integratedCount = level.getRecipeManager().getAllRecipesFor(NERecipeTypes.INTEGRATED_WORKING_STATION.get()).size();
-        int coolingCount = level.getRecipeManager().getAllRecipesFor(NERecipeTypes.COOLING.get()).size();
-
-        LOGGER.info(
-            "NeoECOAE recipe counts: integrated_working_station={}, cooling={}",
-            integratedCount,
-            coolingCount
-        );
-
-        if (integratedCount == 0) {
-            LOGGER.warn("Integrated Working Station recipes are not loaded. Check data/neoecoae/recipes path.");
-        }
+        return ECOIntegratedWorkingStationRecipeHelper.findRecipe(level, this.inputInv, this.inputTank.getFluid());
     }
 
     @Override
