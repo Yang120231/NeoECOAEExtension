@@ -2,6 +2,7 @@ package cn.dancingsnow.neoecoae.items;
 
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.IncludeExclude;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
 import appeng.api.storage.cells.ISaveProvider;
@@ -23,6 +24,8 @@ import cn.dancingsnow.neoecoae.api.storage.IECOStorageCell;
 import cn.dancingsnow.neoecoae.compat.ae2.StorageCellDisassemblyRecipe;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell;
+import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellMetadata;
+import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellMode;
 import com.tterrag.registrate.util.entry.RegistryEntry;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -30,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import lombok.Getter;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -45,6 +49,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
+    private static final String NBT_INFINITE_STORAGE_MATRIX_LOCKED = "neo_infiniteStorageMatrixLocked";
 
     @Getter
     private final IECOTier tier;
@@ -53,10 +58,6 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
     private final int bytesPerType;
     private final int totalTypes;
     private final AEKeyType keyType;
-    /**
-     * Registered cell-type entry — direct access avoids Component-desc matching
-     * bugs.
-     */
     private final RegistryEntry<ECOCellType> cellType;
 
     public ECOStorageCellItem(
@@ -92,7 +93,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
 
     @Override
     public int getTotalTypes() {
-        return totalTypes;
+        return Integer.MAX_VALUE;
     }
 
     @Override
@@ -103,16 +104,41 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
     @Override
     public void appendHoverText(
             ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag tooltipFlag) {
+        ECOStorageCellMode mode = ECOStorageCellMetadata.getMode(stack);
+        if (mode == ECOStorageCellMode.DOMAIN_MEMBER) {
+            lines.add(Component.literal("Mode: Infinite storage member").withStyle(ChatFormatting.GOLD));
+            lines.add(Component.literal("State: Managed by ECO storage host").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.literal("Empty the host domain to unbind").withStyle(ChatFormatting.DARK_GRAY));
+            return;
+        }
+        if (mode == ECOStorageCellMode.MIGRATING) {
+            lines.add(Component.literal("Mode: Migrating to infinite domain").withStyle(ChatFormatting.GOLD));
+            lines.add(Component.literal("Storage access is temporarily locked").withStyle(ChatFormatting.GRAY));
+            return;
+        }
+        if (ECOStorageCellMetadata.isLegacyInfiniteLocked(stack)) {
+            lines.add(Component.literal("Legacy infinite matrix lock").withStyle(ChatFormatting.GOLD));
+        }
+
         var handler = getCellInventory(stack);
         if (handler == null) {
             return;
         }
         lines.add(Tooltips.bytesUsed(handler.getUsedBytes(), handler.getTotalBytes()));
-        lines.add(Tooltips.typesUsed(handler.getStoredItemTypes(), handler.getTotalItemTypes()));
+        if (handler.getTotalItemTypes() == Long.MAX_VALUE) {
+            lines.add(Component.literal("Types: " + handler.getStoredItemTypes() + " / Infinite")
+                    .withStyle(ChatFormatting.GRAY));
+        } else {
+            lines.add(Tooltips.typesUsed(handler.getStoredItemTypes(), handler.getTotalItemTypes()));
+        }
     }
 
     @Override
     public Optional<TooltipComponent> getTooltipImage(ItemStack stack) {
+        if (ECOStorageCellMetadata.hasNonPortableState(stack)) {
+            return Optional.empty();
+        }
+
         var handler = getCellInventory(stack);
         if (handler == null) {
             return Optional.empty();
@@ -125,39 +151,28 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             }
         }
 
-        // Find items with the highest stored amount
         boolean hasMoreContent;
         List<GenericStack> content;
         if (AEConfig.instance().isTooltipShowCellContent()) {
             content = new ArrayList<>();
 
             var maxCountShown = AEConfig.instance().getTooltipMaxCellContentShown();
+            content.addAll(handler.getStoredStacks());
 
-            var availableStacks = handler.getAvailableStacks();
-            for (var entry : availableStacks) {
-                content.add(new GenericStack(entry.getKey(), entry.getLongValue()));
-            }
-
-            // Fill up with stacks from the filter if it's not inverted
             if (content.size() < maxCountShown && handler.getPartitionListMode() == IncludeExclude.WHITELIST) {
                 var config = handler.getConfigInventory();
                 for (int i = 0; i < config.size(); i++) {
                     var what = config.getKey(i);
-                    if (what != null) {
-                        // Don't add it twice
-                        if (availableStacks.get(what) <= 0) {
-                            content.add(new GenericStack(what, 0));
-                        }
+                    if (what != null && !containsContentKey(content, what)) {
+                        content.add(new GenericStack(what, 0));
                     }
                     if (content.size() > maxCountShown) {
-                        break; // Don't need to add filters beyond 6 (to determine if it has more than 5 below)
+                        break;
                     }
                 }
             }
 
-            // Sort by amount descending
             content.sort(Comparator.comparingLong(GenericStack::amount).reversed());
-
             hasMoreContent = content.size() > maxCountShown;
             if (content.size() > maxCountShown) {
                 content.subList(maxCountShown, content.size()).clear();
@@ -176,9 +191,35 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
 
     @Nullable public static ECOStorageCell getCellInventory(ItemStack stack, @Nullable ISaveProvider host) {
         if (stack.getItem() instanceof ECOStorageCellItem) {
+            if (ECOStorageCellMetadata.hasNonPortableState(stack)) {
+                return null;
+            }
             return new ECOStorageCell(stack, host);
         }
         return null;
+    }
+
+    public static boolean isInfiniteStorageMatrixLocked(ItemStack stack) {
+        return ECOStorageCellMetadata.isDomainMember(stack)
+                || ECOStorageCellMetadata.isMigrating(stack)
+                || ECOStorageCellMetadata.isLegacyInfiniteLocked(stack);
+    }
+
+    public static boolean lockInfiniteStorageMatrix(ItemStack stack) {
+        if (!(stack.getItem() instanceof ECOStorageCellItem) || isInfiniteStorageMatrixLocked(stack)) {
+            return false;
+        }
+        stack.getOrCreateTag().putBoolean(NBT_INFINITE_STORAGE_MATRIX_LOCKED, true);
+        return true;
+    }
+
+    private static boolean containsContentKey(List<GenericStack> content, AEKey key) {
+        for (GenericStack stack : content) {
+            if (stack.what().equals(key)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -225,6 +266,10 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         if (!InteractionUtil.isInAlternateUseMode(player)) {
             return false;
         }
+        if (ECOStorageCellMetadata.hasNonPortableState(stack) || isInfiniteStorageMatrixLocked(stack)) {
+            player.displayClientMessage(Component.literal("Infinite storage members cannot be disassembled"), true);
+            return false;
+        }
 
         List<ItemStack> disassembledStacks = StorageCellDisassemblyRecipe.getDisassemblyResult(level, stack.getItem());
         if (disassembledStacks.isEmpty()) {
@@ -237,29 +282,23 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         }
 
         ECOStorageCell cellInventory = getCellInventory(stack);
-        if (cellInventory != null && !cellInventory.getAvailableStacks().isEmpty()) {
+        if (cellInventory != null && cellInventory.getStoredItemTypes() > 0) {
             player.displayClientMessage(PlayerMessages.OnlyEmptyCellsCanBeDisassembled.text(), true);
             return false;
         }
 
         playerInventory.setItem(playerInventory.selected, ItemStack.EMPTY);
 
-        // Drop items from the recipe.
         for (var disassembledStack : disassembledStacks) {
             playerInventory.placeItemBackInInventory(disassembledStack.copy());
         }
 
-        // Drop upgrades
         getUpgrades(stack).forEach(playerInventory::placeItemBackInInventory);
 
         return true;
     }
 
-    // Cell handlers registered in ECOStorageCells.
-
-    /** Matches only item (non-fluid, non-chemical) storage cells. */
     public static class ItemCellHandler implements IECOCellHandler {
-
         public static final ItemCellHandler INSTANCE = new ItemCellHandler();
 
         @Override
@@ -276,9 +315,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         }
     }
 
-    /** Matches only fluid storage cells. */
     public static class FluidCellHandler implements IECOCellHandler {
-
         public static final FluidCellHandler INSTANCE = new FluidCellHandler();
 
         @Override
@@ -287,6 +324,24 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
                 return item.getCellType() == NECellTypes.FLUID.get() && item.getKeyType() == AEKeyType.fluids();
             }
             return false;
+        }
+
+        @Override
+        public @Nullable IECOStorageCell getCellInventory(ItemStack is, @Nullable ISaveProvider host) {
+            return ECOStorageCellItem.getCellInventory(is, host);
+        }
+    }
+
+    /**
+     * @deprecated Replaced by {@link ItemCellHandler} and {@link FluidCellHandler}.
+     */
+    @Deprecated
+    public static class Handler implements IECOCellHandler {
+        public static final Handler INSTANCE = new Handler();
+
+        @Override
+        public boolean isCell(ItemStack stack) {
+            return stack.getItem() instanceof ECOStorageCellItem;
         }
 
         @Override
