@@ -12,9 +12,11 @@ import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
 import cn.dancingsnow.neoecoae.api.IECOTier;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOAggregatedCraftingBatch;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingCapacity;
 import cn.dancingsnow.neoecoae.blocks.NEBlock;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
+import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingBatchUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingUiState;
@@ -34,6 +36,8 @@ import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -98,6 +102,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     private boolean structureStatsDirty = true;
     /** Shared preview/build state, delegates NBT sync to {@link BuildPreviewState}. */
     private final BuildPreviewState buildPreview = new BuildPreviewState();
+    private final List<ECOAggregatedCraftingBatch> craftingBatches = new ArrayList<>();
 
     private long uiRevision = 0L;
     private long lastCoolantConsumeDirtyTick = Long.MIN_VALUE;
@@ -122,6 +127,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         tag.putInt("coolant", coolant);
         tag.putInt("coolantMaxOverclock", coolantMaxOverclock);
         tag.putInt("selectedBuildLength", getSelectedBuildLength());
+        tag.put("craftingBatches", writeCraftingBatches());
     }
 
     @Override
@@ -136,6 +142,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         buildPreview.selectedBuildLength = Math.max(1, tag.getInt("selectedBuildLength"));
         buildPreview.buildInProgress = false;
         buildPreview.resetPreview(BuildPreviewState.DEFAULT_STATUS_KEY);
+        craftingBatches.clear();
+        if (tag.contains("craftingBatches", Tag.TAG_LIST)) {
+            readCraftingBatches(tag.getList("craftingBatches", Tag.TAG_COMPOUND));
+        }
     }
 
     @Override
@@ -628,6 +638,21 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         int occupiedRecipeSlots = Math.min(maxRecipeSlots, Math.max(0, runningThreadCount));
         int batchParallel = Math.max(0, effParallel);
         List<NECraftingRecipeUiEntry> recipeEntries = new ArrayList<>();
+        List<NECraftingBatchUiState> batchStates = new ArrayList<>(craftingBatches.size());
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            batchStates.add(new NECraftingBatchUiState(
+                    batch.craftingJobId() == null ? "" : batch.craftingJobId().toString(),
+                    batch.primaryOutputStack(),
+                    batch.craftCount(),
+                    batch.totalOutputAmount(),
+                    batch.totalTicks(),
+                    batch.remainingTicks(),
+                    batch.energyPerTick(),
+                    batch.energyMode(),
+                    batch.energyStatus(),
+                    batch.completed(),
+                    batch.canceled()));
+        }
 
         // Collect active craft outputs from each worker
         List<ItemStack> craftOutputs = new ArrayList<>();
@@ -706,6 +731,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
                 batchParallel,
                 performanceAverageNanos,
                 recipeEntries,
+                batchStates,
                 craftOutputs,
                 coreTiers,
                 moduleCells);
@@ -1079,5 +1105,22 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         if (tag.contains("threadCount")) threadCount = tag.getInt("threadCount");
         if (tag.contains("runningThreadCount")) runningThreadCount = tag.getInt("runningThreadCount");
         buildPreview.readFromTag(tag);
+    }
+
+    private ListTag writeCraftingBatches() {
+        ListTag list = new ListTag();
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            list.add(batch.writeToTag());
+        }
+        return list;
+    }
+
+    private void readCraftingBatches(ListTag list) {
+        for (int i = 0; i < list.size(); i++) {
+            ECOAggregatedCraftingBatch batch = ECOAggregatedCraftingBatch.readFromTag(list.getCompound(i));
+            if (batch != null) {
+                craftingBatches.add(batch);
+            }
+        }
     }
 }

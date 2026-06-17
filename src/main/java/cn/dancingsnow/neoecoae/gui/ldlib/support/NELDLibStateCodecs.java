@@ -2,6 +2,7 @@ package cn.dancingsnow.neoecoae.gui.ldlib.support;
 
 import appeng.api.config.CpuSelectionMode;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEComputationUiState;
+import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingBatchUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingUiState;
@@ -20,6 +21,7 @@ public final class NELDLibStateCodecs {
     private static final int MAX_STORAGE_UI_TYPES = 64;
     private static final int MAX_STORAGE_DRIVES = 384;
     private static final int MAX_CRAFTING_RECIPE_ENTRIES = 64;
+    private static final int MAX_CRAFTING_BATCH_ENTRIES = 64;
     private static final int MAX_WORKER_OUTPUTS = 128;
     private static final int MAX_PARALLEL_CORE_TIERS = 128;
     private static final int MAX_CRAFTING_MODULE_CELLS = 384;
@@ -279,6 +281,26 @@ public final class NELDLibStateCodecs {
             buf.writeEnum(entry.status());
         }
 
+        List<NECraftingBatchUiState> batches = state.batchStates();
+        buf.writeVarInt(Math.min(batches.size(), MAX_CRAFTING_BATCH_ENTRIES));
+        int writtenBatches = 0;
+        for (NECraftingBatchUiState batch : batches) {
+            if (writtenBatches++ >= MAX_CRAFTING_BATCH_ENTRIES) {
+                break;
+            }
+            buf.writeUtf(batch.id(), 128);
+            buf.writeItem(batch.primaryOutput());
+            buf.writeVarLong(Math.max(0L, batch.craftCount()));
+            buf.writeVarLong(Math.max(0L, batch.outputAmount()));
+            buf.writeVarLong(Math.max(0L, batch.totalTicks()));
+            buf.writeVarLong(Math.max(0L, batch.remainingTicks()));
+            buf.writeVarLong(Math.max(0L, batch.energyPerTick()));
+            buf.writeEnum(batch.energyMode());
+            buf.writeEnum(batch.energyStatus());
+            buf.writeBoolean(batch.completed());
+            buf.writeBoolean(batch.canceled());
+        }
+
         List<ItemStack> outputs = state.workerCraftOutputs();
         buf.writeVarInt(Math.min(outputs.size(), MAX_WORKER_OUTPUTS));
         int writtenOutputs = 0;
@@ -360,6 +382,26 @@ public final class NELDLibStateCodecs {
                     buf.readEnum(NECraftingRecipeUiEntry.Status.class)));
         }
 
+        int batchCount = buf.readVarInt();
+        if (batchCount > MAX_CRAFTING_BATCH_ENTRIES) {
+            throw new IllegalArgumentException("Crafting batch entry count exceeds protocol limit: " + batchCount);
+        }
+        List<NECraftingBatchUiState> batches = new ArrayList<>(batchCount);
+        for (int i = 0; i < batchCount; i++) {
+            batches.add(new NECraftingBatchUiState(
+                    buf.readUtf(128),
+                    buf.readItem(),
+                    buf.readVarLong(),
+                    buf.readVarLong(),
+                    buf.readVarLong(),
+                    buf.readVarLong(),
+                    buf.readVarLong(),
+                    buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode.class),
+                    buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus.class),
+                    buf.readBoolean(),
+                    buf.readBoolean()));
+        }
+
         int outputCount = buf.readVarInt();
         if (outputCount > MAX_WORKER_OUTPUTS) {
             throw new IllegalArgumentException("Crafting worker output count exceeds protocol limit: " + outputCount);
@@ -422,6 +464,7 @@ public final class NELDLibStateCodecs {
                 batchParallel,
                 performanceAverageNanos,
                 recipes,
+                batches,
                 outputs,
                 tiers,
                 moduleCells);
