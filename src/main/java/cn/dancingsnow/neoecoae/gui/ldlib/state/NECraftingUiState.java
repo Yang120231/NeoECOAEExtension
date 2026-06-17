@@ -35,6 +35,7 @@ public record NECraftingUiState(
         int batchParallel,
         long performanceAverageNanos,
         List<NECraftingRecipeUiEntry> recipeEntries,
+        List<NECraftingBatchUiState> batchStates,
         List<ItemStack> workerCraftOutputs,
         List<Integer> parallelCoreTiers,
         List<NECraftingModuleCell> moduleCells) {
@@ -69,6 +70,7 @@ public record NECraftingUiState(
                 0,
                 0,
                 0L,
+                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),
