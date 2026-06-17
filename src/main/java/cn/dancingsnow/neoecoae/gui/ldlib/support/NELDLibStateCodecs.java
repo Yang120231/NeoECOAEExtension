@@ -30,6 +30,15 @@ public final class NELDLibStateCodecs {
         buf.writeLong(state.storedEnergy());
         buf.writeLong(state.maxEnergy());
         buf.writeBoolean(state.formed());
+        buf.writeBoolean(state.infiniteComponentInstalled());
+        buf.writeVarInt(Math.max(0, state.infiniteComponentCount()));
+        buf.writeVarInt(Math.max(0, state.requiredInfiniteComponentCount()));
+        buf.writeBoolean(state.fullL9MatrixStorage());
+        buf.writeBoolean(state.infiniteStorageUnlocked());
+        buf.writeVarInt(Math.max(0, state.l9MatrixDriveCount()));
+        buf.writeVarInt(Math.max(0, state.requiredL9MatrixDriveCount()));
+        buf.writeLong(Math.max(0L, state.l9MatrixStorageCapacityBytes()));
+        buf.writeLong(Math.max(0L, state.requiredInfiniteStorageCapacityBytes()));
         List<NEStorageUiMatrixState> matrices = state.matrixStates();
         buf.writeVarInt(Math.min(matrices.size(), MAX_STORAGE_DRIVES));
         int matricesWritten = 0;
@@ -45,6 +54,7 @@ public final class NELDLibStateCodecs {
             buf.writeLong(matrix.totalTypes());
             buf.writeLong(matrix.usedBytes());
             buf.writeLong(matrix.totalBytes());
+            buf.writeBoolean(matrix.infiniteMember());
         }
         List<NEStorageUiTypeState> types = state.typeStates();
         buf.writeVarInt(Math.min(types.size(), MAX_STORAGE_UI_TYPES));
@@ -59,6 +69,10 @@ public final class NELDLibStateCodecs {
             buf.writeLong(type.totalTypes());
             buf.writeLong(type.usedBytes());
             buf.writeLong(type.totalBytes());
+            buf.writeUtf(type.usedTypesDisplay(), 64);
+            buf.writeUtf(type.totalTypesDisplay(), 64);
+            buf.writeUtf(type.usedBytesDisplay(), 64);
+            buf.writeUtf(type.totalBytesDisplay(), 64);
         }
     }
 
@@ -67,6 +81,15 @@ public final class NELDLibStateCodecs {
         long storedEnergy = buf.readLong();
         long maxEnergy = buf.readLong();
         boolean formed = buf.readBoolean();
+        boolean infiniteComponentInstalled = buf.readBoolean();
+        int infiniteComponentCount = buf.readVarInt();
+        int requiredInfiniteComponentCount = buf.readVarInt();
+        boolean fullL9MatrixStorage = buf.readBoolean();
+        boolean infiniteStorageUnlocked = buf.readBoolean();
+        int l9MatrixDriveCount = buf.readVarInt();
+        int requiredL9MatrixDriveCount = buf.readVarInt();
+        long l9MatrixStorageCapacityBytes = buf.readLong();
+        long requiredInfiniteStorageCapacityBytes = buf.readLong();
         int matrixCount = buf.readVarInt();
         if (matrixCount > MAX_STORAGE_DRIVES) {
             throw new IllegalArgumentException("Storage drive count exceeds protocol limit: " + matrixCount);
@@ -81,7 +104,8 @@ public final class NELDLibStateCodecs {
                     buf.readLong(),
                     buf.readLong(),
                     buf.readLong(),
-                    buf.readLong()));
+                    buf.readLong(),
+                    buf.readBoolean()));
         }
         int typeCount = buf.readVarInt();
         if (typeCount > MAX_STORAGE_UI_TYPES) {
@@ -95,9 +119,28 @@ public final class NELDLibStateCodecs {
                     buf.readLong(),
                     buf.readLong(),
                     buf.readLong(),
-                    buf.readLong()));
+                    buf.readLong(),
+                    buf.readUtf(64),
+                    buf.readUtf(64),
+                    buf.readUtf(64),
+                    buf.readUtf(64)));
         }
-        return new NEStorageUiState(pos, types, matrices, storedEnergy, maxEnergy, formed);
+        return new NEStorageUiState(
+                pos,
+                types,
+                matrices,
+                storedEnergy,
+                maxEnergy,
+                formed,
+                infiniteComponentInstalled,
+                infiniteComponentCount,
+                requiredInfiniteComponentCount,
+                fullL9MatrixStorage,
+                infiniteStorageUnlocked,
+                l9MatrixDriveCount,
+                requiredL9MatrixDriveCount,
+                l9MatrixStorageCapacityBytes,
+                requiredInfiniteStorageCapacityBytes);
     }
 
     public static void writeStorageInterface(FriendlyByteBuf buf, NEStorageInterfaceUiState state) {

@@ -8,4 +8,18 @@ public record NEStorageUiTypeState(
         long usedTypes,
         long totalTypes,
         long usedBytes,
-        long totalBytes) {}
+        long totalBytes,
+        String usedTypesDisplay,
+        String totalTypesDisplay,
+        String usedBytesDisplay,
+        String totalBytesDisplay) {
+    public NEStorageUiTypeState(
+            ResourceLocation typeId,
+            String displayName,
+            long usedTypes,
+            long totalTypes,
+            long usedBytes,
+            long totalBytes) {
+        this(typeId, displayName, usedTypes, totalTypes, usedBytes, totalBytes, "", "", "", "");
+    }
+}

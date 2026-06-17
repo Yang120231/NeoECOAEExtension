@@ -56,6 +56,14 @@ public class NEStorageCluster extends NECluster<NEStorageCluster> {
     }
 
     @Override
+    public void updateFormed(boolean formed) {
+        super.updateFormed(formed);
+        if (formed && controller != null) {
+            controller.onStorageClusterFormed();
+        }
+    }
+
+    @Override
     public boolean shouldCasingHide(NEBlockEntity<NEStorageCluster, ?> blockEntity) {
         if (blockEntity instanceof ECOMachineCasingBlockEntity) {
             Vec3 casingPos = blockEntity.getBlockPos().getCenter();
@@ -63,13 +71,5 @@ public class NEStorageCluster extends NECluster<NEStorageCluster> {
             return casingPos.distanceToSqr(controllerPos) <= 3;
         }
         return false;
-    }
-
-    @Override
-    public void updateFormed(boolean formed) {
-        super.updateFormed(formed);
-        if (formed && controller != null) {
-            controller.onStorageClusterFormed();
-        }
     }
 }

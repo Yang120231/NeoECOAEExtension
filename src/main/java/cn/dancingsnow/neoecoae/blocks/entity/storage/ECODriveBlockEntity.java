@@ -4,11 +4,15 @@ import appeng.api.networking.IGridNodeListener;
 import appeng.api.storage.IStorageMounts;
 import appeng.api.storage.IStorageProvider;
 import appeng.api.storage.cells.CellState;
+import cn.dancingsnow.neoecoae.api.ECOTier;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.api.storage.ECOStorageCells;
 import cn.dancingsnow.neoecoae.api.storage.IBatchedECOCellSaveProvider;
 import cn.dancingsnow.neoecoae.api.storage.IECOStorageCell;
+import cn.dancingsnow.neoecoae.api.storage.IECOStorageCellHostContext;
 import cn.dancingsnow.neoecoae.blocks.storage.ECODriveBlock;
+import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellMetadata;
+import cn.dancingsnow.neoecoae.items.ECOStorageCellItem;
 import cn.dancingsnow.neoecoae.util.CellHostItemHandler;
 import cn.dancingsnow.neoecoae.util.ICellHost;
 import java.util.List;
@@ -33,7 +37,7 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
 
     public final IItemHandler HANDLER = new CellHostItemHandler(this);
     private final LazyOptional<IItemHandler> itemHandlerCap = LazyOptional.of(() -> HANDLER);
-    private final IBatchedECOCellSaveProvider cellSaveProvider = this::markCellContentDirty;
+    private final CellSaveProvider cellSaveProvider = new CellSaveProvider();
 
     @Nullable private ItemStack cellStack = null;
 
@@ -82,7 +86,7 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
 
     @Override
     public boolean isItemValid(ItemStack stack) {
-        return ECOStorageCells.isCellHandled(stack);
+        return ECOStorageCells.isCellHandled(stack) && canAcceptCellStack(stack);
     }
 
     @Override
@@ -96,9 +100,7 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
         if (cluster != null && cluster.getController() != null) {
             IECOTier mainTier = cluster.getController().getTier();
             IECOStorageCell cellInventory = getCellInventory();
-            if (cellInventory != null
-                    && !cluster.getController().isStorageInterfaceOutputMode()
-                    && mainTier.compareTo(cellInventory.getTier()) >= 0) {
+            if (cellInventory != null && canMountCurrentCell() && mainTier.compareTo(cellInventory.getTier()) >= 0) {
                 power += cellInventory.getIdleDrain();
             }
         }
@@ -122,7 +124,7 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
     @Override
     public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
         super.addAdditionalDrops(level, pos, drops);
-        if (cellStack != null) {
+        if (cellStack != null && canExtractCell()) {
             drops.add(cellStack);
         }
     }
@@ -144,9 +146,7 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
         if (cluster != null && cluster.getController() != null) {
             IECOTier mainTier = cluster.getController().getTier();
             IECOStorageCell cellInventory = getCellInventory();
-            if (cellInventory != null
-                    && !cluster.getController().isStorageInterfaceOutputMode()
-                    && mainTier.compareTo(cellInventory.getTier()) >= 0) {
+            if (cellInventory != null && canMountCurrentCell() && mainTier.compareTo(cellInventory.getTier()) >= 0) {
                 int priority = cluster.getController().getPriority();
                 storageMounts.mount(cellInventory, priority);
                 boolean mountedChanged = !mounted;
@@ -269,6 +269,52 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
         return stack.copyWithCount(1);
     }
 
+    public boolean lockCellForInfiniteStorage() {
+        if (!isL9StorageMatrix()) {
+            return false;
+        }
+        if (ECOStorageCellItem.lockInfiniteStorageMatrix(cellStack)) {
+            setChanged();
+            markForUpdate();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean canExtractCell() {
+        if (cellStack == null) {
+            return true;
+        }
+        if (cluster != null && cluster.getController() != null) {
+            return cluster.getController().canExtractDriveCell(this);
+        }
+        return !ECOStorageCellItem.isInfiniteStorageMatrixLocked(cellStack)
+                && !ECOStorageCellMetadata.hasNonPortableState(cellStack);
+    }
+
+    private boolean canMountCurrentCell() {
+        if (cellStack == null || ECOStorageCellMetadata.hasNonPortableState(cellStack)) {
+            return false;
+        }
+        return cluster == null
+                || cluster.getController() == null
+                || cluster.getController().canMountDriveCell(this);
+    }
+
+    private boolean canAcceptCellStack(ItemStack stack) {
+        if (cluster == null || cluster.getController() == null) {
+            return !ECOStorageCellMetadata.hasNonPortableState(stack)
+                    && !ECOStorageCellMetadata.isLegacyInfiniteLocked(stack);
+        }
+        return cluster.getController().canAcceptCellStack(stack);
+    }
+
+    private boolean isL9StorageMatrix() {
+        IECOStorageCell cell = getCellInventory();
+        return cell != null && cell.getTier().getTier() >= ECOTier.L9.getTier();
+    }
+
     /**
      * Notifies the storage controller (if formed) that storage stats should be
      * recalculated after a cell change. Safe to call on either side; only
@@ -332,6 +378,16 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
         cachedCellInventoryStack = null;
     }
 
+    public void onCellMetadataChanged() {
+        flushPendingCellContent();
+        invalidateCellInventoryCache();
+        updateStorageProviderState();
+        lastSyncedCellState = getCurrentCellState();
+        markForUpdate();
+        setChanged();
+        notifyControllerRefresh();
+    }
+
     @Override
     public void onChunkUnloaded() {
         flushPendingCellContent();
@@ -356,5 +412,24 @@ public class ECODriveBlockEntity extends AbstractStorageBlockEntity<ECODriveBloc
     public void invalidateCaps() {
         super.invalidateCaps();
         itemHandlerCap.invalidate();
+    }
+
+    private final class CellSaveProvider implements IBatchedECOCellSaveProvider, IECOStorageCellHostContext {
+        @Override
+        public void saveChanges() {
+            markCellContentDirty();
+        }
+
+        @Override
+        public boolean isInfiniteStorageUnlocked() {
+            return cluster != null
+                    && cluster.getController() != null
+                    && cluster.getController().isInfiniteStorageUnlocked();
+        }
+
+        @Override
+        public @Nullable ServerLevel getStorageLevel() {
+            return level instanceof ServerLevel serverLevel ? serverLevel : null;
+        }
     }
 }
