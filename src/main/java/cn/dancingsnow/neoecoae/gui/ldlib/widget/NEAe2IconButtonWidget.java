@@ -22,7 +22,6 @@ public class NEAe2IconButtonWidget extends ButtonWidget {
         this.icon = icon;
         this.iconAlignment = IconAlignment.CENTER;
         setHoverTexture(IGuiTexture.EMPTY);
-        setClickedTexture(IGuiTexture.EMPTY);
     }
 
     public NEAe2IconButtonWidget setIcon(Icon icon) {
@@ -34,7 +33,6 @@ public class NEAe2IconButtonWidget extends ButtonWidget {
         this.iconAlignment = IconAlignment.AE_TAB;
         setButtonTexture(IGuiTexture.EMPTY);
         setHoverTexture(IGuiTexture.EMPTY);
-        setClickedTexture(IGuiTexture.EMPTY);
         return this;
     }
 
@@ -49,7 +47,7 @@ public class NEAe2IconButtonWidget extends ButtonWidget {
                     graphics, getPositionX(), getPositionY(), getSizeWidth(), getSizeHeight());
         }
         NELDLibClientStyle.drawHoverOverlay(
-                graphics, mouseX, mouseY, getPositionX(), getPositionY(), getSizeWidth(), getSizeHeight(), isClicked());
+                graphics, mouseX, mouseY, getPositionX(), getPositionY(), getSizeWidth(), getSizeHeight(), false);
     }
 
     @Override
@@ -58,13 +56,12 @@ public class NEAe2IconButtonWidget extends ButtonWidget {
         if (icon == null) {
             return;
         }
-        int offset = isClicked() ? 1 : 0;
         int iconX = iconAlignment == IconAlignment.AE_TAB
-                ? getPositionX() + 3 + offset
-                : getPositionX() + (getSizeWidth() - icon.width) / 2 + offset;
+                ? getPositionX() + 3
+                : getPositionX() + (getSizeWidth() - icon.width) / 2;
         int iconY = iconAlignment == IconAlignment.AE_TAB
-                ? getPositionY() + 3 + offset
-                : getPositionY() + (getSizeHeight() - icon.height) / 2 + offset;
+                ? getPositionY() + 3
+                : getPositionY() + (getSizeHeight() - icon.height) / 2;
         NELDLibAe2StyleRenderer.drawAeIcon(graphics, icon, iconX, iconY, isActive() ? 1.0F : 0.45F);
     }
 

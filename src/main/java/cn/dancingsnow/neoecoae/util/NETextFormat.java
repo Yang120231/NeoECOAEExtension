@@ -12,6 +12,8 @@ import java.util.Locale;
  */
 public final class NETextFormat {
 
+    public static final String COMPUTATION_INFINITE_STORAGE_DISPLAY = "9.2E";
+
     private static final String[] UNITS = {"B", "K", "M", "G", "T", "P", "E"};
     private static final ThreadLocal<DecimalFormat> ONE_DECIMAL =
             ThreadLocal.withInitial(() -> new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.US)));

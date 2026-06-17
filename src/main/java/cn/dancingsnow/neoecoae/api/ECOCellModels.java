@@ -27,15 +27,6 @@ public class ECOCellModels {
     public static final ResourceLocation STORAGE_CELL_L4_CHEMICAL = NeoECOAE.id("block/cell/storage_cell_l4_chemical");
     public static final ResourceLocation STORAGE_CELL_L6_CHEMICAL = NeoECOAE.id("block/cell/storage_cell_l6_chemical");
     public static final ResourceLocation STORAGE_CELL_L9_CHEMICAL = NeoECOAE.id("block/cell/storage_cell_l9_chemical");
-    public static final ResourceLocation STORAGE_CELL_L4_FE = NeoECOAE.id("block/cell/storage_cell_l4_fe");
-    public static final ResourceLocation STORAGE_CELL_L6_FE = NeoECOAE.id("block/cell/storage_cell_l6_fe");
-    public static final ResourceLocation STORAGE_CELL_L9_FE = NeoECOAE.id("block/cell/storage_cell_l9_fe");
-    public static final ResourceLocation STORAGE_CELL_L4_MANA = NeoECOAE.id("block/cell/storage_cell_l4_mana");
-    public static final ResourceLocation STORAGE_CELL_L6_MANA = NeoECOAE.id("block/cell/storage_cell_l6_mana");
-    public static final ResourceLocation STORAGE_CELL_L9_MANA = NeoECOAE.id("block/cell/storage_cell_l9_mana");
-    public static final ResourceLocation STORAGE_CELL_L4_SOURCE = NeoECOAE.id("block/cell/storage_cell_l4_source");
-    public static final ResourceLocation STORAGE_CELL_L6_SOURCE = NeoECOAE.id("block/cell/storage_cell_l6_source");
-    public static final ResourceLocation STORAGE_CELL_L9_SOURCE = NeoECOAE.id("block/cell/storage_cell_l9_source");
     public static final ResourceLocation DEFAULT_MODEL = NeoECOAE.id("block/cell/storage_cell_default");
     private static final List<ResourceLocation> BUILTIN_MODELS = List.of(
             DEFAULT_MODEL,
@@ -47,16 +38,7 @@ public class ECOCellModels {
             STORAGE_CELL_L9_FLUID,
             STORAGE_CELL_L4_CHEMICAL,
             STORAGE_CELL_L6_CHEMICAL,
-            STORAGE_CELL_L9_CHEMICAL,
-            STORAGE_CELL_L4_FE,
-            STORAGE_CELL_L6_FE,
-            STORAGE_CELL_L9_FE,
-            STORAGE_CELL_L4_MANA,
-            STORAGE_CELL_L6_MANA,
-            STORAGE_CELL_L9_MANA,
-            STORAGE_CELL_L4_SOURCE,
-            STORAGE_CELL_L6_SOURCE,
-            STORAGE_CELL_L9_SOURCE);
+            STORAGE_CELL_L9_CHEMICAL);
 
     public static ResourceLocation getModelLocation(Item item) {
         if (item == null) {

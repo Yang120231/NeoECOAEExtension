@@ -2,7 +2,6 @@ package cn.dancingsnow.neoecoae.gui.ldlib.support;
 
 import appeng.api.config.CpuSelectionMode;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEComputationUiState;
-import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingBatchUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingUiState;
@@ -21,7 +20,6 @@ public final class NELDLibStateCodecs {
     private static final int MAX_STORAGE_UI_TYPES = 64;
     private static final int MAX_STORAGE_DRIVES = 384;
     private static final int MAX_CRAFTING_RECIPE_ENTRIES = 64;
-    private static final int MAX_CRAFTING_BATCH_ENTRIES = 64;
     private static final int MAX_WORKER_OUTPUTS = 128;
     private static final int MAX_PARALLEL_CORE_TIERS = 128;
     private static final int MAX_CRAFTING_MODULE_CELLS = 384;
@@ -174,6 +172,7 @@ public final class NELDLibStateCodecs {
         buf.writeInt(state.maxThreads());
         buf.writeLong(state.availableStorage());
         buf.writeLong(state.totalStorage());
+        buf.writeLong(state.usedStorage());
         buf.writeInt(state.parallelCount());
         buf.writeInt(state.accelerators());
         buf.writeEnum(state.cpuSelectionMode());
@@ -202,6 +201,7 @@ public final class NELDLibStateCodecs {
         int maxThreads = buf.readInt();
         long availableStorage = buf.readLong();
         long totalStorage = buf.readLong();
+        long usedStorage = buf.readLong();
         int parallelCount = buf.readInt();
         int accelerators = buf.readInt();
         CpuSelectionMode cpuSelectionMode = buf.readEnum(CpuSelectionMode.class);
@@ -228,6 +228,7 @@ public final class NELDLibStateCodecs {
                 maxThreads,
                 availableStorage,
                 totalStorage,
+                usedStorage,
                 parallelCount,
                 accelerators,
                 cpuSelectionMode,
@@ -256,13 +257,15 @@ public final class NELDLibStateCodecs {
         buf.writeInt(state.previewStatusArg1());
         buf.writeInt(state.previewStatusArg2());
         buf.writeVarLong(state.energyUsage());
-        buf.writeVarLong(state.externalEnergyAvailable());
-        buf.writeVarLong(state.externalEnergyRequired());
-        buf.writeVarLong(state.externalEnergyRate());
-        buf.writeEnum(state.externalEnergyMode());
-        buf.writeEnum(state.externalEnergyStatus());
-        buf.writeBoolean(state.externalEnergyAvailableForUse());
-        buf.writeUtf(state.externalEnergySource(), 128);
+        buf.writeVarLong(state.aeEnergyUsage());
+        buf.writeVarLong(state.gtEnergyUsage());
+        buf.writeEnum(state.energyStatus());
+        buf.writeVarInt(state.instantAeComponentCount());
+        buf.writeVarInt(state.requiredInstantAeComponentCount());
+        buf.writeBoolean(state.instantAeCraftingUnlocked());
+        buf.writeItem(state.wirelessCoverStack());
+        buf.writeVarInt(state.wirelessCoverTier());
+        buf.writeVarLong(state.wirelessCoverVoltage());
         buf.writeVarLong(state.coolantAmount());
         buf.writeVarLong(state.coolantCapacity());
         buf.writeVarInt(state.availableThreads());
@@ -286,26 +289,6 @@ public final class NELDLibStateCodecs {
             buf.writeVarLong(Math.max(0L, entry.totalTicks()));
             buf.writeVarLong(Math.max(0L, entry.remainingTicks()));
             buf.writeEnum(entry.status());
-        }
-
-        List<NECraftingBatchUiState> batches = state.batchStates();
-        buf.writeVarInt(Math.min(batches.size(), MAX_CRAFTING_BATCH_ENTRIES));
-        int writtenBatches = 0;
-        for (NECraftingBatchUiState batch : batches) {
-            if (writtenBatches++ >= MAX_CRAFTING_BATCH_ENTRIES) {
-                break;
-            }
-            buf.writeUtf(batch.id(), 128);
-            buf.writeItem(batch.primaryOutput());
-            buf.writeVarLong(Math.max(0L, batch.craftCount()));
-            buf.writeVarLong(Math.max(0L, batch.outputAmount()));
-            buf.writeVarLong(Math.max(0L, batch.totalTicks()));
-            buf.writeVarLong(Math.max(0L, batch.remainingTicks()));
-            buf.writeVarLong(Math.max(0L, batch.energyPerTick()));
-            buf.writeEnum(batch.energyMode());
-            buf.writeEnum(batch.energyStatus());
-            buf.writeBoolean(batch.completed());
-            buf.writeBoolean(batch.canceled());
         }
 
         List<ItemStack> outputs = state.workerCraftOutputs();
@@ -364,13 +347,16 @@ public final class NELDLibStateCodecs {
         int previewStatusArg1 = buf.readInt();
         int previewStatusArg2 = buf.readInt();
         long energyUsage = buf.readVarLong();
-        long externalEnergyAvailable = buf.readVarLong();
-        long externalEnergyRequired = buf.readVarLong();
-        long externalEnergyRate = buf.readVarLong();
-        var externalEnergyMode = buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode.class);
-        var externalEnergyStatus = buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus.class);
-        boolean externalEnergyAvailableForUse = buf.readBoolean();
-        String externalEnergySource = buf.readUtf(128);
+        long aeEnergyUsage = buf.readVarLong();
+        long gtEnergyUsage = buf.readVarLong();
+        cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus energyStatus =
+                buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus.class);
+        int instantAeComponentCount = buf.readVarInt();
+        int requiredInstantAeComponentCount = buf.readVarInt();
+        boolean instantAeCraftingUnlocked = buf.readBoolean();
+        ItemStack wirelessCoverStack = buf.readItem();
+        int wirelessCoverTier = buf.readVarInt();
+        long wirelessCoverVoltage = buf.readVarLong();
         long coolantAmount = buf.readVarLong();
         long coolantCapacity = buf.readVarLong();
         int availableThreads = buf.readVarInt();
@@ -394,26 +380,6 @@ public final class NELDLibStateCodecs {
                     buf.readVarLong(),
                     buf.readVarLong(),
                     buf.readEnum(NECraftingRecipeUiEntry.Status.class)));
-        }
-
-        int batchCount = buf.readVarInt();
-        if (batchCount > MAX_CRAFTING_BATCH_ENTRIES) {
-            throw new IllegalArgumentException("Crafting batch entry count exceeds protocol limit: " + batchCount);
-        }
-        List<NECraftingBatchUiState> batches = new ArrayList<>(batchCount);
-        for (int i = 0; i < batchCount; i++) {
-            batches.add(new NECraftingBatchUiState(
-                    buf.readUtf(128),
-                    buf.readItem(),
-                    buf.readVarLong(),
-                    buf.readVarLong(),
-                    buf.readVarLong(),
-                    buf.readVarLong(),
-                    buf.readVarLong(),
-                    buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode.class),
-                    buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus.class),
-                    buf.readBoolean(),
-                    buf.readBoolean()));
         }
 
         int outputCount = buf.readVarInt();
@@ -469,13 +435,15 @@ public final class NELDLibStateCodecs {
                 previewStatusArg1,
                 previewStatusArg2,
                 energyUsage,
-                externalEnergyAvailable,
-                externalEnergyRequired,
-                externalEnergyRate,
-                externalEnergyMode,
-                externalEnergyStatus,
-                externalEnergyAvailableForUse,
-                externalEnergySource,
+                aeEnergyUsage,
+                gtEnergyUsage,
+                energyStatus,
+                instantAeComponentCount,
+                requiredInstantAeComponentCount,
+                instantAeCraftingUnlocked,
+                wirelessCoverStack,
+                wirelessCoverTier,
+                wirelessCoverVoltage,
                 coolantAmount,
                 coolantCapacity,
                 availableThreads,
@@ -485,7 +453,6 @@ public final class NELDLibStateCodecs {
                 batchParallel,
                 performanceAverageNanos,
                 recipes,
-                batches,
                 outputs,
                 tiers,
                 moduleCells);

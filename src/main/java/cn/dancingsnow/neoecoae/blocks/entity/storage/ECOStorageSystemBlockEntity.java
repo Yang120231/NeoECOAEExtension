@@ -28,6 +28,8 @@ import cn.dancingsnow.neoecoae.api.storage.IECOStorageCell;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOMachineInterfaceBlockEntity;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiMatrixState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiTypeState;
@@ -45,14 +47,10 @@ import cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockBuildSession;
 import cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockPlacementPlan;
 import cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockPlacementService;
 import com.lowdragmc.lowdraglib.gui.factory.BlockEntityUIFactory;
-import com.lowdragmc.lowdraglib.gui.modular.IUIHolder;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import com.mojang.logging.LogUtils;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
-import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -87,7 +85,7 @@ import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOStorageSystemBlockEntity>
-        implements IGridTickable, IStorageProvider, INEMultiblockBuildHost, IPriorityHost, IUIHolder.BlockEntityUI {
+        implements IGridTickable, IStorageProvider, INEMultiblockBuildHost, IPriorityHost, NELDLibBlockEntityUI {
     private static final org.slf4j.Logger LOGGER = LogUtils.getLogger();
     private static final int REQUIRED_INFINITE_STORAGE_COMPONENTS = 64;
     private static final long INFINITE_STORAGE_CAPACITY_THRESHOLD = 1_000_000_000_000L;
@@ -97,25 +95,14 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     private static final int MIGRATION_COMMITTED_TO_DOMAIN = 2;
     private static final int MIGRATION_SOURCE_CLEARED = 3;
     private static final int MIGRATION_BOUND_AS_MEMBER = 4;
-    private static final ResourceLocation INFINITE_STORAGE_COMPONENT_ID = NeoECOAE.id("infinite_cell_component");
+    private static final ResourceLocation INFINITE_STORAGE_COMPONENT_ID =
+            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component");
     private static final String NBT_INFINITE_STORAGE_COMPONENT = "infiniteStorageComponent";
     private static final String NBT_HOST_MODE = "hostMode";
     private static final String NBT_HOST_DOMAIN_ID = "hostDomainId";
     private static final String NBT_MEMBER_DISKS = "memberDiskIds";
     private static final String NBT_MIGRATION_STEPS = "migrationSteps";
     private static final String NBT_DOMAIN_KEY_TYPES = "domainKeyTypes";
-    private static final MathContext COMPACT_DISPLAY_CONTEXT = new MathContext(4, RoundingMode.HALF_UP);
-    private static final BigDecimal COMPACT_DISPLAY_PROMOTE_THRESHOLD = BigDecimal.valueOf(1000L);
-    private static final BigInteger[] COMPACT_DISPLAY_UNITS = new BigInteger[] {
-        BigInteger.TEN.pow(12),
-        BigInteger.TEN.pow(15),
-        BigInteger.TEN.pow(18),
-        BigInteger.TEN.pow(21),
-        BigInteger.TEN.pow(24),
-        BigInteger.TEN.pow(27),
-        BigInteger.TEN.pow(30)
-    };
-    private static final String[] COMPACT_DISPLAY_SUFFIXES = new String[] {"T", "P", "E", "Z", "Y", "R", "Q"};
 
     @Getter
     private final IECOTier tier;
@@ -143,7 +130,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
 
         @Override
         public boolean isItemValid(int slot, ItemStack stack) {
-            return slot == 0 && isInfiniteStorageComponent(stack);
+            return slot == 0 && canUseInfiniteStorageComponents() && isInfiniteStorageComponent(stack);
         }
 
         @Override
@@ -161,7 +148,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
 
         @Override
         public int getSlotLimit(int slot) {
-            return REQUIRED_INFINITE_STORAGE_COMPONENTS;
+            return canUseInfiniteStorageComponents() ? REQUIRED_INFINITE_STORAGE_COMPONENTS : 0;
         }
     };
 
@@ -473,7 +460,6 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         }
         ECOStorageSavedData.StoredContents domain =
                 ECOStorageSavedData.get(serverLevel).getDomainOrEmpty(hostDomainId);
-        Map<ResourceLocation, BigInteger> exactUsedBytesByType = new HashMap<>();
         for (Map.Entry<AEKey, BigInteger> entry : domain.amounts().entrySet()) {
             AEKey key = entry.getKey();
             AEKeyType keyType = key.getType();
@@ -485,10 +471,6 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             NEStorageUiTypeState existing = grouped.get(typeId);
             long usedTypes = existing == null ? 1L : saturatedAdd(existing.usedTypes(), 1L);
             long usedBytes = existing == null ? bytes : saturatedAdd(existing.usedBytes(), bytes);
-            BigInteger exactUsedBytes = exactUsedBytesByType.merge(
-                    typeId,
-                    domainEntryUsedBytesExact(keyType, entry.getValue(), typeInfo.bytesPerType()),
-                    BigInteger::add);
             if (existing != null) {
                 grouped.put(
                         typeId,
@@ -499,9 +481,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                                 Long.MAX_VALUE,
                                 usedBytes,
                                 Long.MAX_VALUE,
-                                formatLongDisplay(usedTypes),
+                                Long.toString(Math.max(0L, usedTypes)),
                                 infiniteDisplay(),
-                                formatSignificant(exactUsedBytes),
+                                NELDLibText.storageBytes(usedBytes),
                                 infiniteDisplay()));
             } else {
                 grouped.put(
@@ -513,9 +495,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                                 Long.MAX_VALUE,
                                 usedBytes,
                                 Long.MAX_VALUE,
-                                formatLongDisplay(usedTypes),
+                                Long.toString(Math.max(0L, usedTypes)),
                                 infiniteDisplay(),
-                                formatSignificant(exactUsedBytes),
+                                NELDLibText.storageBytes(usedBytes),
                                 infiniteDisplay()));
             }
         }
@@ -568,6 +550,10 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                         infiniteDisplay()));
     }
 
+    private static String infiniteDisplay() {
+        return "\u221e";
+    }
+
     private static ResourceLocation fallbackDomainTypeId(AEKeyType keyType) {
         if (keyType == AEKeyType.items()) {
             return NeoECOAE.id("items");
@@ -611,58 +597,6 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         BigInteger[] divRem = amount.divideAndRemainder(amountPerByte);
         BigInteger itemBytes = divRem[1].signum() == 0 ? divRem[0] : divRem[0].add(BigInteger.ONE);
         return itemBytes.add(BigInteger.valueOf(Math.max(0, bytesPerType)));
-    }
-
-    private static String infiniteDisplay() {
-        return "\u221e";
-    }
-
-    private static String formatLongDisplay(long value) {
-        if (value == Long.MAX_VALUE) {
-            return infiniteDisplay();
-        }
-        return groupDigits(Long.toString(Math.max(0L, value)));
-    }
-
-    private static String formatSignificant(BigInteger value) {
-        if (value == null || value.signum() <= 0) {
-            return "0";
-        }
-        if (value.compareTo(COMPACT_DISPLAY_UNITS[0]) < 0) {
-            return groupDigits(value.toString());
-        }
-
-        int unitIndex = 0;
-        for (int i = COMPACT_DISPLAY_UNITS.length - 1; i >= 0; i--) {
-            if (value.compareTo(COMPACT_DISPLAY_UNITS[i]) >= 0) {
-                unitIndex = i;
-                break;
-            }
-        }
-
-        BigDecimal scaled = new BigDecimal(value)
-                .divide(new BigDecimal(COMPACT_DISPLAY_UNITS[unitIndex]), COMPACT_DISPLAY_CONTEXT)
-                .stripTrailingZeros();
-        while (unitIndex < COMPACT_DISPLAY_UNITS.length - 1
-                && scaled.compareTo(COMPACT_DISPLAY_PROMOTE_THRESHOLD) >= 0) {
-            unitIndex++;
-            scaled = scaled.movePointLeft(3).round(COMPACT_DISPLAY_CONTEXT).stripTrailingZeros();
-        }
-        return scaled.toPlainString() + COMPACT_DISPLAY_SUFFIXES[unitIndex];
-    }
-
-    private static String groupDigits(String digits) {
-        StringBuilder result = new StringBuilder(digits.length() + digits.length() / 3);
-        int firstGroup = digits.length() % 3;
-        if (firstGroup == 0) {
-            firstGroup = 3;
-        }
-        result.append(digits, 0, firstGroup);
-        for (int i = firstGroup; i < digits.length(); i += 3) {
-            result.append(',');
-            result.append(digits, i, i + 3);
-        }
-        return result.toString();
     }
 
     private List<NEStorageUiMatrixState> createDomainMatrixStates() {
@@ -827,8 +761,19 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     }
 
     public int getInfiniteStorageComponentCount() {
+        if (!canUseInfiniteStorageComponents()) {
+            return 0;
+        }
         ItemStack stack = infiniteStorageComponent.getStackInSlot(0);
         return isInfiniteStorageComponent(stack) ? stack.getCount() : 0;
+    }
+
+    public boolean canUseInfiniteStorageComponents() {
+        return tier.getTier() == ECOTier.L9.getTier() && isInfiniteStorageComponentAvailable();
+    }
+
+    public static boolean isInfiniteStorageComponentAvailable() {
+        return BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID) != Items.AIR;
     }
 
     public boolean isInfiniteStorageUnlocked() {
@@ -1783,7 +1728,8 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 buildSession.getTotalBlocks());
     }
 
-    private void syncPreview(
+    @Override
+    public void syncPreview(
             int missingBlocks,
             int conflictBlocks,
             int reusedBlocks,
@@ -1802,7 +1748,8 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         markForUpdate();
     }
 
-    private void syncPreview(
+    @Override
+    public void syncPreview(
             int missingBlocks, int conflictBlocks, int reusedBlocks, int requiredItems, String statusKey) {
         syncPreview(missingBlocks, conflictBlocks, reusedBlocks, requiredItems, statusKey, 0, 0);
     }

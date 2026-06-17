@@ -72,7 +72,7 @@ public abstract class CPUSelectionListMixin120 {
      * We intercept only ECO CPU entries (identified by their tier overlay texture)
      * and replace the storage text with a compact human-readable form.
      */
-    @Inject(method = "formatStorage", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "formatStorage", at = @At("RETURN"), cancellable = true, require = 0)
     private void neoecoae$formatStorage(
             CraftingStatusMenu.CraftingCpuListEntry cpu, CallbackInfoReturnable<String> cir) {
         var overlay = IOverlayTextureHolder.of(cpu).neoecoae$getOverlay();

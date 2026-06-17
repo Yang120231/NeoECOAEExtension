@@ -64,29 +64,7 @@ public final class StorageCellDisassemblyRecipe {
                     new DisassemblyParts("eco_chemical_cell_housing", "eco_cell_component_64m")),
             Map.entry(
                     "eco_chemical_storage_cell_256m",
-                    new DisassemblyParts("eco_chemical_cell_housing", "eco_cell_component_256m")),
-            Map.entry("eco_fe_storage_cell_16m", new DisassemblyParts("eco_fe_cell_housing", "eco_cell_component_16m")),
-            Map.entry("eco_fe_storage_cell_64m", new DisassemblyParts("eco_fe_cell_housing", "eco_cell_component_64m")),
-            Map.entry(
-                    "eco_fe_storage_cell_256m", new DisassemblyParts("eco_fe_cell_housing", "eco_cell_component_256m")),
-            Map.entry(
-                    "eco_mana_storage_cell_16m",
-                    new DisassemblyParts("eco_mana_cell_housing", "eco_cell_component_16m")),
-            Map.entry(
-                    "eco_mana_storage_cell_64m",
-                    new DisassemblyParts("eco_mana_cell_housing", "eco_cell_component_64m")),
-            Map.entry(
-                    "eco_mana_storage_cell_256m",
-                    new DisassemblyParts("eco_mana_cell_housing", "eco_cell_component_256m")),
-            Map.entry(
-                    "eco_source_storage_cell_16m",
-                    new DisassemblyParts("eco_source_cell_housing", "eco_cell_component_16m")),
-            Map.entry(
-                    "eco_source_storage_cell_64m",
-                    new DisassemblyParts("eco_source_cell_housing", "eco_cell_component_64m")),
-            Map.entry(
-                    "eco_source_storage_cell_256m",
-                    new DisassemblyParts("eco_source_cell_housing", "eco_cell_component_256m")));
+                    new DisassemblyParts("eco_chemical_cell_housing", "eco_cell_component_256m")));
 
     private record DisassemblyParts(String housing, String component) {}
 }

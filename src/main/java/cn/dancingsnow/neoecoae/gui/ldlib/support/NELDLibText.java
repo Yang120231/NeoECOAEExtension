@@ -6,6 +6,8 @@ import java.text.NumberFormat;
 import java.util.Locale;
 
 public final class NELDLibText {
+    public static final String INFINITE = "\u221e";
+
     private static final long BYTES_IN_K = 1024L;
     private static final long BYTES_IN_M = BYTES_IN_K * 1024L;
     private static final long BYTES_IN_G = BYTES_IN_M * 1024L;
@@ -27,6 +29,10 @@ public final class NELDLibText {
 
     public static String number(int value) {
         return number((long) value);
+    }
+
+    public static String typeCount(long value) {
+        return value == Long.MAX_VALUE ? INFINITE : number(Math.max(0L, value));
     }
 
     public static String percent(double value) {

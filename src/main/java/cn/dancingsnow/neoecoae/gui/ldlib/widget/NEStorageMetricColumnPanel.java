@@ -147,15 +147,17 @@ final class NEStorageMetricColumnPanel {
                             Component.translatable(
                                     TOOLTIP_TYPE_USED,
                                     metric.label(),
-                                    NELDLibText.percentOrNA(metric.used(), metric.max())),
+                                    metric.infiniteCapacity()
+                                            ? "\u221e"
+                                            : NELDLibText.percentOrNA(metric.used(), metric.max())),
                             Component.translatable(
                                     TOOLTIP_USED_TOTAL,
-                                    NELDLibText.number(metric.used()),
-                                    NELDLibText.number(metric.max())),
+                                    metric.usedText(),
+                                    metric.maxText()),
                             Component.translatable(
                                     "gui.neoecoae.machine.types_value",
-                                    NELDLibText.number(metric.usedTypes()),
-                                    NELDLibText.number(metric.totalTypes()))),
+                                    metric.usedTypesText(),
+                                    metric.totalTypesText())),
                     Optional.empty(),
                     mouseX,
                     mouseY);
@@ -234,10 +236,10 @@ final class NEStorageMetricColumnPanel {
         g.fill(x + w - 8, y + h - 10, x + w - 3, y + h - 3, 0xAA100E16);
 
         int percentY = y + h + PERCENT_GAP;
-        int percentColor = metric.max() <= 0
+        int percentColor = metric.max() <= 0 && !metric.infiniteCapacity()
                 ? NELDLibStyle.DARK_TEXT_MUTED
                 : NELDLibStyle.metricColor(metric.accentColor(), metric.max(), pct);
-        String percentText = NELDLibText.percentOrNA(metric.used(), metric.max());
+        String percentText = metric.infiniteCapacity() ? "\u221e" : NELDLibText.percentOrNA(metric.used(), metric.max());
         NELDLibClientStyle.drawTinyInsetRect(g, x - 2, percentY, w + 4, PERCENT_H, 0xFF201E27);
         NELDLibClientStyle.drawCenteredScaledString(
                 g, font(), percentText, x - 2, percentY, w + 4, PERCENT_H, percentColor, 0.9F);

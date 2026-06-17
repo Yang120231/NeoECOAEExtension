@@ -45,7 +45,6 @@ public class NEAe2TextButtonWidget extends ButtonWidget {
         this.selectedSupplier = selectedSupplier;
         this.style = style;
         setHoverTexture(IGuiTexture.EMPTY);
-        setClickedTexture(IGuiTexture.EMPTY);
     }
 
     public NEAe2TextButtonWidget setTextColors(int normalColor, int selectedColor, int inactiveColor) {
@@ -67,7 +66,7 @@ public class NEAe2TextButtonWidget extends ButtonWidget {
                     getPositionY(),
                     getSizeWidth(),
                     getSizeHeight(),
-                    isClicked());
+                    false);
         } else {
             NELDLibClientStyle.drawInsetButton(
                     graphics,
@@ -76,7 +75,7 @@ public class NEAe2TextButtonWidget extends ButtonWidget {
                     getSizeWidth(),
                     getSizeHeight(),
                     isMouseOverElement(mouseX, mouseY),
-                    isClicked(),
+                    false,
                     selectedSupplier.getAsBoolean());
         }
     }

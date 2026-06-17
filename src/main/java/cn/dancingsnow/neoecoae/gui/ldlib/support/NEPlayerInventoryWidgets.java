@@ -5,6 +5,7 @@ import com.lowdragmc.lowdraglib.gui.widget.SlotWidget;
 import com.lowdragmc.lowdraglib.gui.widget.WidgetGroup;
 import java.util.function.IntUnaryOperator;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 
 public final class NEPlayerInventoryWidgets {
@@ -12,6 +13,17 @@ public final class NEPlayerInventoryWidgets {
 
     private static final int INVENTORY_ROWS = 3;
     private static final int INVENTORY_COLUMNS = 9;
+    private static final ResourceLocation VANILLA_INVENTORY_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/inventory.png");
+    private static final int VANILLA_INVENTORY_U = 7;
+    private static final int VANILLA_INVENTORY_V = 83;
+    private static final int VANILLA_INVENTORY_W = INVENTORY_COLUMNS * SLOT_SIZE;
+    private static final int VANILLA_INVENTORY_H = INVENTORY_ROWS * SLOT_SIZE;
+    private static final int VANILLA_HOTBAR_U = 7;
+    private static final int VANILLA_HOTBAR_V = 141;
+    private static final int VANILLA_HOTBAR_W = INVENTORY_COLUMNS * SLOT_SIZE;
+    private static final int VANILLA_HOTBAR_H = SLOT_SIZE;
+    private static final int VANILLA_TEXTURE_SIZE = 256;
 
     private NEPlayerInventoryWidgets() {}
 
@@ -44,17 +56,50 @@ public final class NEPlayerInventoryWidgets {
             int inventoryBgX,
             int inventoryBgY,
             int hotbarBgY) {
-        for (int row = 0; row < INVENTORY_ROWS; row++) {
-            for (int col = 0; col < INVENTORY_COLUMNS; col++) {
-                NELDLibAe2StyleRenderer.drawAeSlot(
-                        graphics,
-                        screenX.applyAsInt(inventoryBgX + col * SLOT_SIZE),
-                        screenY.applyAsInt(inventoryBgY + row * SLOT_SIZE));
-            }
-        }
-        for (int col = 0; col < INVENTORY_COLUMNS; col++) {
-            NELDLibAe2StyleRenderer.drawAeSlot(
-                    graphics, screenX.applyAsInt(inventoryBgX + col * SLOT_SIZE), screenY.applyAsInt(hotbarBgY));
+        graphics.blit(
+                VANILLA_INVENTORY_TEXTURE,
+                screenX.applyAsInt(inventoryBgX),
+                screenY.applyAsInt(inventoryBgY),
+                VANILLA_INVENTORY_W,
+                VANILLA_INVENTORY_H,
+                VANILLA_INVENTORY_U,
+                VANILLA_INVENTORY_V,
+                VANILLA_INVENTORY_W,
+                VANILLA_INVENTORY_H,
+                VANILLA_TEXTURE_SIZE,
+                VANILLA_TEXTURE_SIZE);
+        graphics.blit(
+                VANILLA_INVENTORY_TEXTURE,
+                screenX.applyAsInt(inventoryBgX),
+                screenY.applyAsInt(hotbarBgY),
+                VANILLA_HOTBAR_W,
+                VANILLA_HOTBAR_H,
+                VANILLA_HOTBAR_U,
+                VANILLA_HOTBAR_V,
+                VANILLA_HOTBAR_W,
+                VANILLA_HOTBAR_H,
+                VANILLA_TEXTURE_SIZE,
+                VANILLA_TEXTURE_SIZE);
+    }
+
+    public static void drawVanillaSlot(GuiGraphics graphics, int x, int y) {
+        graphics.blit(
+                VANILLA_INVENTORY_TEXTURE,
+                x,
+                y,
+                SLOT_SIZE,
+                SLOT_SIZE,
+                VANILLA_INVENTORY_U,
+                VANILLA_INVENTORY_V,
+                SLOT_SIZE,
+                SLOT_SIZE,
+                VANILLA_TEXTURE_SIZE,
+                VANILLA_TEXTURE_SIZE);
+    }
+
+    public static void drawVanillaSlotColumn(GuiGraphics graphics, int x, int y, int rows) {
+        for (int row = 0; row < rows; row++) {
+            drawVanillaSlot(graphics, x, y + row * SLOT_SIZE);
         }
     }
 }

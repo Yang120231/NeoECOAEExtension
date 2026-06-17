@@ -39,6 +39,9 @@ final class NEStorageMatrixPanel {
     private static final int ROWS = 3;
     private static final int CARD_COLOR = 0xFF302C38;
     private static final int CARD_HOVER_COLOR = 0xFF3B3645;
+    private static final int INFINITE_CARD_COLOR = 0xFF4A245E;
+    private static final int INFINITE_CARD_HOVER_COLOR = 0xFF5C2E73;
+    private static final int INFINITE_CARD_ACCENT = 0xFFFF55FF;
     private static final double SCROLL_LERP = 0.24D;
 
     private final Supplier<Font> fontSupplier;
@@ -132,9 +135,9 @@ final class NEStorageMatrixPanel {
             if (x + CARD_W <= VIEW_X || x >= VIEW_X + VIEW_W) {
                 continue;
             }
-            int accent = tierColor(matrix.tier());
+            int accent = matrix.infiniteMember() ? INFINITE_CARD_ACCENT : tierColor(matrix.tier());
             boolean hovered = isMouseInCard(x, y, mouseX, mouseY);
-            drawRoundedCard(graphics, absX(x), absY(y), CARD_W, CARD_H, hovered);
+            drawRoundedCard(graphics, absX(x), absY(y), CARD_W, CARD_H, hovered, matrix.infiniteMember());
             graphics.renderItem(matrix.stack(), absX(x + 1), absY(y + 1));
             drawCompressedTitle(
                     graphics,
@@ -160,6 +163,20 @@ final class NEStorageMatrixPanel {
                 continue;
             }
             ItemStack stack = matrix.stack();
+            if (matrix.infiniteMember()) {
+                graphics.renderComponentTooltip(
+                        font(),
+                        List.of(
+                                stack.getHoverName(),
+                                tierTooltipLine(matrix.tier()),
+                                Component.translatable("gui.neoecoae.storage.matrix_card.infinite_member")
+                                        .withStyle(style -> style.withColor(0xFFFF55FF)),
+                                Component.translatable("gui.neoecoae.storage.matrix_card.infinite_managed")
+                                        .withStyle(style -> style.withColor(NELDLibStyle.DARK_TEXT_MUTED))),
+                        mouseX,
+                        mouseY);
+                return true;
+            }
             graphics.renderComponentTooltip(
                     font(),
                     List.of(
@@ -168,8 +185,8 @@ final class NEStorageMatrixPanel {
                             NELDLibValueText.usedTotalComponent(
                                     Component.translatable("gui.neoecoae.common.types")
                                                     .getString() + ": ",
-                                    NELDLibText.number(matrix.usedTypes()),
-                                    NELDLibText.number(matrix.totalTypes()),
+                                    NELDLibText.typeCount(matrix.usedTypes()),
+                                    NELDLibText.typeCount(matrix.totalTypes()),
                                     matrix.usedTypes(),
                                     matrix.totalTypes(),
                                     ""),
@@ -252,11 +269,17 @@ final class NEStorageMatrixPanel {
         return matrix.hasMatrix() && matrix.row() >= 0 && matrix.row() < ROWS;
     }
 
-    private static void drawRoundedCard(GuiGraphics graphics, int x, int y, int width, int height, boolean hovered) {
-        int color = hovered ? CARD_HOVER_COLOR : CARD_COLOR;
+    private static void drawRoundedCard(
+            GuiGraphics graphics, int x, int y, int width, int height, boolean hovered, boolean infiniteMember) {
+        int color = infiniteMember
+                ? (hovered ? INFINITE_CARD_HOVER_COLOR : INFINITE_CARD_COLOR)
+                : (hovered ? CARD_HOVER_COLOR : CARD_COLOR);
         graphics.fill(x + 2, y, x + width - 2, y + height, color);
         graphics.fill(x, y + 2, x + width, y + height - 2, color);
         graphics.fill(x + 1, y + 1, x + width - 1, y + height - 1, color);
+        if (infiniteMember) {
+            graphics.fill(x + 1, y + height - 3, x + width - 1, y + height - 2, 0xCCFF55FF);
+        }
     }
 
     private void drawCompressedTitle(

@@ -20,18 +20,23 @@ public record NEStorageUiState(
         int requiredL9MatrixDriveCount,
         long l9MatrixStorageCapacityBytes,
         long requiredInfiniteStorageCapacityBytes) {
-    public NEStorageUiState(
-            BlockPos pos,
-            List<NEStorageUiTypeState> typeStates,
-            List<NEStorageUiMatrixState> matrixStates,
-            long storedEnergy,
-            long maxEnergy,
-            boolean formed) {
-        this(pos, typeStates, matrixStates, storedEnergy, maxEnergy, formed, false, 0, 0, false, false, 0, 0, 0L, 0L);
-    }
-
     public static NEStorageUiState empty(BlockPos pos) {
-        return new NEStorageUiState(pos, Collections.emptyList(), Collections.emptyList(), 0, 0, false);
+        return new NEStorageUiState(
+                pos,
+                Collections.emptyList(),
+                Collections.emptyList(),
+                0,
+                0,
+                false,
+                false,
+                0,
+                64,
+                false,
+                false,
+                0,
+                0,
+                0,
+                1_000_000_000_001L);
     }
 
     public long totalUsedTypes() {

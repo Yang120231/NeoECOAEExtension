@@ -6,6 +6,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.storage.MEStorage;
+import appeng.me.service.CraftingService;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -214,6 +215,27 @@ public final class ECOAggregatedCraftingBatch {
             inputTotals.clear();
         }
         return previous != remainingTicks;
+    }
+
+    public boolean flushOutputs(CraftingService craftingService, MEStorage storage, IActionSource source) {
+        if (!completed || canceled) {
+            return false;
+        }
+        Iterator<Map.Entry<AEKey, Long>> iterator = outputTotals.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<AEKey, Long> entry = iterator.next();
+            long requested = entry.getValue();
+            long accepted = craftingService.insertIntoCpus(entry.getKey(), requested, Actionable.MODULATE);
+            if (accepted < requested) {
+                accepted += storage.insert(entry.getKey(), requested - accepted, Actionable.MODULATE, source);
+            }
+            if (accepted >= requested) {
+                iterator.remove();
+            } else if (accepted > 0L) {
+                entry.setValue(requested - accepted);
+            }
+        }
+        return outputTotals.isEmpty();
     }
 
     public boolean cancel() {

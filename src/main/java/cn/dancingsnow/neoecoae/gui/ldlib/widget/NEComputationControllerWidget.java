@@ -6,6 +6,8 @@ import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationSystemBlo
 import cn.dancingsnow.neoecoae.client.gui.ldlib.NELDLibClientStyle;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEComputationUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NEForgeItemTransfer;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibAe2StyleRenderer;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibGuiRenderState;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibScrollBar;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibStateCodecs;
@@ -15,6 +17,9 @@ import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibTextRender;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NEPlayerInventoryWidgets;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NEComputationCluster;
+import cn.dancingsnow.neoecoae.util.NETextFormat;
+import com.lowdragmc.lowdraglib.gui.texture.IGuiTexture;
+import com.lowdragmc.lowdraglib.gui.widget.SlotWidget;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -65,9 +70,12 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
     private static final int TASK_CARD_STRIDE = 20;
     private static final int TASK_LIST_BOTTOM_Y = TASK_PANEL_Y + TASK_PANEL_H - 3;
     private static final int TASK_SCROLLBAR_W = 3;
+    private static final int INFINITE_SLOT_X = MAIN_PANEL_X + MAIN_PANEL_W - SLOT_SIZE - 8;
+    private static final int INFINITE_SLOT_Y = MAIN_PANEL_Y + MAIN_PANEL_H - SLOT_SIZE - 8;
 
     private final ECOComputationSystemBlockEntity computation;
     private final Inventory playerInventory;
+    private final boolean showInfiniteStorage;
     private int taskScrollOffset;
     private NEAe2IconButtonWidget cpuModeButton;
 
@@ -83,6 +91,7 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                 20);
         this.computation = computation;
         this.playerInventory = player.getInventory();
+        this.showInfiniteStorage = computation.canUseInfiniteStorageComponents();
     }
 
     @Override
@@ -103,8 +112,18 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                             syncStateNow();
                         }
                     }
-                });
+        });
         addWidget(cpuModeButton);
+        if (showInfiniteStorage) {
+            addWidget(new SlotWidget(
+                            new NEForgeItemTransfer(computation.getInfiniteStorageComponentInventory(), null),
+                            0,
+                            INFINITE_SLOT_X,
+                            INFINITE_SLOT_Y,
+                            true,
+                            true)
+                    .setBackgroundTexture(IGuiTexture.EMPTY));
+        }
         addPlayerInventorySlots();
     }
 
@@ -117,6 +136,9 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                 graphics, ox + MAIN_PANEL_X, oy + MAIN_PANEL_Y, MAIN_PANEL_W, MAIN_PANEL_H);
         NELDLibClientStyle.drawDarkInsetRect(
                 graphics, ox + TASK_PANEL_X, oy + TASK_PANEL_Y, TASK_PANEL_W, TASK_PANEL_H);
+        if (showInfiniteStorage) {
+            NELDLibAe2StyleRenderer.drawAeSlot(graphics, absX(INFINITE_SLOT_X), absY(INFINITE_SLOT_Y));
+        }
         drawPlayerInventorySlots(graphics);
 
         NEComputationUiState state = currentState();
@@ -129,14 +151,13 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                 state.usedThreads(),
                 state.maxThreads(),
                 NELDLibStyle.DARK_TEXT_SUCCESS);
-        long usedStorage = Math.max(0L, state.totalStorage() - state.availableStorage());
         drawHorizontalUsageBar(
                 graphics,
                 ox + STORAGE_BAR_X,
                 oy + STORAGE_BAR_Y,
                 STORAGE_BAR_W,
                 STORAGE_BAR_H,
-                usedStorage,
+                state.usedStorage(),
                 state.totalStorage(),
                 NELDLibStyle.DARK_TEXT_BLUE);
     }
@@ -146,6 +167,7 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
         drawLocalString(graphics, title, 8, 8, TEXT_PRIMARY);
         drawHeaderMachineStatus(graphics, currentState());
         drawMainPanelText(graphics, currentState());
+        drawInfiniteStorageStatus(graphics);
         drawLocalString(
                 graphics,
                 Component.translatable("gui.neoecoae.common.inventory"),
@@ -157,6 +179,9 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
 
     @Override
     protected void drawMachineTooltips(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (renderInfiniteStorageTooltip(graphics, mouseX, mouseY)) {
+            return;
+        }
         if (renderTaskTooltip(graphics, mouseX, mouseY)) {
             return;
         }
@@ -186,14 +211,12 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
             return;
         }
         if (isMouseIn(STORAGE_BAR_X, STORAGE_BAR_Y, STORAGE_BAR_W, STORAGE_BAR_H, mouseX, mouseY)) {
-            long usedStorage =
-                    Math.max(0L, currentState().totalStorage() - currentState().availableStorage());
             graphics.renderTooltip(
                     font(),
                     List.of(
                             Component.translatable("gui.neoecoae.computation.available_storage"),
-                            Component.literal(NELDLibText.usedTotal(
-                                            usedStorage, currentState().totalStorage()) + " bytes")),
+                            Component.literal(computationStorageBytes(currentState().usedStorage()) + " / "
+                                    + computationStorageBytes(currentState().totalStorage()) + " bytes")),
                     Optional.empty(),
                     mouseX,
                     mouseY);
@@ -248,12 +271,11 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
         drawModeLine(g, state, x, y);
         y += line * 2;
 
-        long usedStorage = Math.max(0L, state.totalStorage() - state.availableStorage());
         drawPairTextLine(
                 g,
                 Component.translatable("gui.neoecoae.computation.storage_used").getString() + ": ",
-                NELDLibText.storageBytes(usedStorage),
-                NELDLibText.storageBytes(state.totalStorage()),
+                computationStorageBytes(state.usedStorage()),
+                computationStorageBytes(state.totalStorage()),
                 x,
                 y);
         y += line;
@@ -265,6 +287,48 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                 x,
                 y,
                 NELDLibStyle.DARK_TEXT_PRIMARY);
+    }
+
+    private void drawInfiniteStorageStatus(GuiGraphics graphics) {
+        if (!showInfiniteStorage) {
+            return;
+        }
+        Component status = computation.isInfiniteStorageUnlocked()
+                ? Component.translatable("gui.neoecoae.storage.infinite_ready")
+                : Component.translatable(
+                        "gui.neoecoae.storage.infinite_waiting_component",
+                        computation.getInfiniteStorageComponentCount(),
+                        ECOComputationSystemBlockEntity.REQUIRED_INFINITE_STORAGE_COMPONENTS);
+        drawLocalString(
+                graphics,
+                NELDLibTextRender.truncateWithEllipsis(font(), status, INFINITE_SLOT_X - MAIN_PANEL_X - 14),
+                MAIN_PANEL_X + 8,
+                MAIN_PANEL_Y + MAIN_PANEL_H - 18,
+                computation.isInfiniteStorageUnlocked() ? TEXT_SUCCESS : TEXT_MUTED);
+    }
+
+    private boolean renderInfiniteStorageTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (!showInfiniteStorage
+                || !isMouseIn(INFINITE_SLOT_X, INFINITE_SLOT_Y, SLOT_SIZE, SLOT_SIZE, mouseX, mouseY)) {
+            return false;
+        }
+        graphics.renderComponentTooltip(
+                font(),
+                List.of(
+                        Component.translatable("gui.neoecoae.storage.infinite_slot.tooltip"),
+                        Component.translatable(
+                                "gui.neoecoae.storage.infinite_slot.component",
+                                computation.getInfiniteStorageComponentCount() + " / "
+                                        + ECOComputationSystemBlockEntity.REQUIRED_INFINITE_STORAGE_COMPONENTS)),
+                mouseX,
+                mouseY);
+        return true;
+    }
+
+    private static String computationStorageBytes(long value) {
+        return value == Long.MAX_VALUE
+                ? NETextFormat.COMPUTATION_INFINITE_STORAGE_DISPLAY
+                : NELDLibText.storageBytes(value);
     }
 
     private void drawHeaderMachineStatus(GuiGraphics g, NEComputationUiState state) {

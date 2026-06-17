@@ -75,12 +75,43 @@ public abstract class CraftingServiceMixin120 {
         cir.setReturnValue(NeoECOCraftingServiceBridge.getCpus(this.grid, cir.getReturnValue()));
     }
 
-    @Inject(method = "submitJob", at = @At("HEAD"), cancellable = true)
-    private void neoecoae$submitJob(
+    @Inject(
+            method =
+                    "submitJob(Lappeng/api/networking/crafting/ICraftingPlan;Lappeng/api/networking/crafting/ICraftingRequester;Lappeng/api/networking/crafting/ICraftingCPU;ZLappeng/api/networking/security/IActionSource;)Lappeng/api/networking/crafting/ICraftingSubmitResult;",
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0)
+    private void neoecoae$submitJobLegacy(
             ICraftingPlan job,
             ICraftingRequester requestingMachine,
             ICraftingCPU target,
             boolean prioritizePower,
+            IActionSource src,
+            CallbackInfoReturnable<ICraftingSubmitResult> cir) {
+        neoecoae$submitJobCommon(job, requestingMachine, target, src, cir);
+    }
+
+    @Inject(
+            method =
+                    "submitJob(Lappeng/api/networking/crafting/ICraftingPlan;Lappeng/api/networking/crafting/ICraftingRequester;Lappeng/api/networking/crafting/ICraftingCPU;ZLappeng/api/networking/security/IActionSource;Z)Lappeng/api/networking/crafting/ICraftingSubmitResult;",
+            at = @At("HEAD"),
+            cancellable = true,
+            require = 0)
+    private void neoecoae$submitJobWithNotify(
+            ICraftingPlan job,
+            ICraftingRequester requestingMachine,
+            ICraftingCPU target,
+            boolean prioritizePower,
+            IActionSource src,
+            boolean notifyRequester,
+            CallbackInfoReturnable<ICraftingSubmitResult> cir) {
+        neoecoae$submitJobCommon(job, requestingMachine, target, src, cir);
+    }
+
+    private void neoecoae$submitJobCommon(
+            ICraftingPlan job,
+            ICraftingRequester requestingMachine,
+            ICraftingCPU target,
             IActionSource src,
             CallbackInfoReturnable<ICraftingSubmitResult> cir) {
         ICraftingSubmitResult result =
