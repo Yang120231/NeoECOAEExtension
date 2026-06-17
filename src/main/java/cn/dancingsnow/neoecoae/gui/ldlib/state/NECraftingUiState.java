@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.gui.ldlib.state;
 
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus;
 import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +28,13 @@ public record NECraftingUiState(
         int previewStatusArg1,
         int previewStatusArg2,
         long energyUsage,
+        long externalEnergyAvailable,
+        long externalEnergyRequired,
+        long externalEnergyRate,
+        ECOCraftingEnergyMode externalEnergyMode,
+        ECOCraftingEnergyStatus externalEnergyStatus,
+        boolean externalEnergyAvailableForUse,
+        String externalEnergySource,
         long coolantAmount,
         long coolantCapacity,
         int availableThreads,
@@ -62,6 +71,13 @@ public record NECraftingUiState(
                 0,
                 0,
                 0L,
+                0L,
+                0L,
+                0L,
+                ECOCraftingEnergyMode.EXTERNAL,
+                ECOCraftingEnergyStatus.UNAVAILABLE,
+                false,
+                "",
                 0L,
                 0L,
                 0,

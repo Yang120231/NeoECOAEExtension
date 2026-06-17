@@ -256,6 +256,13 @@ public final class NELDLibStateCodecs {
         buf.writeInt(state.previewStatusArg1());
         buf.writeInt(state.previewStatusArg2());
         buf.writeVarLong(state.energyUsage());
+        buf.writeVarLong(state.externalEnergyAvailable());
+        buf.writeVarLong(state.externalEnergyRequired());
+        buf.writeVarLong(state.externalEnergyRate());
+        buf.writeEnum(state.externalEnergyMode());
+        buf.writeEnum(state.externalEnergyStatus());
+        buf.writeBoolean(state.externalEnergyAvailableForUse());
+        buf.writeUtf(state.externalEnergySource(), 128);
         buf.writeVarLong(state.coolantAmount());
         buf.writeVarLong(state.coolantCapacity());
         buf.writeVarInt(state.availableThreads());
@@ -357,6 +364,13 @@ public final class NELDLibStateCodecs {
         int previewStatusArg1 = buf.readInt();
         int previewStatusArg2 = buf.readInt();
         long energyUsage = buf.readVarLong();
+        long externalEnergyAvailable = buf.readVarLong();
+        long externalEnergyRequired = buf.readVarLong();
+        long externalEnergyRate = buf.readVarLong();
+        var externalEnergyMode = buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode.class);
+        var externalEnergyStatus = buf.readEnum(cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus.class);
+        boolean externalEnergyAvailableForUse = buf.readBoolean();
+        String externalEnergySource = buf.readUtf(128);
         long coolantAmount = buf.readVarLong();
         long coolantCapacity = buf.readVarLong();
         int availableThreads = buf.readVarInt();
@@ -455,6 +469,13 @@ public final class NELDLibStateCodecs {
                 previewStatusArg1,
                 previewStatusArg2,
                 energyUsage,
+                externalEnergyAvailable,
+                externalEnergyRequired,
+                externalEnergyRate,
+                externalEnergyMode,
+                externalEnergyStatus,
+                externalEnergyAvailableForUse,
+                externalEnergySource,
                 coolantAmount,
                 coolantCapacity,
                 availableThreads,

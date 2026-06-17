@@ -12,8 +12,13 @@ import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
 import cn.dancingsnow.neoecoae.api.IECOTier;
+import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyAdapter;
+import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyAdapters;
+import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyRequest;
+import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergySnapshot;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOAggregatedCraftingBatch;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingCapacity;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode;
 import cn.dancingsnow.neoecoae.blocks.NEBlock;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingBatchUiState;
@@ -105,6 +110,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     private final List<ECOAggregatedCraftingBatch> craftingBatches = new ArrayList<>();
 
     private long uiRevision = 0L;
+    private transient ECOCraftingEnergyAdapter externalEnergyAdapter = ECOCraftingEnergyAdapters.NONE;
+
+    @Nullable private transient UUID externalEnergyOwner;
+
     private long lastCoolantConsumeDirtyTick = Long.MIN_VALUE;
     private long lastThreadCountValidationTick = Long.MIN_VALUE;
     private long performanceWindowStartTick = Long.MIN_VALUE;
@@ -483,6 +492,18 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         return (long) getRunningThreadCount() * getProgressPerTick() * getCraftingPowerMultiplier();
     }
 
+    public void setExternalEnergyAdapter(ECOCraftingEnergyAdapter adapter, @Nullable UUID owner) {
+        externalEnergyAdapter = adapter == null ? ECOCraftingEnergyAdapters.NONE : adapter;
+        externalEnergyOwner = owner;
+        markUiStateDirty();
+    }
+
+    public ECOCraftingEnergySnapshot getExternalEnergySnapshot() {
+        ECOCraftingEnergyRequest request = new ECOCraftingEnergyRequest(
+                ECOCraftingEnergyMode.EXTERNAL, getCurrentEnergyPerTick(), 0L, externalEnergyOwner);
+        return externalEnergyAdapter.snapshot(request);
+    }
+
     public double getEnergyMultiplier() {
         return getCraftingPowerMultiplier();
     }
@@ -637,6 +658,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         int maxRecipeSlots = Math.max(0, availThreads);
         int occupiedRecipeSlots = Math.min(maxRecipeSlots, Math.max(0, runningThreadCount));
         int batchParallel = Math.max(0, effParallel);
+        ECOCraftingEnergySnapshot externalEnergy = getExternalEnergySnapshot();
         List<NECraftingRecipeUiEntry> recipeEntries = new ArrayList<>();
         List<NECraftingBatchUiState> batchStates = new ArrayList<>(craftingBatches.size());
         for (ECOAggregatedCraftingBatch batch : craftingBatches) {
@@ -722,6 +744,13 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
                 buildPreview.previewStatusArg1,
                 buildPreview.previewStatusArg2,
                 getCurrentEnergyPerTick(),
+                externalEnergy.availableEnergy(),
+                externalEnergy.requiredEnergy(),
+                externalEnergy.maxRate(),
+                externalEnergy.mode(),
+                externalEnergy.status(),
+                externalEnergy.available(),
+                externalEnergy.source(),
                 coolant,
                 MAX_COOLANT,
                 availThreads,
