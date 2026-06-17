@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 public record ECOBatchCraftingRequest(
         IPatternDetails details,
         ECOFastPathKey key,
-        int batchSize,
+        long batchSize,
         List<GenericStack> inputsPerCraft,
         List<GenericStack> outputsPerCraft,
         List<GenericStack> remainingPerCraft,

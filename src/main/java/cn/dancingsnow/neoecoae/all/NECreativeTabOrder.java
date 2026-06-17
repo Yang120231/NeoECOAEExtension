@@ -5,8 +5,8 @@ import java.util.function.Supplier;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 
 public final class NECreativeTabOrder {
@@ -92,9 +92,6 @@ public final class NECreativeTabOrder {
         accept(output, NEItems.ECO_FLUID_CELL_256M);
 
         acceptChemicalCells(output);
-        acceptFeCells(output);
-        acceptManaCells(output);
-        acceptSourceCells(output);
     }
 
     private static void acceptComputationCells(CreativeModeTab.Output output) {
@@ -198,43 +195,10 @@ public final class NECreativeTabOrder {
     }
 
     private static void acceptChemicalCells(CreativeModeTab.Output output) {
-        if (!ModList.get().isLoaded("appmek")) {
-            return;
-        }
         acceptById(output, "eco_chemical_cell_housing");
         acceptById(output, "eco_chemical_storage_cell_16m");
         acceptById(output, "eco_chemical_storage_cell_64m");
         acceptById(output, "eco_chemical_storage_cell_256m");
-    }
-
-    private static void acceptFeCells(CreativeModeTab.Output output) {
-        if (!ModList.get().isLoaded("appflux")) {
-            return;
-        }
-        acceptById(output, "eco_fe_cell_housing");
-        acceptById(output, "eco_fe_storage_cell_16m");
-        acceptById(output, "eco_fe_storage_cell_64m");
-        acceptById(output, "eco_fe_storage_cell_256m");
-    }
-
-    private static void acceptManaCells(CreativeModeTab.Output output) {
-        if (!ModList.get().isLoaded("appbot")) {
-            return;
-        }
-        acceptById(output, "eco_mana_cell_housing");
-        acceptById(output, "eco_mana_storage_cell_16m");
-        acceptById(output, "eco_mana_storage_cell_64m");
-        acceptById(output, "eco_mana_storage_cell_256m");
-    }
-
-    private static void acceptSourceCells(CreativeModeTab.Output output) {
-        if (!ModList.get().isLoaded("arseng")) {
-            return;
-        }
-        acceptById(output, "eco_source_cell_housing");
-        acceptById(output, "eco_source_storage_cell_16m");
-        acceptById(output, "eco_source_storage_cell_64m");
-        acceptById(output, "eco_source_storage_cell_256m");
     }
 
     private static void accept(CreativeModeTab.Output output, Supplier<? extends ItemLike> supplier) {
@@ -244,7 +208,7 @@ public final class NECreativeTabOrder {
     private static void acceptById(CreativeModeTab.Output output, String path) {
         ResourceLocation id = NeoECOAE.id(path);
         Item item = ForgeRegistries.ITEMS.getValue(id);
-        if (item != null) {
+        if (item != null && item != Items.AIR) {
             output.accept(item);
         }
     }

@@ -3,6 +3,7 @@ package cn.dancingsnow.neoecoae.gui.ldlib.widget;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiTypeState;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibStyle;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -63,7 +64,22 @@ final class NEStorageMetricsModel {
                 state.totalBytes(),
                 state.usedTypes(),
                 state.totalTypes(),
-                accentColor);
+                accentColor,
+                displayOrBytes(state.usedBytesDisplay(), state.usedBytes()),
+                displayOrBytes(state.totalBytesDisplay(), state.totalBytes()),
+                displayOrTypeCount(state.usedTypesDisplay(), state.usedTypes()),
+                displayOrTypeCount(state.totalTypesDisplay(), state.totalTypes()));
+    }
+
+    private static String displayOrBytes(String display, long value) {
+        return display.isBlank() ? NELDLibText.storageBytes(value) : display;
+    }
+
+    private static String displayOrTypeCount(String display, long value) {
+        if (value == Long.MAX_VALUE) {
+            return NELDLibText.INFINITE;
+        }
+        return display.isBlank() ? NELDLibText.typeCount(value) : display;
     }
 
     private static NEStorageUiTypeState findTypeState(List<NEStorageUiTypeState> types, String needle) {
@@ -122,9 +138,40 @@ final class NEStorageMetricsModel {
 
     record StorageMetrics(Metric energy, List<Metric> types) {}
 
-    record Metric(String key, Component label, long used, long max, long usedTypes, long totalTypes, int accentColor) {
+    record Metric(
+            String key,
+            Component label,
+            long used,
+            long max,
+            long usedTypes,
+            long totalTypes,
+            int accentColor,
+            String usedText,
+            String maxText,
+            String usedTypesText,
+            String totalTypesText) {
+        Metric(String key, Component label, long used, long max, long usedTypes, long totalTypes, int accentColor) {
+            this(
+                    key,
+                    label,
+                    used,
+                    max,
+                    usedTypes,
+                    totalTypes,
+                    accentColor,
+                    NELDLibText.storageBytes(used),
+                    NELDLibText.storageBytes(max),
+                    NELDLibText.typeCount(usedTypes),
+                    NELDLibText.typeCount(totalTypes));
+        }
+
         double percent() {
-            return NELDLibMachineWidget.percent(used, max);
+            return infiniteCapacity() ? 1.0D : NELDLibMachineWidget.percent(used, max);
+        }
+
+        boolean infiniteCapacity() {
+            return max == Long.MAX_VALUE || totalTypes == Long.MAX_VALUE || NELDLibText.INFINITE.equals(maxText)
+                    || NELDLibText.INFINITE.equals(totalTypesText);
         }
     }
 }

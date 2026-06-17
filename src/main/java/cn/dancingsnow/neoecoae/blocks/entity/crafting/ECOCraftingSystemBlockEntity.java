@@ -1,27 +1,40 @@
 package cn.dancingsnow.neoecoae.blocks.entity.crafting;
 
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.security.IActionSource;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
 import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
 import appeng.api.orientation.RelativeSide;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import appeng.hooks.ticking.TickHandler;
+import appeng.me.service.CraftingService;
 import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
+import cn.dancingsnow.neoecoae.api.ECOTier;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyAdapter;
 import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyAdapters;
 import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyRequest;
+import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyResult;
 import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergySnapshot;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOAggregatedCraftingBatch;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOAggregatedCraftingTiming;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOBatchCraftingRequest;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOBatchEnergyProfile;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingCapacity;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode;
+import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus;
 import cn.dancingsnow.neoecoae.blocks.NEBlock;
+import cn.dancingsnow.neoecoae.config.NEConfig;
+import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator;
+import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator.CoverInfo;
+import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessEnergyAdapter;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
-import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingBatchUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingUiState;
@@ -29,10 +42,11 @@ import cn.dancingsnow.neoecoae.multiblock.BuildPreviewState;
 import cn.dancingsnow.neoecoae.multiblock.INEMultiblockBuildHost;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
 import cn.dancingsnow.neoecoae.recipe.CoolingRecipe;
-import com.lowdragmc.lowdraglib.gui.modular.IUIHolder;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,26 +54,33 @@ import java.util.UUID;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<ECOCraftingSystemBlockEntity>
-        implements IGridTickable, INEMultiblockBuildHost, IUIHolder.BlockEntityUI {
+        implements IGridTickable, INEMultiblockBuildHost, NELDLibBlockEntityUI {
     private static final Logger LOGGER = LoggerFactory.getLogger(NeoECOAE.MOD_ID);
     private static final boolean DEBUG_THREAD_COUNT = Boolean.getBoolean("neoecoae.debugEcoCraftingThreadCount");
     private static final Comparator<NECraftingModuleCell> MODULE_CELL_ORDER = Comparator.comparingInt(
@@ -74,6 +95,13 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
      */
     public static final int MAX_COOLANT = 1_000_000;
 
+    private static final int REQUIRED_INSTANT_AE_COMPONENTS = 64;
+    private static final ResourceLocation INSTANT_AE_COMPONENT_ID =
+            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component");
+    private static final String NBT_SPECIAL_MODE_ITEM = "specialModeItem";
+    private static final String NBT_WIRELESS_ENERGY_COVER = "wirelessEnergyCover";
+    private static final String NBT_EXTERNAL_ENERGY_OWNER = "externalEnergyOwner";
+    private static final String NBT_INSTANT_AE_COMPONENT = "instantAeComponent";
     private static final int COOLANT_PER_CRAFT = 5;
     private static final long PERFORMANCE_SAMPLE_WINDOW_TICKS = 20L * 3L;
 
@@ -108,6 +136,31 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     /** Shared preview/build state, delegates NBT sync to {@link BuildPreviewState}. */
     private final BuildPreviewState buildPreview = new BuildPreviewState();
     private final List<ECOAggregatedCraftingBatch> craftingBatches = new ArrayList<>();
+    private final ItemStackHandler wirelessEnergyCover = new ItemStackHandler(1) {
+        @Override
+        protected void onContentsChanged(int slot) {
+            onWirelessEnergyCoverContentsChanged();
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return slot == 0 && isSpecialModeItem(stack);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            ItemStack stack = getStackInSlot(slot);
+            if (!stack.isEmpty()) {
+                return canUseInstantAeComponents() && isInstantAeComponent(stack) ? REQUIRED_INSTANT_AE_COMPONENTS : 1;
+            }
+            return canUseInstantAeComponents() ? REQUIRED_INSTANT_AE_COMPONENTS : 1;
+        }
+
+        @Override
+        protected int getStackLimit(int slot, ItemStack stack) {
+            return canUseInstantAeComponents() && isInstantAeComponent(stack) ? REQUIRED_INSTANT_AE_COMPONENTS : 1;
+        }
+    };
 
     private long uiRevision = 0L;
     private transient ECOCraftingEnergyAdapter externalEnergyAdapter = ECOCraftingEnergyAdapters.NONE;
@@ -137,6 +190,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         tag.putInt("coolantMaxOverclock", coolantMaxOverclock);
         tag.putInt("selectedBuildLength", getSelectedBuildLength());
         tag.put("craftingBatches", writeCraftingBatches());
+        tag.put(NBT_SPECIAL_MODE_ITEM, wirelessEnergyCover.serializeNBT());
+        if (externalEnergyOwner != null) {
+            tag.putUUID(NBT_EXTERNAL_ENERGY_OWNER, externalEnergyOwner);
+        }
     }
 
     @Override
@@ -155,6 +212,9 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         if (tag.contains("craftingBatches", Tag.TAG_LIST)) {
             readCraftingBatches(tag.getList("craftingBatches", Tag.TAG_COMPOUND));
         }
+        externalEnergyOwner = tag.hasUUID(NBT_EXTERNAL_ENERGY_OWNER) ? tag.getUUID(NBT_EXTERNAL_ENERGY_OWNER) : null;
+        readSpecialModeInventory(tag);
+        applyWirelessEnergyAdapter();
     }
 
     @Override
@@ -198,25 +258,26 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     private TickRateModulation doTickingRequest(IGridNode node, int ticksSinceLastCall) {
+        boolean aggregatedWork = tickAggregatedCrafting(ticksSinceLastCall);
         if (!activeCooling) {
-            return TickRateModulation.IDLE;
+            return aggregatedWork ? TickRateModulation.URGENT : TickRateModulation.IDLE;
         }
         CoolingRecipe recipe = getCoolingRecipe();
         if (recipe == null) {
-            return TickRateModulation.IDLE;
+            return aggregatedWork ? TickRateModulation.URGENT : TickRateModulation.IDLE;
         }
         if (!canRefillWith(recipe.maxOverclock())) {
-            return TickRateModulation.IDLE;
+            return aggregatedWork ? TickRateModulation.URGENT : TickRateModulation.IDLE;
         }
 
         int targetCoolant = getTargetCoolantBuffer();
         if (targetCoolant <= coolant) {
-            return TickRateModulation.IDLE;
+            return aggregatedWork ? TickRateModulation.URGENT : TickRateModulation.IDLE;
         }
 
         int refillAmount = refillCoolant(recipe, targetCoolant - coolant);
         if (refillAmount <= 0) {
-            return TickRateModulation.IDLE;
+            return aggregatedWork ? TickRateModulation.URGENT : TickRateModulation.IDLE;
         }
         return coolant < targetCoolant ? TickRateModulation.URGENT : TickRateModulation.IDLE;
     }
@@ -267,6 +328,70 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     /** Increments the UI revision so the next menu tick will push a fresh state. */
     private void markUiStateDirty() {
         uiRevision++;
+    }
+
+    public IItemHandlerModifiable getWirelessEnergyCoverInventory() {
+        return wirelessEnergyCover;
+    }
+
+    public void onWirelessEnergyCoverSlotChanged(Player player) {
+        if (level != null && level.isClientSide) {
+            return;
+        }
+        ItemStack stack = wirelessEnergyCover.getStackInSlot(0);
+        if (GTMWirelessCoverSlotValidator.isWirelessEnergyCover(stack) && player != null) {
+            externalEnergyOwner = player.getUUID();
+        } else if (!GTMWirelessCoverSlotValidator.isWirelessEnergyCover(stack)) {
+            externalEnergyOwner = null;
+        }
+        applyWirelessEnergyAdapter();
+        setChanged();
+        markForUpdate();
+    }
+
+    private void onWirelessEnergyCoverContentsChanged() {
+        if (level != null && level.isClientSide) {
+            return;
+        }
+        if (!GTMWirelessCoverSlotValidator.isWirelessEnergyCover(wirelessEnergyCover.getStackInSlot(0))) {
+            externalEnergyOwner = null;
+        }
+        applyWirelessEnergyAdapter();
+        setChanged();
+        markForUpdate();
+    }
+
+    private void readSpecialModeInventory(CompoundTag tag) {
+        UUID savedOwner = externalEnergyOwner;
+        wirelessEnergyCover.setStackInSlot(0, ItemStack.EMPTY);
+        if (tag.contains(NBT_SPECIAL_MODE_ITEM, Tag.TAG_COMPOUND)) {
+            wirelessEnergyCover.deserializeNBT(tag.getCompound(NBT_SPECIAL_MODE_ITEM));
+        } else if (tag.contains(NBT_WIRELESS_ENERGY_COVER, Tag.TAG_COMPOUND)) {
+            wirelessEnergyCover.deserializeNBT(tag.getCompound(NBT_WIRELESS_ENERGY_COVER));
+        } else if (tag.contains(NBT_INSTANT_AE_COMPONENT, Tag.TAG_COMPOUND)) {
+            ItemStackHandler legacyInstant = new ItemStackHandler(1);
+            legacyInstant.deserializeNBT(tag.getCompound(NBT_INSTANT_AE_COMPONENT));
+            ItemStack legacyStack = legacyInstant.getStackInSlot(0);
+            if (isInstantAeComponent(legacyStack)) {
+                wirelessEnergyCover.setStackInSlot(0, legacyStack.copy());
+            }
+        }
+        ItemStack stack = wirelessEnergyCover.getStackInSlot(0);
+        if (!stack.isEmpty() && !isSpecialModeItem(stack)) {
+            wirelessEnergyCover.setStackInSlot(0, ItemStack.EMPTY);
+        }
+        externalEnergyOwner = GTMWirelessCoverSlotValidator.isWirelessEnergyCover(wirelessEnergyCover.getStackInSlot(0))
+                ? savedOwner
+                : null;
+    }
+
+    private void applyWirelessEnergyAdapter() {
+        if (externalEnergyOwner != null
+                && GTMWirelessCoverSlotValidator.isWirelessEnergyCover(wirelessEnergyCover.getStackInSlot(0))) {
+            setExternalEnergyAdapter(GTMWirelessEnergyAdapter.INSTANCE, externalEnergyOwner);
+        } else {
+            setExternalEnergyAdapter(ECOCraftingEnergyAdapters.NONE, null);
+        }
     }
 
     private void ensureCraftingStatsCurrent() {
@@ -451,7 +576,254 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
 
     public int getCurrentBatchSlots() {
         ensureCraftingStatsCurrent();
-        return ECOCraftingCapacity.availableCraftSlots(getMaxInFlightCrafts(), runningThreadCount);
+        if (NEConfig.isGtlStyleCraftingAggregationEnabled()) {
+            return getAvailableAggregatedSlots();
+        }
+        return ECOCraftingCapacity.availableCraftSlots(getMaxInFlightCrafts(), runningThreadCount + activeBatchCount());
+    }
+
+    public boolean canStartAggregatedBatch() {
+        return NEConfig.isGtlStyleCraftingAggregationEnabled()
+                && isFormed()
+                && threadCount > 0
+                && getAvailableAggregatedSlots() > 0;
+    }
+
+    public boolean canQueueAggregatedCrafting(
+            List<appeng.api.stacks.GenericStack> outputsPerCraft,
+            List<appeng.api.stacks.GenericStack> remainingPerCraft) {
+        return canStartAggregatedBatch()
+                && threadCount > 0
+                && !outputsPerCraft.isEmpty()
+                && areItemStacks(outputsPerCraft)
+                && areItemStacks(remainingPerCraft);
+    }
+
+    public boolean queueAggregatedCrafting(ECOBatchCraftingRequest request) {
+        if (!canQueueAggregatedCrafting(request.outputsPerCraft(), request.remainingPerCraft())) {
+            return false;
+        }
+        ECOAggregatedCraftingBatch batch =
+                ECOAggregatedCraftingBatch.create(request, TickHandler.instance().getCurrentTick());
+        if (batch == null) {
+            return false;
+        }
+        batch.assignEnergyProfile(createCurrentEnergyProfile(batch), false);
+        craftingBatches.add(batch);
+        setChanged();
+        markUiStateDirty();
+        getMainNode().ifPresent((grid, gridNode) -> grid.getTickManager().wakeDevice(gridNode));
+        return true;
+    }
+
+    private boolean tickAggregatedCrafting(int ticksSinceLastCall) {
+        if (craftingBatches.isEmpty()) {
+            return false;
+        }
+        boolean changed = false;
+        int elapsedTicks = Math.max(1, ticksSinceLastCall);
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (batch.isProcessing() && consumeBatchEnergy(batch, elapsedTicks)) {
+                changed |= batch.tick(elapsedTicks);
+            }
+        }
+        changed |= flushCompletedAggregatedBatches();
+        if (changed) {
+            setChanged();
+            markUiStateDirty();
+        }
+        return changed || hasProcessingAggregatedBatch();
+    }
+
+    private boolean flushCompletedAggregatedBatches() {
+        IGridNode node = getGridNode();
+        if (node == null || node.getGrid() == null) {
+            return false;
+        }
+        var grid = node.getGrid();
+        CraftingService craftingService = (CraftingService) grid.getCraftingService();
+        var storage = grid.getStorageService().getInventory();
+        IActionSource source = IActionSource.ofMachine(this);
+        boolean changed = false;
+        Iterator<ECOAggregatedCraftingBatch> iterator = craftingBatches.iterator();
+        while (iterator.hasNext()) {
+            ECOAggregatedCraftingBatch batch = iterator.next();
+            if (batch.completed() && batch.flushOutputs(craftingService, storage, source)) {
+                iterator.remove();
+                changed = true;
+            }
+        }
+        return changed;
+    }
+
+    private boolean consumeBatchEnergy(ECOAggregatedCraftingBatch batch, int elapsedTicks) {
+        long required = ECOAggregatedCraftingTiming.saturatedMultiply(batch.energyPerTick(), elapsedTicks);
+        if (required <= 0L) {
+            return true;
+        }
+        if (batch.energyMode() == ECOCraftingEnergyMode.EXTERNAL) {
+            ECOCraftingEnergyRequest request =
+                    new ECOCraftingEnergyRequest(ECOCraftingEnergyMode.EXTERNAL, required, batch.energyPerTick(), externalEnergyOwner);
+            ECOCraftingEnergyResult result = externalEnergyAdapter.drain(request);
+            batch.setEnergyStatus(result.drained() ? ECOCraftingEnergyStatus.READY : result.status());
+            return result.drained();
+        }
+        batch.setEnergyStatus(ECOCraftingEnergyStatus.READY);
+        return true;
+    }
+
+    private ECOBatchEnergyProfile createCurrentEnergyProfile(ECOAggregatedCraftingBatch batch) {
+        CoverInfo cover = getWirelessCoverInfo();
+        if (cover != null && externalEnergyOwner != null) {
+            long energyPerTick = ECOAggregatedCraftingTiming.calculateGtEnergyPerTick(
+                    batch.totalOutputAmount(), cover.voltage(), getEffectiveOverclockTimes());
+            long ticks = limitAggregatedTicks(ECOAggregatedCraftingTiming.calculateGtTicks(
+                    batch.totalOutputAmount(), cover.voltage(), getEffectiveOverclockTimes()));
+            ECOCraftingEnergySnapshot external = externalEnergyAdapter.snapshot(new ECOCraftingEnergyRequest(
+                    ECOCraftingEnergyMode.EXTERNAL, energyPerTick, energyPerTick, externalEnergyOwner));
+            return new ECOBatchEnergyProfile(
+                    ECOCraftingEnergyMode.EXTERNAL,
+                    external.status(),
+                    energyPerTick,
+                    ticks,
+                    ECOAggregatedCraftingTiming.saturatedMultiply(energyPerTick, ticks),
+                    external.availableEnergy(),
+                    external.maxRate(),
+                    external.source());
+        }
+        long energyPerTick = getAggregatedEnergyPerTick(batch);
+        long ticks = isInstantAeCraftingUnlocked() ? 1L : calculateAggregatedTicks(batch);
+        if (isInstantAeCraftingUnlocked()) {
+            energyPerTick = ECOAggregatedCraftingTiming.saturatedMultiply(energyPerTick, batch.craftCount());
+        }
+        return new ECOBatchEnergyProfile(
+                ECOCraftingEnergyMode.AE,
+                ECOCraftingEnergyStatus.READY,
+                energyPerTick,
+                ticks);
+    }
+
+    private long getAggregatedEnergyPerTick(ECOAggregatedCraftingBatch batch) {
+        return ECOAggregatedCraftingTiming.calculateAeEnergyPerTick(
+                Math.max(1, getEffectiveCraftingParallel()), getProgressPerTick(), getCraftingPowerMultiplier());
+    }
+
+    private long calculateAggregatedTicks(ECOAggregatedCraftingBatch batch) {
+        long ticks = ECOAggregatedCraftingTiming.calculateAeTicks(
+                batch.craftCount(), Math.max(1, getEffectiveCraftingParallel()), getTheoreticalCraftTicks());
+        return limitAggregatedTicks(ticks);
+    }
+
+    private static long limitAggregatedTicks(long ticks) {
+        return Math.min(Math.max(ECOAggregatedCraftingTiming.MINIMUM_DURATION_TICKS, ticks),
+                NEConfig.getBatchProcessingMaxDurationTicks());
+    }
+
+    private int getEffectiveCraftingParallel() {
+        ensureCraftingStatsCurrent();
+        return Math.max(1, Math.min(threadCount, getAvailableThreads()));
+    }
+
+    private int getAvailableAggregatedSlots() {
+        return Math.max(0, getMaxConcurrentRecipes() - activeBatchCount());
+    }
+
+    private int activeBatchCount() {
+        int count = 0;
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (!batch.canceled()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private boolean hasProcessingAggregatedBatch() {
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (batch.isProcessing()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public int getMaxConcurrentRecipes() {
+        ensureCraftingStatsCurrent();
+        return Math.max(0, workerCount);
+    }
+
+    public int getOccupiedAggregatedSlots() {
+        return activeBatchCount();
+    }
+
+    @Nullable private CoverInfo getWirelessCoverInfo() {
+        return GTMWirelessCoverSlotValidator.getCoverInfo(wirelessEnergyCover.getStackInSlot(0));
+    }
+
+    public int getWirelessCoverTier() {
+        CoverInfo info = getWirelessCoverInfo();
+        return info == null ? 0 : info.tier();
+    }
+
+    public long getWirelessCoverVoltage() {
+        CoverInfo info = getWirelessCoverInfo();
+        return info == null ? 0L : info.voltage();
+    }
+
+    public ItemStack getWirelessCoverStack() {
+        ItemStack stack = wirelessEnergyCover.getStackInSlot(0);
+        return GTMWirelessCoverSlotValidator.isWirelessEnergyCover(stack) ? stack.copy() : ItemStack.EMPTY;
+    }
+
+    public int getInstantAeComponentCount() {
+        if (!canUseInstantAeComponents()) {
+            return 0;
+        }
+        ItemStack stack = wirelessEnergyCover.getStackInSlot(0);
+        return isInstantAeComponent(stack) ? stack.getCount() : 0;
+    }
+
+    public int getRequiredInstantAeComponentCount() {
+        return REQUIRED_INSTANT_AE_COMPONENTS;
+    }
+
+    public boolean isInstantAeComponentAvailable() {
+        return BuiltInRegistries.ITEM.get(INSTANT_AE_COMPONENT_ID) != Items.AIR;
+    }
+
+    public boolean canUseInstantAeComponents() {
+        return tier.getTier() == ECOTier.L9.getTier() && isInstantAeComponentAvailable();
+    }
+
+    public boolean canUseWirelessEnergyCovers() {
+        return GTMWirelessCoverSlotValidator.isAvailable();
+    }
+
+    public boolean canUseSpecialModeSlot() {
+        return canUseInstantAeComponents() || canUseWirelessEnergyCovers();
+    }
+
+    public boolean isInstantAeCraftingUnlocked() {
+        return canUseInstantAeComponents() && getInstantAeComponentCount() >= REQUIRED_INSTANT_AE_COMPONENTS;
+    }
+
+    private boolean isSpecialModeItem(ItemStack stack) {
+        return (canUseInstantAeComponents() && isInstantAeComponent(stack))
+                || GTMWirelessCoverSlotValidator.isWirelessEnergyCover(stack);
+    }
+
+    private static boolean isInstantAeComponent(ItemStack stack) {
+        Item component = BuiltInRegistries.ITEM.get(INSTANT_AE_COMPONENT_ID);
+        return component != Items.AIR && stack != null && !stack.isEmpty() && stack.is(component);
+    }
+
+    private static boolean areItemStacks(List<appeng.api.stacks.GenericStack> stacks) {
+        for (appeng.api.stacks.GenericStack stack : stacks) {
+            if (!(stack.what() instanceof appeng.api.stacks.AEItemKey)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -489,7 +861,44 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     public long getCurrentEnergyPerTick() {
-        return (long) getRunningThreadCount() * getProgressPerTick() * getCraftingPowerMultiplier();
+        return ECOAggregatedCraftingTiming.saturatedAdd(getCurrentAeEnergyPerTick(), getCurrentGtEnergyPerTick());
+    }
+
+    public long getCurrentAeEnergyPerTick() {
+        long total = (long) getRunningThreadCount() * getProgressPerTick() * getCraftingPowerMultiplier();
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (batch.isProcessing() && batch.energyMode() == ECOCraftingEnergyMode.AE) {
+                total = ECOAggregatedCraftingTiming.saturatedAdd(total, batch.energyPerTick());
+            }
+        }
+        return total;
+    }
+
+    public long getCurrentGtEnergyPerTick() {
+        long total = 0L;
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (batch.isProcessing() && batch.energyMode() == ECOCraftingEnergyMode.EXTERNAL) {
+                total = ECOAggregatedCraftingTiming.saturatedAdd(total, batch.energyPerTick());
+            }
+        }
+        return total;
+    }
+
+    public ECOCraftingEnergyStatus getCraftingEnergyStatus() {
+        ECOCraftingEnergyStatus status = ECOCraftingEnergyStatus.READY;
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (!batch.isProcessing()) {
+                continue;
+            }
+            if (batch.energyStatus() == ECOCraftingEnergyStatus.READY) {
+                continue;
+            }
+            status = batch.energyStatus();
+            if (status == ECOCraftingEnergyStatus.INSUFFICIENT || status == ECOCraftingEnergyStatus.UNAVAILABLE) {
+                return status;
+            }
+        }
+        return status;
     }
 
     public void setExternalEnergyAdapter(ECOCraftingEnergyAdapter adapter, @Nullable UUID owner) {
@@ -655,26 +1064,15 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         int totalParallelism = threadCount;
         int availThreads = getAvailableThreads();
         int effParallel = Math.min(totalParallelism, availThreads);
-        int maxRecipeSlots = Math.max(0, availThreads);
-        int occupiedRecipeSlots = Math.min(maxRecipeSlots, Math.max(0, runningThreadCount));
+        int maxRecipeSlots = NEConfig.isGtlStyleCraftingAggregationEnabled()
+                ? getMaxConcurrentRecipes()
+                : Math.max(0, workerCount);
+        int occupiedRecipeSlots = NEConfig.isGtlStyleCraftingAggregationEnabled()
+                ? Math.min(maxRecipeSlots, getOccupiedAggregatedSlots())
+                : Math.min(maxRecipeSlots, getActiveWorkerCount());
         int batchParallel = Math.max(0, effParallel);
-        ECOCraftingEnergySnapshot externalEnergy = getExternalEnergySnapshot();
         List<NECraftingRecipeUiEntry> recipeEntries = new ArrayList<>();
-        List<NECraftingBatchUiState> batchStates = new ArrayList<>(craftingBatches.size());
-        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
-            batchStates.add(new NECraftingBatchUiState(
-                    batch.craftingJobId() == null ? "" : batch.craftingJobId().toString(),
-                    batch.primaryOutputStack(),
-                    batch.craftCount(),
-                    batch.totalOutputAmount(),
-                    batch.totalTicks(),
-                    batch.remainingTicks(),
-                    batch.energyPerTick(),
-                    batch.energyMode(),
-                    batch.energyStatus(),
-                    batch.completed(),
-                    batch.canceled()));
-        }
+        appendAggregatedRecipeEntries(recipeEntries, craftingBatches);
 
         // Collect active craft outputs from each worker
         List<ItemStack> craftOutputs = new ArrayList<>();
@@ -744,13 +1142,15 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
                 buildPreview.previewStatusArg1,
                 buildPreview.previewStatusArg2,
                 getCurrentEnergyPerTick(),
-                externalEnergy.availableEnergy(),
-                externalEnergy.requiredEnergy(),
-                externalEnergy.maxRate(),
-                externalEnergy.mode(),
-                externalEnergy.status(),
-                externalEnergy.available(),
-                externalEnergy.source(),
+                getCurrentAeEnergyPerTick(),
+                getCurrentGtEnergyPerTick(),
+                getCraftingEnergyStatus(),
+                getInstantAeComponentCount(),
+                getRequiredInstantAeComponentCount(),
+                isInstantAeCraftingUnlocked(),
+                getWirelessCoverStack(),
+                getWirelessCoverTier(),
+                getWirelessCoverVoltage(),
                 coolant,
                 MAX_COOLANT,
                 availThreads,
@@ -760,7 +1160,6 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
                 batchParallel,
                 performanceAverageNanos,
                 recipeEntries,
-                batchStates,
                 craftOutputs,
                 coreTiers,
                 moduleCells);
@@ -784,6 +1183,41 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         for (WorkerTaskAggregate aggregate : aggregates.values()) {
             entries.add(aggregate.toEntry(worker.getBlockPos(), aggregateIndex++));
         }
+    }
+
+    private static void appendAggregatedRecipeEntries(
+            List<NECraftingRecipeUiEntry> entries, List<ECOAggregatedCraftingBatch> batches) {
+        for (ECOAggregatedCraftingBatch batch : batches) {
+            GenericStack output = batch.primaryOutput();
+            if (batch.canceled() || output == null || !(output.what() instanceof AEItemKey itemKey)) {
+                continue;
+            }
+            NECraftingRecipeUiEntry.Status status = batch.completed()
+                    ? NECraftingRecipeUiEntry.Status.WAITING_OUTPUT
+                    : NECraftingRecipeUiEntry.Status.RUNNING;
+            entries.add(new NECraftingRecipeUiEntry(
+                    "aggregated:" + (batch.craftingJobId() == null ? "local" : batch.craftingJobId()) + ":"
+                            + Integer.toUnsignedString(System.identityHashCode(batch)),
+                    itemKey.toStack(1),
+                    output.amount(),
+                    batch.craftCount(),
+                    batch.totalTicks(),
+                    batch.remainingTicks(),
+                    status));
+        }
+    }
+
+    private int getActiveWorkerCount() {
+        if (cluster == null) {
+            return 0;
+        }
+        int activeWorkers = 0;
+        for (ECOCraftingWorkerBlockEntity worker : cluster.getWorkers()) {
+            if (worker.getRunningThreads() > 0) {
+                activeWorkers++;
+            }
+        }
+        return activeWorkers;
     }
 
     private int moduleColumn(BlockPos pos) {
@@ -925,6 +1359,15 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     @Override
     public ModularUI createUI(net.minecraft.world.entity.player.Player player) {
         return NELDLibUis.createCraftingController(this, player);
+    }
+
+    @Override
+    public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
+        super.addAdditionalDrops(level, pos, drops);
+        ItemStack cover = wirelessEnergyCover.getStackInSlot(0);
+        if (!cover.isEmpty()) {
+            drops.add(cover.copy());
+        }
     }
 
     private long getMaxEnergyUsage() {

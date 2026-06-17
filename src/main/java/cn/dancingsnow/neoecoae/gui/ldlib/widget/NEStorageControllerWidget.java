@@ -8,6 +8,8 @@ import appeng.menu.locator.MenuLocators;
 import cn.dancingsnow.neoecoae.blocks.entity.storage.ECOStorageSystemBlockEntity;
 import cn.dancingsnow.neoecoae.client.gui.ldlib.NELDLibClientStyle;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiState;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NEForgeItemTransfer;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibAe2StyleRenderer;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibStateCodecs;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibStyle;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
@@ -15,6 +17,8 @@ import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibValueText;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NEPlayerInventoryWidgets;
 import cn.dancingsnow.neoecoae.gui.ldlib.widget.NEStorageMetricsModel.Metric;
 import cn.dancingsnow.neoecoae.gui.ldlib.widget.NEStorageMetricsModel.StorageMetrics;
+import com.lowdragmc.lowdraglib.gui.texture.IGuiTexture;
+import com.lowdragmc.lowdraglib.gui.widget.SlotWidget;
 import com.lowdragmc.lowdraglib.gui.widget.Widget;
 import java.util.HashMap;
 import java.util.List;
@@ -42,11 +46,14 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     private static final int TEXT_START_Y = LEFT_PANEL_Y + 8;
     private static final int TEXT_LINE_STEP = 13;
     private static final int TEXT_MAX_W = LEFT_PANEL_W - 16;
+    private static final int INFINITE_INFO_RESERVED_H = 32;
     private static final int PRIORITY_BUTTON_X = UI_WIDTH - 22;
     private static final int PRIORITY_BUTTON_Y = 0;
     private static final int PRIORITY_BUTTON_W = 22;
     private static final int PRIORITY_BUTTON_H = 22;
     static final int SLOT_SIZE = 18;
+    private static final int INFINITE_SLOT_X = LEFT_PANEL_X + LEFT_PANEL_W - SLOT_SIZE - 8;
+    private static final int INFINITE_SLOT_Y = LEFT_PANEL_Y + LEFT_PANEL_H - SLOT_SIZE - 8;
     private static final int HEADER_STATUS_RIGHT = PRIORITY_BUTTON_X - 6;
     static final int PLAYER_INV_X = LEFT_PANEL_X;
     private static final int PLAYER_INV_LABEL_Y = 159;
@@ -63,6 +70,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     private final Inventory playerInventory;
     private final NEStorageMatrixPanel matrixPanel;
     private final NEStorageMetricColumnPanel metricColumnPanel;
+    private final boolean showInfiniteStorage;
 
     private double animatedEnergyPct;
     private final Map<String, Double> animatedTypePct = new HashMap<>();
@@ -87,6 +95,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         this.storage = storage;
         this.player = player;
         this.playerInventory = player.getInventory();
+        this.showInfiniteStorage = storage.canUseInfiniteStorageComponents();
         this.matrixPanel = new NEStorageMatrixPanel(
                 this::font,
                 this::absX,
@@ -131,6 +140,16 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
                             }
                         })
                 .useAeTabButton());
+        if (showInfiniteStorage) {
+            addWidget(new SlotWidget(
+                            new NEForgeItemTransfer(storage.getInfiniteStorageComponentInventory(), null),
+                            0,
+                            INFINITE_SLOT_X,
+                            INFINITE_SLOT_Y,
+                            true,
+                            true)
+                    .setBackgroundTexture(IGuiTexture.EMPTY));
+        }
         NEPlayerInventoryWidgets.addPlayerInventorySlots(
                 this, playerInventory, PLAYER_INV_X, PLAYER_INV_Y, PLAYER_HOTBAR_Y);
     }
@@ -152,6 +171,9 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         int oy = getPositionY();
         NELDLibClientStyle.drawDarkInsetRect(
                 graphics, ox + LEFT_PANEL_X, oy + LEFT_PANEL_Y, LEFT_PANEL_W, LEFT_PANEL_H);
+        if (showInfiniteStorage) {
+            NELDLibAe2StyleRenderer.drawAeSlot(graphics, absX(INFINITE_SLOT_X), absY(INFINITE_SLOT_Y));
+        }
 
         List<Metric> columns = NEStorageMetricsModel.columnMetrics(metrics);
         double[] values = new double[columns.size()];
@@ -173,6 +195,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         StorageMetrics metrics = NEStorageMetricsModel.from(currentState());
         drawLocalString(graphics, title, NELDLibUiTitleX(), NELDLibUiTitleY(), TEXT_PRIMARY);
         drawStorageTextLines(graphics, metrics);
+        drawInfiniteStorageStatus(graphics, currentState());
         drawLeftScrollbar(graphics, metrics);
         drawFormedStatus(graphics, currentState().formed());
         drawLocalString(
@@ -190,6 +213,9 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
             return;
         }
         if (matrixPanel.renderTooltip(graphics, currentState(), mouseX, mouseY)) {
+            return;
+        }
+        if (renderInfiniteStorageTooltip(graphics, currentState(), mouseX, mouseY)) {
             return;
         }
         metricColumnPanel.renderTooltip(
@@ -295,10 +321,11 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
                 absX(LEFT_PANEL_X + 4),
                 absY(LEFT_PANEL_Y + 4),
                 absX(LEFT_PANEL_X + LEFT_PANEL_W - 4),
-                absY(LEFT_PANEL_Y + LEFT_PANEL_H - 4));
+                absY(LEFT_PANEL_Y + leftPanelTextViewportHeight() + 4));
 
+        int lineStep = TEXT_LINE_STEP;
         drawPlainLine(g, Component.translatable("gui.neoecoae.storage.energy"), x, y, NELDLibStyle.DARK_TEXT_PRIMARY);
-        y += TEXT_LINE_STEP;
+        y += lineStep;
         NELDLibValueText.drawUsedTotal(
                 g,
                 font(),
@@ -310,10 +337,10 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
                 "AE",
                 x,
                 y);
-        y += TEXT_LINE_STEP;
+        y += lineStep;
 
         for (Metric metric : metrics.types()) {
-            y = drawStorageTypeBlock(g, metric, x, y);
+            y = drawStorageTypeBlock(g, metric, x, y, lineStep);
         }
         g.disableScissor();
     }
@@ -326,7 +353,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         int typeCount = metrics.types().size();
         int lineCount = 2 + typeCount * 3;
         int contentHeight = (lineCount - 1) * TEXT_LINE_STEP + font().lineHeight;
-        int viewportHeight = LEFT_PANEL_H - 16;
+        int viewportHeight = leftPanelTextViewportHeight() - 8;
         return Math.max(0, contentHeight - viewportHeight);
     }
 
@@ -339,7 +366,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         leftScrollPixels = Mth.clamp(leftScrollPixels, 0.0D, maxScroll);
         int trackX = absX(LEFT_PANEL_X + LEFT_PANEL_W - 5);
         int trackY = absY(LEFT_PANEL_Y + 5);
-        int trackH = LEFT_PANEL_H - 10;
+        int trackH = leftPanelTextViewportHeight() - 10;
         int contentH = trackH + (int) Math.ceil(maxScroll);
         int thumbH = Math.max(12, trackH * trackH / contentH);
         int thumbY = trackY + (int) Math.round((trackH - thumbH) * leftScrollPixels / maxScroll);
@@ -347,34 +374,88 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         g.fill(trackX, thumbY, trackX + 2, thumbY + thumbH, 0xFF8B83A0);
     }
 
-    private int drawStorageTypeBlock(GuiGraphics g, Metric metric, int x, int y) {
+    private void drawInfiniteStorageStatus(GuiGraphics graphics, NEStorageUiState state) {
+        if (!showInfiniteStorage) {
+            return;
+        }
+        Component status = state.infiniteStorageUnlocked()
+                ? Component.translatable("gui.neoecoae.storage.infinite_ready")
+                : Component.translatable(
+                        "gui.neoecoae.storage.infinite_waiting_component",
+                        state.infiniteComponentCount(),
+                        state.requiredInfiniteComponentCount());
+        Component fitted = cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibTextRender.truncateWithEllipsis(
+                font(), status, INFINITE_SLOT_X - LEFT_PANEL_X - 14);
+        drawPlainLine(
+                graphics,
+                fitted,
+                absX(LEFT_PANEL_X + 8),
+                absY(LEFT_PANEL_Y + LEFT_PANEL_H - 18),
+                state.infiniteStorageUnlocked() ? NELDLibStyle.DARK_TEXT_SUCCESS : NELDLibStyle.DARK_TEXT_MUTED);
+    }
+
+    private int leftPanelTextViewportHeight() {
+        return LEFT_PANEL_H - (showInfiniteStorage ? INFINITE_INFO_RESERVED_H : 0);
+    }
+
+    private boolean useCompactLeftText() {
+        return showInfiniteStorage;
+    }
+
+    private int leftTextLineStep() {
+        return TEXT_LINE_STEP;
+    }
+
+    private boolean renderInfiniteStorageTooltip(
+            GuiGraphics graphics, NEStorageUiState state, int mouseX, int mouseY) {
+        if (!showInfiniteStorage
+                || !isMouseIn(INFINITE_SLOT_X, INFINITE_SLOT_Y, SLOT_SIZE, SLOT_SIZE, mouseX, mouseY)) {
+            return false;
+        }
+        graphics.renderComponentTooltip(
+                font(),
+                List.of(
+                        Component.translatable("gui.neoecoae.storage.infinite_slot.tooltip"),
+                        Component.translatable(
+                                "gui.neoecoae.storage.infinite_slot.component",
+                                state.infiniteComponentCount() + " / " + state.requiredInfiniteComponentCount()),
+                        Component.translatable(
+                                "gui.neoecoae.storage.infinite_slot.l9",
+                                state.l9MatrixDriveCount(),
+                                state.requiredL9MatrixDriveCount())),
+                mouseX,
+                mouseY);
+        return true;
+    }
+
+    private int drawStorageTypeBlock(GuiGraphics g, Metric metric, int x, int y, int lineStep) {
         drawPlainLine(g, metric.label(), x, y, metric.accentColor());
-        y += TEXT_LINE_STEP;
+        y += lineStep;
         NELDLibValueText.drawUsedTotal(
                 g,
                 font(),
                 "",
-                NELDLibText.number(metric.usedTypes()),
-                NELDLibText.number(metric.totalTypes()),
+                metric.usedTypesText(),
+                metric.totalTypesText(),
                 metric.usedTypes(),
                 metric.totalTypes(),
                 Component.translatable("gui.neoecoae.common.types").getString(),
                 x,
                 y);
-        y += TEXT_LINE_STEP;
-        drawByteUsedTotalLine(g, metric.used(), metric.max(), x, y);
-        return y + TEXT_LINE_STEP;
+        y += lineStep;
+        drawByteUsedTotalLine(g, metric, x, y);
+        return y + lineStep;
     }
 
-    private void drawByteUsedTotalLine(GuiGraphics g, long used, long max, int x, int y) {
-        String usedText = NELDLibText.storageBytes(used);
-        String maxText = NELDLibText.storageBytes(max);
+    private void drawByteUsedTotalLine(GuiGraphics g, Metric metric, int x, int y) {
+        String usedText = metric.usedText();
+        String maxText = metric.maxText();
         String suffix =
                 Component.translatable("gui.neoecoae.storage.bytes_used").getString();
         if (font().width(usedText + " / " + maxText + " " + suffix) > TEXT_MAX_W) {
             suffix = Component.translatable("gui.neoecoae.storage.used_short").getString();
         }
-        NELDLibValueText.drawUsedTotal(g, font(), "", usedText, maxText, used, max, suffix, x, y);
+        NELDLibValueText.drawUsedTotal(g, font(), "", usedText, maxText, metric.used(), metric.max(), suffix, x, y);
     }
 
     private void drawFormedStatus(GuiGraphics g, boolean formed) {

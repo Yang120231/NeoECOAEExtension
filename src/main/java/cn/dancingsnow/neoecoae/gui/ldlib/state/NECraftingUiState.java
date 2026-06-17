@@ -1,6 +1,5 @@
 package cn.dancingsnow.neoecoae.gui.ldlib.state;
 
-import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus;
 import java.util.List;
 import net.minecraft.core.BlockPos;
@@ -28,13 +27,15 @@ public record NECraftingUiState(
         int previewStatusArg1,
         int previewStatusArg2,
         long energyUsage,
-        long externalEnergyAvailable,
-        long externalEnergyRequired,
-        long externalEnergyRate,
-        ECOCraftingEnergyMode externalEnergyMode,
-        ECOCraftingEnergyStatus externalEnergyStatus,
-        boolean externalEnergyAvailableForUse,
-        String externalEnergySource,
+        long aeEnergyUsage,
+        long gtEnergyUsage,
+        ECOCraftingEnergyStatus energyStatus,
+        int instantAeComponentCount,
+        int requiredInstantAeComponentCount,
+        boolean instantAeCraftingUnlocked,
+        ItemStack wirelessCoverStack,
+        int wirelessCoverTier,
+        long wirelessCoverVoltage,
         long coolantAmount,
         long coolantCapacity,
         int availableThreads,
@@ -44,7 +45,6 @@ public record NECraftingUiState(
         int batchParallel,
         long performanceAverageNanos,
         List<NECraftingRecipeUiEntry> recipeEntries,
-        List<NECraftingBatchUiState> batchStates,
         List<ItemStack> workerCraftOutputs,
         List<Integer> parallelCoreTiers,
         List<NECraftingModuleCell> moduleCells) {
@@ -73,11 +73,13 @@ public record NECraftingUiState(
                 0L,
                 0L,
                 0L,
-                0L,
-                ECOCraftingEnergyMode.EXTERNAL,
-                ECOCraftingEnergyStatus.UNAVAILABLE,
+                ECOCraftingEnergyStatus.READY,
+                0,
+                64,
                 false,
-                "",
+                ItemStack.EMPTY,
+                0,
+                0L,
                 0L,
                 0L,
                 0,
@@ -86,7 +88,6 @@ public record NECraftingUiState(
                 0,
                 0,
                 0L,
-                List.of(),
                 List.of(),
                 List.of(),
                 List.of(),

@@ -203,11 +203,18 @@ public class ExecutingCraftingJob {
         return DispatchBlock.NONE;
     }
 
-    void addInFlightOutputs(List<GenericStack> stacks, int multiplier) {
-        int count = Math.max(1, multiplier);
+    void addInFlightOutputs(List<GenericStack> stacks, long multiplier) {
+        long count = Math.max(1L, multiplier);
         for (GenericStack stack : stacks) {
-            inFlightOutputs.add(stack.what(), stack.amount() * count);
+            inFlightOutputs.add(stack.what(), saturatedMultiply(stack.amount(), count));
         }
+    }
+
+    private static long saturatedMultiply(long left, long right) {
+        if (left <= 0L || right <= 0L) {
+            return 0L;
+        }
+        return left > Long.MAX_VALUE / right ? Long.MAX_VALUE : left * right;
     }
 
     void removeInFlightOutput(AEKey what, long amount) {

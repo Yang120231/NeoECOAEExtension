@@ -212,17 +212,22 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
         if (isBusy) {
             return false;
         }
+        if (request.batchSize() > Integer.MAX_VALUE) {
+            worker.getFastPathCache().recordNoThreadReject();
+            return false;
+        }
+        int batchSize = (int) request.batchSize();
         var outputTotal = ECOBatchCraftingHelper.multiply(request.outputsPerCraft(), request.batchSize());
         var inputTotal = ECOBatchCraftingHelper.multiply(request.inputsPerCraft(), request.batchSize());
         var remainingTotal = ECOBatchCraftingHelper.multiply(request.remainingPerCraft(), request.batchSize());
         var work = new ECOBatchCraftingWork(
-                request.batchSize(),
+                batchSize,
                 inputTotal,
                 outputTotal,
                 remainingTotal,
                 request.craftingJobId(),
                 0,
-                request.batchSize());
+                batchSize);
         return acceptBatch(work, controller);
     }
 

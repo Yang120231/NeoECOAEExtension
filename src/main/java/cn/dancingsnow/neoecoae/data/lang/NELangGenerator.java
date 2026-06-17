@@ -15,6 +15,8 @@ public class NELangGenerator {
 
         provider.add("jade.neoecoae.drive_mounted", "ECO Drive Mounted");
         provider.add("jade.neoecoae.drive_unmounted", "ECO Drive Unmounted");
+        provider.add("jade.neoecoae.drive_infinite", "Infinite Storage Mode Active");
+        provider.add("jade.neoecoae.drive_migrating_to_infinite", "Entering Infinite Storage Mode");
         provider.add("jade.neoecoae.worker_threads", "Threads: %d/%d");
         provider.add("jade.neoecoae.formed", "Formed: %s");
         provider.add("jade.neoecoae.running", "Running: %s");
@@ -43,9 +45,6 @@ public class NELangGenerator {
         provider.add("neoecoae.tooltip.upload_pattern", "Upload Pattern into available ECO Crafting System");
 
         provider.add("cell_type.neoecoae.chemical", "Chemical");
-        provider.add("cell_type.neoecoae.flux", "FE");
-        provider.add("cell_type.neoecoae.mana", "Mana");
-        provider.add("cell_type.neoecoae.source", "Source");
 
         provider.add("category.neoecoae.cooling", "Cooling");
         provider.add("category.neoecoae.cooling.coolant", "Coolant: %d");

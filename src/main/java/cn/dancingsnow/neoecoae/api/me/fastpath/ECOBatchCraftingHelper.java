@@ -12,7 +12,7 @@ import java.util.List;
 public final class ECOBatchCraftingHelper {
     private ECOBatchCraftingHelper() {}
 
-    public static List<GenericStack> multiply(List<GenericStack> stacks, int multiplier) {
+    public static List<GenericStack> multiply(List<GenericStack> stacks, long multiplier) {
         if (multiplier <= 0 || stacks.isEmpty()) {
             return List.of();
         }
@@ -24,15 +24,15 @@ public final class ECOBatchCraftingHelper {
         return copyCounter(counter);
     }
 
-    public static int maxCraftsFromInventory(
-            ListCraftingInventory inventory, List<GenericStack> perCraft, int requested) {
-        int max = requested;
+    public static long maxCraftsFromInventory(
+            ListCraftingInventory inventory, List<GenericStack> perCraft, long requested) {
+        long max = requested;
         for (GenericStack stack : perCraft) {
             if (stack.amount() <= 0) {
                 return 0;
             }
             long available = inventory.extract(stack.what(), Long.MAX_VALUE, Actionable.SIMULATE);
-            max = Math.min(max, (int) Math.min(Integer.MAX_VALUE, available / stack.amount()));
+            max = Math.min(max, available / stack.amount());
             if (max <= 0) {
                 return 0;
             }
@@ -82,9 +82,9 @@ public final class ECOBatchCraftingHelper {
         return List.copyOf(stacks);
     }
 
-    private static long multiplyExact(long amount, int multiplier) {
+    private static long multiplyExact(long amount, long multiplier) {
         try {
-            return Math.multiplyExact(amount, (long) multiplier);
+            return Math.multiplyExact(amount, multiplier);
         } catch (ArithmeticException e) {
             throw new IllegalArgumentException("Batch fast path amount overflow", e);
         }

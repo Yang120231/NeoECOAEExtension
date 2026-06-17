@@ -131,9 +131,9 @@ public class NEComputationCluster extends NECluster<NEComputationCluster> {
                 }
                 if (!activeCpus.containsKey(cpu)) {
                     this.activeCpus.put(cpu, cpu.getPlan());
-                    this.activeJobBytes += cpu.getPlan().bytes();
+                    this.activeJobBytes = saturatedAdd(this.activeJobBytes, Math.max(0L, cpu.getPlan().bytes()));
                     restored++;
-                    restoredBytes += cpu.getPlan().bytes();
+                    restoredBytes = saturatedAdd(restoredBytes, Math.max(0L, cpu.getPlan().bytes()));
                 }
             }
         }
@@ -362,7 +362,7 @@ public class NEComputationCluster extends NECluster<NEComputationCluster> {
         // (trySubmitJob already calls cpu.markDirty(), but belt-and-suspenders.)
         cpu.markDirty();
         if (this.activeCpus.put(cpu, job) == null) {
-            this.activeJobBytes += job.bytes();
+            this.activeJobBytes = saturatedAdd(this.activeJobBytes, Math.max(0L, job.bytes()));
             this.activeCpuCount = this.activeCpus.size();
         }
         this.updateAvailableStorageFromCounters(false);
@@ -372,16 +372,18 @@ public class NEComputationCluster extends NECluster<NEComputationCluster> {
 
     public void recalculateRemainingStorage() {
         long oldAvailableStorage = this.availableStorage;
-        this.totalStorageBytes = collectStorage(upperDrives) + collectStorage(lowerDrives);
+        this.totalStorageBytes = isInfiniteStorageUnlocked()
+                ? Long.MAX_VALUE
+                : saturatedAdd(collectStorage(upperDrives), collectStorage(lowerDrives));
 
         this.activeJobBytes = 0L;
 
         for (ICraftingPlan plan : this.activeCpus.values()) {
-            this.activeJobBytes += plan.bytes();
+            this.activeJobBytes = saturatedAdd(this.activeJobBytes, Math.max(0L, plan.bytes()));
         }
         this.activeCpuCount = this.activeCpus.size();
 
-        this.availableStorage = this.totalStorageBytes - this.activeJobBytes;
+        this.availableStorage = computeAvailableStorage();
         if (this.availableStorage < 0) {
             // Do NOT kill CPUs that are still in NBT-restore grace period.
             // They may have been loaded before drives finished initializing;
@@ -427,7 +429,10 @@ public class NEComputationCluster extends NECluster<NEComputationCluster> {
 
     private void updateAvailableStorageFromCounters(boolean syncController) {
         long oldAvailableStorage = this.availableStorage;
-        this.availableStorage = this.totalStorageBytes - this.activeJobBytes;
+        if (isInfiniteStorageUnlocked()) {
+            this.totalStorageBytes = Long.MAX_VALUE;
+        }
+        this.availableStorage = computeAvailableStorage();
         if (this.availableStorage < 0) {
             recalculateRemainingStorage();
             return;
@@ -500,6 +505,32 @@ public class NEComputationCluster extends NECluster<NEComputationCluster> {
                     this, this.availableStorage, controller != null ? controller.getTier() : ECOTier.L4);
         }
         return fakeCpu;
+    }
+
+    public long getUsedStorageBytes() {
+        return Math.max(0L, activeJobBytes);
+    }
+
+    private boolean isInfiniteStorageUnlocked() {
+        return controller != null && controller.isInfiniteStorageUnlocked();
+    }
+
+    private long computeAvailableStorage() {
+        if (totalStorageBytes == Long.MAX_VALUE) {
+            long used = Math.max(0L, activeJobBytes);
+            return used <= 0L ? Long.MAX_VALUE : Math.max(0L, Long.MAX_VALUE - used);
+        }
+        return totalStorageBytes - activeJobBytes;
+    }
+
+    private static long saturatedAdd(long left, long right) {
+        if (left == Long.MAX_VALUE || right == Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        if (right > 0L && left > Long.MAX_VALUE - right) {
+            return Long.MAX_VALUE;
+        }
+        return left + right;
     }
 
     public void deactivate(ECOCraftingCPU cpu) {

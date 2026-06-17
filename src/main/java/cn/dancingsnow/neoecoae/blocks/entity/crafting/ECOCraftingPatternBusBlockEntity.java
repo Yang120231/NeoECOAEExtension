@@ -22,7 +22,7 @@ import cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathLimits;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathResult;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
-import com.lowdragmc.lowdraglib.gui.modular.IUIHolder;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +49,7 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
                 ICraftingProvider,
                 PatternContainer,
                 IECOPatternStorage,
-                IUIHolder.BlockEntityUI {
+                NELDLibBlockEntityUI {
 
     public static final int ROW_SIZE = 9;
     public static final int COL_SIZE = 7;
@@ -102,6 +102,11 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     }
 
     public boolean pushBatch(ECOBatchCraftingRequest request) {
+        ECOCraftingSystemBlockEntity controller = getCraftingController();
+        if (controller != null
+                && controller.canQueueAggregatedCrafting(request.outputsPerCraft(), request.remainingPerCraft())) {
+            return controller.queueAggregatedCrafting(request);
+        }
         BatchFastPathOffer offer = findBatchFastPathOffer(request.key(), null, request.batchSize());
         if (offer == null) {
             return false;
@@ -110,6 +115,13 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     }
 
     public boolean pushBatch(ECOBatchCraftingRequest request, BatchFastPathOffer offer) {
+        if (offer.aggregated()) {
+            ECOCraftingSystemBlockEntity controller = getCraftingController();
+            return controller != null && controller.queueAggregatedCrafting(request);
+        }
+        if (offer.worker() == null) {
+            return false;
+        }
         if (offer.worker().pushBatch(request)) {
             nextWorkerIndex = nextWorkerIndexAfter(offer.worker());
             return true;
@@ -117,7 +129,18 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
         return false;
     }
 
-    @Nullable public BatchFastPathOffer findBatchFastPathOffer(ECOExtractedPatternExecution execution, int requestedBatchSize) {
+    @Nullable public BatchFastPathOffer findBatchFastPathOffer(ECOExtractedPatternExecution execution, long requestedBatchSize) {
+        ECOCraftingSystemBlockEntity controller = getCraftingController();
+        if (NEConfig.isGtlStyleCraftingAggregationEnabled()
+                && !NEConfig.postCraftingEvent
+                && requestedBatchSize > 0
+                && execution.molecularPattern() != null
+                && !execution.inputItems().isEmpty()
+                && controller != null
+                && controller.canQueueAggregatedCrafting(
+                        execution.expectedOutputs(), execution.expectedContainerItems())) {
+            return new BatchFastPathOffer(null, null, requestedBatchSize, true);
+        }
         if (execution.key() == null) {
             return null;
         }
@@ -127,7 +150,7 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     @Nullable private BatchFastPathOffer findBatchFastPathOffer(
             cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathKey key,
             @Nullable ECOExtractedPatternExecution execution,
-            int requestedBatchSize) {
+            long requestedBatchSize) {
         if (cluster == null || requestedBatchSize <= 0) {
             return null;
         }
@@ -158,9 +181,9 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
                 continue;
             }
             int maxBatchSize =
-                    ECOFastPathLimits.limitBatchSize(requestedBatchSize, availableSlots, controllerAvailableSlots);
+                    ECOFastPathLimits.limitBatchSize(saturatedInt(requestedBatchSize), availableSlots, controllerAvailableSlots);
             if (maxBatchSize > 0) {
-                return new BatchFastPathOffer(worker, result, maxBatchSize);
+                return new BatchFastPathOffer(worker, result, maxBatchSize, false);
             }
         }
         return null;
@@ -199,7 +222,18 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
         return controller == null ? 0 : controller.getCurrentBatchSlots();
     }
 
-    public record BatchFastPathOffer(ECOCraftingWorkerBlockEntity worker, ECOFastPathResult result, int maxBatchSize) {}
+    public record BatchFastPathOffer(
+            @Nullable ECOCraftingWorkerBlockEntity worker,
+            @Nullable ECOFastPathResult result,
+            long maxBatchSize,
+            boolean aggregated) {}
+
+    private static int saturatedInt(long value) {
+        if (value <= 0L) {
+            return 0;
+        }
+        return value > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) value;
+    }
 
     @Nullable public ECOCraftingSystemBlockEntity getCraftingController() {
         if (cluster != null) {

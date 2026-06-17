@@ -26,6 +26,7 @@ import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellMetadata;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellMode;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import com.tterrag.registrate.util.entry.RegistryEntry;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -126,7 +127,8 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         }
         lines.add(Tooltips.bytesUsed(handler.getUsedBytes(), handler.getTotalBytes()));
         if (handler.getTotalItemTypes() == Long.MAX_VALUE) {
-            lines.add(Component.literal("Types: " + handler.getStoredItemTypes() + " / Infinite")
+            lines.add(Component.literal("Types: " + NELDLibText.typeCount(handler.getStoredItemTypes()) + " / "
+                            + NELDLibText.INFINITE)
                     .withStyle(ChatFormatting.GRAY));
         } else {
             lines.add(Tooltips.typesUsed(handler.getStoredItemTypes(), handler.getTotalItemTypes()));

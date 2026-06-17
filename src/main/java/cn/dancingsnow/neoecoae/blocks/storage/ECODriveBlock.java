@@ -7,6 +7,7 @@ import cn.dancingsnow.neoecoae.blocks.NEBlock;
 import cn.dancingsnow.neoecoae.blocks.entity.storage.ECODriveBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -52,6 +53,11 @@ public class ECODriveBlock extends NEBlock<ECODriveBlockEntity> {
         if (level.getBlockEntity(pos) instanceof ECODriveBlockEntity be) {
             if (be.getCellStack() != null && player.isShiftKeyDown()) {
                 if (level.isClientSide) return InteractionResult.SUCCESS;
+                if (!be.canExtractCell()) {
+                    player.displayClientMessage(
+                            Component.translatable("gui.neoecoae.storage.matrix_locked_infinite"), true);
+                    return InteractionResult.CONSUME;
+                }
                 ItemStack cellStack = be.getCellStack().copyWithCount(1);
                 be.setCellStack(null);
                 giveCellToPlayer(player, hand, cellStack);

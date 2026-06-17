@@ -5,6 +5,7 @@ import appeng.api.networking.IGridNodeListener;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
+import cn.dancingsnow.neoecoae.api.ECOTier;
 import cn.dancingsnow.neoecoae.api.IECOComputationHost;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.api.me.ECOCraftingCPU;
@@ -16,23 +17,29 @@ import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.multiblock.BuildPreviewState;
 import cn.dancingsnow.neoecoae.multiblock.INEMultiblockBuildHost;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
-import com.lowdragmc.lowdraglib.gui.modular.IUIHolder;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEntity<ECOComputationSystemBlockEntity>
-        implements INEMultiblockBuildHost, IUIHolder.BlockEntityUI, IECOComputationHost {
+        implements INEMultiblockBuildHost, NELDLibBlockEntityUI, IECOComputationHost {
 
     @Getter
     private final IECOTier tier;
@@ -42,6 +49,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
     private int parallelCount;
     private long availableBytes;
     private long totalBytes;
+    private long usedBytes;
     /** Sum of CPU accelerators from all parallel cores in the cluster. */
     private int acceleratorCount;
 
@@ -49,6 +57,29 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
     private CpuSelectionMode cpuSelectionMode = CpuSelectionMode.ANY;
 
     private boolean computationStatsDirty = true;
+
+    public static final int REQUIRED_INFINITE_STORAGE_COMPONENTS = 64;
+    private static final ResourceLocation INFINITE_STORAGE_COMPONENT_ID =
+            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component");
+    private static final String NBT_INFINITE_STORAGE_COMPONENT = "infiniteStorageComponent";
+
+    private final ItemStackHandler infiniteStorageComponent = new ItemStackHandler(1) {
+        @Override
+        protected void onContentsChanged(int slot) {
+            onInfiniteStorageComponentChanged();
+        }
+
+        @Override
+        public boolean isItemValid(int slot, ItemStack stack) {
+            return slot == 0 && canUseInfiniteStorageComponents() && isInfiniteStorageComponent(stack);
+        }
+
+        @Override
+        public int getSlotLimit(int slot) {
+            return canUseInfiniteStorageComponents() ? REQUIRED_INFINITE_STORAGE_COMPONENTS : 0;
+        }
+    };
+
     /** Shared preview/build state, delegates NBT sync to {@link BuildPreviewState}. */
     private final BuildPreviewState buildPreview = new BuildPreviewState();
 
@@ -90,6 +121,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
         if (cluster != null) {
             availableBytes = cluster.getAvailableStorage();
             totalBytes = cluster.getTotalStorageBytes();
+            usedBytes = cluster.getUsedStorageBytes();
             usedThread = cluster.getActiveCpuCountCached();
             totalThread = cluster.getMaxThreads();
             parallelCount = cluster.getParallelCores().size();
@@ -100,6 +132,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
             parallelCount = 0;
             availableBytes = 0;
             totalBytes = 0;
+            usedBytes = 0;
             acceleratorCount = 0;
         }
     }
@@ -166,12 +199,17 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
 
     public long getAvailableBytes() {
         ensureStatsCurrent();
-        return availableBytes;
+        return isInfiniteStorageUnlocked() ? Long.MAX_VALUE : availableBytes;
     }
 
     public long getTotalBytes() {
         ensureStatsCurrent();
-        return totalBytes;
+        return isInfiniteStorageUnlocked() ? Long.MAX_VALUE : totalBytes;
+    }
+
+    public long getUsedBytes() {
+        ensureStatsCurrent();
+        return Math.max(0L, usedBytes);
     }
 
     public int getAcceleratorCount() {
@@ -181,6 +219,45 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
 
     public CpuSelectionMode getCpuSelectionMode() {
         return cpuSelectionMode;
+    }
+
+    public IItemHandlerModifiable getInfiniteStorageComponentInventory() {
+        return infiniteStorageComponent;
+    }
+
+    public int getInfiniteStorageComponentCount() {
+        if (!canUseInfiniteStorageComponents()) {
+            return 0;
+        }
+        ItemStack stack = infiniteStorageComponent.getStackInSlot(0);
+        return isInfiniteStorageComponent(stack) ? stack.getCount() : 0;
+    }
+
+    public boolean isInfiniteStorageUnlocked() {
+        return tier.getTier() >= ECOTier.L9.getTier()
+                && getInfiniteStorageComponentCount() >= REQUIRED_INFINITE_STORAGE_COMPONENTS;
+    }
+
+    public boolean canUseInfiniteStorageComponents() {
+        return tier.getTier() == ECOTier.L9.getTier() && isInfiniteStorageComponentAvailable();
+    }
+
+    public static boolean isInfiniteStorageComponentAvailable() {
+        return BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID) != Items.AIR;
+    }
+
+    private void onInfiniteStorageComponentChanged() {
+        if (cluster != null) {
+            cluster.recalculateRemainingStorage();
+            cluster.updateGridForChangedCpu(cluster);
+        }
+        setChanged();
+        markComputationStatsDirty();
+    }
+
+    private static boolean isInfiniteStorageComponent(ItemStack stack) {
+        Item component = BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID);
+        return component != Items.AIR && stack.is(component);
     }
 
     public void setCpuSelectionMode(CpuSelectionMode mode) {
@@ -205,8 +282,9 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
                 cluster != null && cluster.isActive(),
                 usedThread,
                 totalThread,
-                availableBytes,
-                totalBytes,
+                getAvailableBytes(),
+                getTotalBytes(),
+                getUsedBytes(),
                 parallelCount,
                 acceleratorCount,
                 mode,
@@ -340,6 +418,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
         super.saveAdditional(tag);
         tag.putInt("selectedBuildLength", getSelectedBuildLength());
         tag.putInt("cpuSelectionMode", cpuSelectionMode.ordinal());
+        tag.put(NBT_INFINITE_STORAGE_COMPONENT, infiniteStorageComponent.serializeNBT());
     }
 
     @Override
@@ -352,6 +431,9 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
             if (ordinal >= 0 && ordinal < values.length) {
                 cpuSelectionMode = values[ordinal];
             }
+        }
+        if (tag.contains(NBT_INFINITE_STORAGE_COMPONENT)) {
+            infiniteStorageComponent.deserializeNBT(tag.getCompound(NBT_INFINITE_STORAGE_COMPONENT));
         }
         buildPreview.buildInProgress = false;
         buildPreview.resetPreview(BuildPreviewState.DEFAULT_STATUS_KEY);
@@ -367,6 +449,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
         tag.putInt("neo_parallelCount", parallelCount);
         tag.putLong("neo_availableBytes", availableBytes);
         tag.putLong("neo_totalBytes", totalBytes);
+        tag.putLong("neo_usedBytes", usedBytes);
         buildPreview.writeToTag(tag);
     }
 
@@ -377,6 +460,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
         if (tag.contains("neo_parallelCount")) parallelCount = tag.getInt("neo_parallelCount");
         if (tag.contains("neo_availableBytes")) availableBytes = tag.getLong("neo_availableBytes");
         if (tag.contains("neo_totalBytes")) totalBytes = tag.getLong("neo_totalBytes");
+        if (tag.contains("neo_usedBytes")) usedBytes = tag.getLong("neo_usedBytes");
         buildPreview.readFromTag(tag);
     }
 }

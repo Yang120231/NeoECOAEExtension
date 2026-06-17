@@ -141,6 +141,14 @@ public class GuiLangs {
         provider.add("gui.neoecoae.storage.matrix_card.types", "%s / %s types used");
         provider.add("gui.neoecoae.storage.matrix_card.bytes", "%s / %s bytes used");
         provider.add("gui.neoecoae.storage.tooltip.type_used", "%s storage used %s");
+        provider.add(
+                "gui.neoecoae.storage.matrix_locked_infinite",
+                "This storage matrix cannot be removed while infinite mode is active.");
+        provider.add("gui.neoecoae.storage.infinite_ready", "Infinite storage ready");
+        provider.add("gui.neoecoae.storage.infinite_waiting_component", "Infinite storage component: %s / %s");
+        provider.add("gui.neoecoae.storage.infinite_slot.tooltip", "Infinite Storage Component");
+        provider.add("gui.neoecoae.storage.infinite_slot.component", "Components: %s");
+        provider.add("gui.neoecoae.storage.infinite_slot.l9", "L9 matrices: %s / %s");
 
         // computation
         provider.add("gui.neoecoae.computation.thread_info", "Thread Used: %s / %s");
@@ -164,6 +172,16 @@ public class GuiLangs {
         provider.add("gui.neoecoae.crafting.performance_short", "Perf");
         provider.add("gui.neoecoae.crafting.tasks", "Crafting Tasks");
         provider.add("gui.neoecoae.crafting.no_tasks", "No active tasks");
+        provider.add("gui.neoecoae.crafting.wireless_energy_cover_slot", "GTMThings Wireless Energy Cover");
+        provider.add(
+                "gui.neoecoae.crafting.special_mode_slot",
+                "GTMThings Wireless Energy Cover / Infinite Storage Component");
+        provider.add("gui.neoecoae.crafting.instant_ae_slot", "Infinite Storage Component");
+        provider.add("gui.neoecoae.crafting.instant_ae_component", "Infinite storage component: %s");
+        provider.add("gui.neoecoae.crafting.instant_ae_ready", "AE instant crafting ready");
+        provider.add(
+                "gui.neoecoae.crafting.instant_ae_waiting",
+                "Insert 64 infinite storage components for AE instant crafting");
         provider.add("gui.neoecoae.crafting.task.amount", "Amount: %s");
         provider.add("gui.neoecoae.crafting.task.crafts", "Crafts: %s");
         provider.add("gui.neoecoae.crafting.task.time", "Time: %s / %s");

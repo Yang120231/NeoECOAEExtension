@@ -40,7 +40,7 @@ import cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NEIntegratedWorkingStationUiState;
 import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
-import com.lowdragmc.lowdraglib.gui.modular.IUIHolder;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -76,7 +76,7 @@ import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockEntity
-        implements IGridTickable, IUpgradeableObject, IConfigurableObject, IUIHolder.BlockEntityUI {
+        implements IGridTickable, IUpgradeableObject, IConfigurableObject, NELDLibBlockEntityUI {
     private static final int MAX_INPUT_SLOTS = 9;
     private static final int MAX_PROCESSING_STEPS = 200;
     private static final int MAX_POWER_STORAGE = 500000;
@@ -222,6 +222,7 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     public ModularUI createUI(Player player) {
         return NELDLibUis.createIntegratedWorkingStation(this, player);
     }
+
 
     // ── State ──
 

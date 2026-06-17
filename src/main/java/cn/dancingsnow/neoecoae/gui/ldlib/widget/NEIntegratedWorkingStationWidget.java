@@ -121,6 +121,8 @@ public class NEIntegratedWorkingStationWidget extends NELDLibSyncedStateWidget<N
                         true)
                 .setShowAmount(false)
                 .setFillDirection(ProgressTexture.FillDirection.DOWN_TO_UP)
+                .setBackground(IGuiTexture.EMPTY)
+                .setDrawHoverOverlay(false)
                 .setAllowClickFilled(true)
                 .setAllowClickDrained(true)
                 .setChangeListener(station::onGuiInventoryChanged));
@@ -134,6 +136,8 @@ public class NEIntegratedWorkingStationWidget extends NELDLibSyncedStateWidget<N
                         true)
                 .setShowAmount(false)
                 .setFillDirection(ProgressTexture.FillDirection.DOWN_TO_UP)
+                .setBackground(IGuiTexture.EMPTY)
+                .setDrawHoverOverlay(false)
                 .setAllowClickFilled(false)
                 .setAllowClickDrained(true)
                 .setChangeListener(station::onGuiInventoryChanged));
@@ -198,7 +202,7 @@ public class NEIntegratedWorkingStationWidget extends NELDLibSyncedStateWidget<N
 
         for (int row = 0; row < INPUT_ROWS; row++) {
             for (int col = 0; col < INPUT_COLS; col++) {
-                NELDLibAe2StyleRenderer.drawAeSlot(
+                NEPlayerInventoryWidgets.drawVanillaSlot(
                         graphics, absX(mainX(INPUT_BG_X + col * SLOT_SIZE)), absY(INPUT_BG_Y + row * SLOT_SIZE));
             }
         }
@@ -215,6 +219,24 @@ public class NEIntegratedWorkingStationWidget extends NELDLibSyncedStateWidget<N
                 currentState().progress(),
                 currentState().maxProgress());
         drawUpgradePlaceholders(graphics);
+        drawFluidTank(
+                graphics,
+                mainX(FLUID_IN_X),
+                FLUID_IN_Y,
+                FLUID_IN_W,
+                FLUID_IN_H,
+                station.getInputTank().getFluid(),
+                station.getInputTank().getFluidAmount(),
+                station.getInputTank().getCapacity());
+        drawFluidTank(
+                graphics,
+                mainX(FLUID_OUT_X),
+                FLUID_OUT_Y,
+                FLUID_OUT_W,
+                FLUID_OUT_H,
+                station.getOutputTank().getFluid(),
+                station.getOutputTank().getFluidAmount(),
+                station.getOutputTank().getCapacity());
         drawClearFluidButtons(graphics, mouseX, mouseY);
     }
 
@@ -259,6 +281,19 @@ public class NEIntegratedWorkingStationWidget extends NELDLibSyncedStateWidget<N
                         0.4F);
             }
         }
+    }
+
+    private void drawFluidTank(
+            GuiGraphics graphics,
+            int x,
+            int y,
+            int width,
+            int height,
+            net.minecraftforge.fluids.FluidStack fluid,
+            int amount,
+            int capacity) {
+        NELDLibAe2StyleRenderer.drawAeFluidTankSimple(
+                graphics, absX(x), absY(y), width, height, fluid, amount, capacity);
     }
 
     private void drawClearFluidButtons(GuiGraphics graphics, int mouseX, int mouseY) {

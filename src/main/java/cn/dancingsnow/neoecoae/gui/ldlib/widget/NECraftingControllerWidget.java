@@ -6,6 +6,8 @@ import cn.dancingsnow.neoecoae.client.gui.ldlib.NELDLibClientStyle;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingUiState;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NEForgeItemTransfer;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibAe2StyleRenderer;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibGuiRenderState;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibScrollBar;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibStateCodecs;
@@ -14,6 +16,8 @@ import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibTaskCards;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibTextRender;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NEPlayerInventoryWidgets;
+import com.lowdragmc.lowdraglib.gui.texture.IGuiTexture;
+import com.lowdragmc.lowdraglib.gui.widget.SlotWidget;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
@@ -74,6 +78,11 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     private static final int TOOLBAR_X = UI_WIDTH - PANEL_MARGIN - TOOLBAR_BUTTON_SIZE * 3 - 3 * 2;
     private static final int TOOLBAR_Y = 4;
 
+    // Player inventory constants are declared early because the GTL slot uses a normal 18px slot.
+    private static final int SLOT_SIZE = 18;
+    private static final int WIRELESS_ENERGY_SLOT_X = TOOLBAR_X - SLOT_SIZE - 8;
+    private static final int WIRELESS_ENERGY_SLOT_Y = 2;
+
     // 模块预览区域布局常量
     private static final int MODULE_AREA_X = MAIN_PANEL_X + 6;
     private static final int MODULE_AREA_Y = MAIN_PANEL_Y + 6;
@@ -106,7 +115,6 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     private static final int GAUGE_BAR_W = 23;
 
     // 玩家背包格子布局常量
-    private static final int SLOT_SIZE = 18;
     private static final int PLAYER_INV_X = MODULE_AREA_X;
     private static final int PLAYER_INV_LABEL_Y = MAIN_PANEL_Y + MAIN_PANEL_H + 6;
     private static final int PLAYER_INV_Y = PLAYER_INV_LABEL_Y + 10;
@@ -133,6 +141,7 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     // 实例字段
     private final ECOCraftingSystemBlockEntity crafting;
     private final Inventory playerInventory;
+    private final boolean showSpecialModeSlot;
     private final Map<String, TaskCardAnimation> taskAnimations = new LinkedHashMap<>();
     private final NEAe2IconButtonWidget[] toolbarButtons = new NEAe2IconButtonWidget[3];
     private int taskScrollOffset;
@@ -151,6 +160,7 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 10);
         this.crafting = crafting;
         this.playerInventory = player.getInventory();
+        this.showSpecialModeSlot = crafting.canUseSpecialModeSlot();
     }
 
     // 不显示默认标题栏（自定义标题绘制）
@@ -180,6 +190,18 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 syncStateNow();
             }
         });
+        if (showSpecialModeSlot) {
+            addWidget(new SlotWidget(
+                            new NEForgeItemTransfer(
+                                    crafting.getWirelessEnergyCoverInventory(),
+                                    () -> crafting.onWirelessEnergyCoverSlotChanged(playerInventory.player)),
+                            0,
+                            WIRELESS_ENERGY_SLOT_X,
+                            WIRELESS_ENERGY_SLOT_Y,
+                            true,
+                            true)
+                    .setBackgroundTexture(IGuiTexture.EMPTY));
+        }
         addPlayerInventorySlots();
     }
 
@@ -210,6 +232,10 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 state.occupiedRecipeSlots(),
                 state.maxRecipeSlots());
         drawGaugeArea(graphics, state);
+        if (showSpecialModeSlot) {
+            NELDLibAe2StyleRenderer.drawAeSlot(
+                    graphics, ox + WIRELESS_ENERGY_SLOT_X, oy + WIRELESS_ENERGY_SLOT_Y);
+        }
         drawPlayerInventorySlots(graphics);
         NELDLibClientStyle.drawDarkInsetRect(
                 graphics, ox + TASK_PANEL_X, oy + TASK_PANEL_Y, TASK_PANEL_W, TASK_PANEL_H);
@@ -225,6 +251,7 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
         drawStatusArea(graphics, state);
         drawStatsArea(graphics, state);
         drawGaugeLabels(graphics);
+        drawSpecialModeSlotItem(graphics);
         drawLine(
                 graphics,
                 Component.translatable("gui.neoecoae.common.inventory"),
@@ -238,6 +265,9 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     @Override
     protected void drawMachineTooltips(GuiGraphics graphics, int mouseX, int mouseY) {
         if (renderToolbarTooltip(graphics, mouseX, mouseY)) {
+            return;
+        }
+        if (renderWirelessEnergyTooltip(graphics, mouseX, mouseY)) {
             return;
         }
         if (renderModuleTooltip(graphics, mouseX, mouseY)) {
@@ -266,6 +296,26 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     }
 
     // 添加玩家背包格子控件
+    private void drawSpecialModeSlotItem(GuiGraphics graphics) {
+        if (!showSpecialModeSlot) {
+            return;
+        }
+        if (currentState().instantAeComponentCount() <= 0) {
+            return;
+        }
+        ItemStack stack = crafting.getWirelessEnergyCoverInventory().getStackInSlot(0);
+        if (stack.isEmpty()) {
+            return;
+        }
+        NELDLibGuiRenderState.beginVanillaGuiItemBatch(graphics);
+        try {
+            NELDLibGuiRenderState.renderVanillaSlotItem(
+                    graphics, font(), stack, absX(WIRELESS_ENERGY_SLOT_X + 1), absY(WIRELESS_ENERGY_SLOT_Y + 1), null);
+        } finally {
+            NELDLibGuiRenderState.endVanillaGuiItemBatch(graphics);
+        }
+    }
+
     private void addPlayerInventorySlots() {
         NEPlayerInventoryWidgets.addPlayerInventorySlots(
                 this, playerInventory, PLAYER_INV_X, PLAYER_INV_Y, PLAYER_HOTBAR_Y);
@@ -628,7 +678,7 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 + scaledWidth(activeLabel)
                 + scaledWidth(activeValue);
         int titleRight = 8 + scaledWidth(title) + 10;
-        int rightLimit = TOOLBAR_X - 8;
+        int rightLimit = WIRELESS_ENERGY_SLOT_X - 8;
         int textX = absX(Math.min(titleRight, Math.max(8, rightLimit - textW)));
         int textY = absY(8);
         textX += drawScaledString(g, formedLabel, textX, textY, HEADER_STATUS_LABEL_COLOR);
@@ -922,6 +972,37 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     }
 
     // 渲染仪表盘悬浮提示（能耗 / 冷却液数值）
+    private boolean renderWirelessEnergyTooltip(GuiGraphics g, int mouseX, int mouseY) {
+        if (!showSpecialModeSlot) {
+            return false;
+        }
+        if (!isMouseIn(WIRELESS_ENERGY_SLOT_X, WIRELESS_ENERGY_SLOT_Y, SLOT_SIZE, SLOT_SIZE, mouseX, mouseY)) {
+            return false;
+        }
+        List<Component> lines = new ArrayList<>();
+        if (crafting.canUseInstantAeComponents()) {
+            lines.add(Component.translatable(crafting.canUseWirelessEnergyCovers()
+                    ? "gui.neoecoae.crafting.special_mode_slot"
+                    : "gui.neoecoae.crafting.instant_ae_slot"));
+            lines.add(Component.translatable(
+                    "gui.neoecoae.crafting.instant_ae_component",
+                    currentState().instantAeComponentCount() + " / "
+                            + currentState().requiredInstantAeComponentCount()));
+            lines.add(currentState().instantAeCraftingUnlocked()
+                    ? Component.translatable("gui.neoecoae.crafting.instant_ae_ready")
+                    : Component.translatable("gui.neoecoae.crafting.instant_ae_waiting"));
+        } else {
+            lines.add(Component.translatable("gui.neoecoae.crafting.wireless_energy_cover_slot"));
+        }
+        g.renderTooltip(
+                font(),
+                lines,
+                Optional.empty(),
+                mouseX,
+                mouseY);
+        return true;
+    }
+
     private boolean renderGaugeTooltip(GuiGraphics g, int mouseX, int mouseY) {
         NECraftingUiState state = currentState();
         int gaugeY = GAUGE_BAR_Y;
@@ -934,7 +1015,9 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                     font(),
                     List.of(
                             Component.translatable("gui.neoecoae.crafting.energy_usage"),
-                            Component.literal(NELDLibText.number(state.energyUsage()) + " AE/t")),
+                            Component.literal(NELDLibText.number(state.energyUsage()) + " /t"),
+                            Component.literal("AE: " + NELDLibText.number(state.aeEnergyUsage()) + " AE/t"),
+                            Component.literal("GT: " + NELDLibText.number(state.gtEnergyUsage()) + " EU/t")),
                     Optional.empty(),
                     mouseX,
                     mouseY);
