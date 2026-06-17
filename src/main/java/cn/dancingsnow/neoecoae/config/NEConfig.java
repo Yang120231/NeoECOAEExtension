@@ -18,6 +18,7 @@ public class NEConfig {
     private static final int CRAFTING_SYSTEM_MIN_LENGTH = 5;
     private static final int COMPUTATION_SYSTEM_MIN_LENGTH = 5;
     private static final int STORAGE_SYSTEM_MIN_LENGTH = 4;
+    private static final int DEFAULT_SYSTEM_MAX_LENGTH = 30;
     public static final int PATTERN_BUS_SLOTS_PER_PAGE = 63;
     public static final int PATTERN_BUS_MIN_PAGES = 1;
     public static final int PATTERN_BUS_MAX_PAGES = 8;
@@ -31,17 +32,26 @@ public class NEConfig {
     private static final ForgeConfigSpec.IntValue CRAFTING_SYSTEM_MAX_LENGTH = BUILDER.comment(
                     "Maximum length (in blocks) allowed for the Crafting System multiblock.",
                     "Higher values allow longer expansions but may increase structure check cost.")
-            .defineInRange("craftingSystemMaxLength", 15, CRAFTING_SYSTEM_MIN_LENGTH, Integer.MAX_VALUE);
+            .defineInRange(
+                    "craftingSystemMaxLength",
+                    DEFAULT_SYSTEM_MAX_LENGTH,
+                    CRAFTING_SYSTEM_MIN_LENGTH,
+                    Integer.MAX_VALUE);
 
     private static final ForgeConfigSpec.IntValue COMPUTATION_SYSTEM_MAX_LENGTH = BUILDER.comment(
                     "Maximum length (in blocks) allowed for the Computation System multiblock.",
                     "Higher values allow longer expansions but may increase structure check cost.")
-            .defineInRange("computationSystemMaxLength", 15, COMPUTATION_SYSTEM_MIN_LENGTH, Integer.MAX_VALUE);
+            .defineInRange(
+                    "computationSystemMaxLength",
+                    DEFAULT_SYSTEM_MAX_LENGTH,
+                    COMPUTATION_SYSTEM_MIN_LENGTH,
+                    Integer.MAX_VALUE);
 
     private static final ForgeConfigSpec.IntValue STORAGE_SYSTEM_MAX_LENGTH = BUILDER.comment(
                     "Maximum length (in blocks) allowed for the Storage System multiblock.",
                     "Higher values allow longer expansions but may increase structure check cost.")
-            .defineInRange("storageSystemMaxLength", 15, STORAGE_SYSTEM_MIN_LENGTH, Integer.MAX_VALUE);
+            .defineInRange(
+                    "storageSystemMaxLength", DEFAULT_SYSTEM_MAX_LENGTH, STORAGE_SYSTEM_MIN_LENGTH, Integer.MAX_VALUE);
 
     static {
         BUILDER.pop();
@@ -56,6 +66,16 @@ public class NEConfig {
                     "Enable the verified AE2-assisted fast path for ECO crafting workers.",
                     "Set JVM property -Dneoecoae.ecoFastPath=false to force-disable this optimization without editing the config.")
             .define("ecoAe2FastPathEnabled", true);
+
+    private static final ForgeConfigSpec.BooleanValue USE_GTL_STYLE_CRAFTING_AGGREGATION = BUILDER.comment(
+                    "Use aggregated crafting batches for ECO C-series and F-series systems.",
+                    "Each accepted pattern becomes one delayed batch instead of occupying one worker thread per craft.",
+                    "Set JVM property -Dneoecoae.gtlStyleCraftingAggregation=false to force-disable it.")
+            .define("gtlStyleCraftingAggregation", true);
+
+    private static final ForgeConfigSpec.IntValue BATCH_PROCESSING_MAX_DURATION = BUILDER.comment(
+                    "Maximum duration in ticks for an aggregated crafting batch.", "The effective minimum is 20 ticks.")
+            .defineInRange("batchProcessingMaxDuration", 1200, 20, Integer.MAX_VALUE);
 
     private static final ForgeConfigSpec.IntValue CRAFTING_PATTERN_BUS_PAGES = BUILDER.comment(
                     "Number of 63-slot pages available in each smart crafting pattern bus.",
@@ -72,11 +92,13 @@ public class NEConfig {
 
     public static final ForgeConfigSpec SPEC = BUILDER.build();
 
-    public static int craftingSystemMaxLength = 15;
-    public static int computationSystemMaxLength = 15;
-    public static int storageSystemMaxLength = 15;
+    public static int craftingSystemMaxLength = DEFAULT_SYSTEM_MAX_LENGTH;
+    public static int computationSystemMaxLength = DEFAULT_SYSTEM_MAX_LENGTH;
+    public static int storageSystemMaxLength = DEFAULT_SYSTEM_MAX_LENGTH;
     public static boolean postCraftingEvent;
     public static boolean enableEcoAe2FastPath;
+    public static boolean useGtlStyleCraftingAggregation = true;
+    public static int batchProcessingMaxDuration = 1200;
     public static int craftingPatternBusPages = 2;
     public static boolean increaseStorageCellCapacity;
 
@@ -106,12 +128,23 @@ public class NEConfig {
         storageSystemMaxLength = STORAGE_SYSTEM_MAX_LENGTH.get();
         postCraftingEvent = POST_CRAFTING_EVENT.get();
         enableEcoAe2FastPath = ENABLE_ECO_AE2_FAST_PATH.get();
+        useGtlStyleCraftingAggregation = USE_GTL_STYLE_CRAFTING_AGGREGATION.get();
+        batchProcessingMaxDuration = BATCH_PROCESSING_MAX_DURATION.get();
         craftingPatternBusPages = CRAFTING_PATTERN_BUS_PAGES.get();
         increaseStorageCellCapacity = INCREASE_STORAGE_CELL_CAPACITY.get();
     }
 
     public static boolean isEcoAe2FastPathEnabled() {
         return enableEcoAe2FastPath && !"false".equalsIgnoreCase(System.getProperty("neoecoae.ecoFastPath", "true"));
+    }
+
+    public static boolean isGtlStyleCraftingAggregationEnabled() {
+        return useGtlStyleCraftingAggregation
+                && !"false".equalsIgnoreCase(System.getProperty("neoecoae.gtlStyleCraftingAggregation", "true"));
+    }
+
+    public static int getBatchProcessingMaxDurationTicks() {
+        return Math.max(20, batchProcessingMaxDuration);
     }
 
     public static boolean isIncreaseStorageCellCapacity() {
