@@ -33,7 +33,6 @@ import cn.dancingsnow.neoecoae.blocks.NEBlock;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator.CoverInfo;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessEnergyAdapter;
-import cn.dancingsnow.neoecoae.compat.gto.GTOConfigCompat;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
@@ -714,8 +713,9 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     private static long limitAggregatedTicks(long ticks) {
-        return GTOConfigCompat.limitBatchProcessingDurationTicks(
-                Math.max(ECOAggregatedCraftingTiming.MINIMUM_DURATION_TICKS, ticks));
+        return Math.min(
+                Math.max(ECOAggregatedCraftingTiming.MINIMUM_DURATION_TICKS, ticks),
+                NEConfig.getBatchProcessingMaxDurationTicks());
     }
 
     private int getEffectiveCraftingParallel() {
