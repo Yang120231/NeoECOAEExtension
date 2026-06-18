@@ -30,19 +30,20 @@ import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingCapacity;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyMode;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOCraftingEnergyStatus;
 import cn.dancingsnow.neoecoae.blocks.NEBlock;
-import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator.CoverInfo;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessEnergyAdapter;
+import cn.dancingsnow.neoecoae.compat.gto.GTOConfigCompat;
+import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingUiState;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import cn.dancingsnow.neoecoae.multiblock.BuildPreviewState;
 import cn.dancingsnow.neoecoae.multiblock.INEMultiblockBuildHost;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
 import cn.dancingsnow.neoecoae.recipe.CoolingRecipe;
-import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -96,8 +97,9 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     public static final int MAX_COOLANT = 1_000_000;
 
     private static final int REQUIRED_INSTANT_AE_COMPONENTS = 64;
-    private static final ResourceLocation INSTANT_AE_COMPONENT_ID =
-            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component");
+    private static final List<ResourceLocation> INSTANT_AE_COMPONENT_IDS = List.of(
+            ResourceLocation.fromNamespaceAndPath("gtocore", "infinite_cell_component"),
+            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component"));
     private static final String NBT_SPECIAL_MODE_ITEM = "specialModeItem";
     private static final String NBT_WIRELESS_ENERGY_COVER = "wirelessEnergyCover";
     private static final String NBT_EXTERNAL_ENERGY_OWNER = "externalEnergyOwner";
@@ -135,6 +137,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     private boolean structureStatsDirty = true;
     /** Shared preview/build state, delegates NBT sync to {@link BuildPreviewState}. */
     private final BuildPreviewState buildPreview = new BuildPreviewState();
+
     private final List<ECOAggregatedCraftingBatch> craftingBatches = new ArrayList<>();
     private final ItemStackHandler wirelessEnergyCover = new ItemStackHandler(1) {
         @Override
@@ -603,8 +606,8 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         if (!canQueueAggregatedCrafting(request.outputsPerCraft(), request.remainingPerCraft())) {
             return false;
         }
-        ECOAggregatedCraftingBatch batch =
-                ECOAggregatedCraftingBatch.create(request, TickHandler.instance().getCurrentTick());
+        ECOAggregatedCraftingBatch batch = ECOAggregatedCraftingBatch.create(
+                request, TickHandler.instance().getCurrentTick());
         if (batch == null) {
             return false;
         }
@@ -662,8 +665,8 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
             return true;
         }
         if (batch.energyMode() == ECOCraftingEnergyMode.EXTERNAL) {
-            ECOCraftingEnergyRequest request =
-                    new ECOCraftingEnergyRequest(ECOCraftingEnergyMode.EXTERNAL, required, batch.energyPerTick(), externalEnergyOwner);
+            ECOCraftingEnergyRequest request = new ECOCraftingEnergyRequest(
+                    ECOCraftingEnergyMode.EXTERNAL, required, batch.energyPerTick(), externalEnergyOwner);
             ECOCraftingEnergyResult result = externalEnergyAdapter.drain(request);
             batch.setEnergyStatus(result.drained() ? ECOCraftingEnergyStatus.READY : result.status());
             return result.drained();
@@ -696,11 +699,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         if (isInstantAeCraftingUnlocked()) {
             energyPerTick = ECOAggregatedCraftingTiming.saturatedMultiply(energyPerTick, batch.craftCount());
         }
-        return new ECOBatchEnergyProfile(
-                ECOCraftingEnergyMode.AE,
-                ECOCraftingEnergyStatus.READY,
-                energyPerTick,
-                ticks);
+        return new ECOBatchEnergyProfile(ECOCraftingEnergyMode.AE, ECOCraftingEnergyStatus.READY, energyPerTick, ticks);
     }
 
     private long getAggregatedEnergyPerTick(ECOAggregatedCraftingBatch batch) {
@@ -715,8 +714,8 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     private static long limitAggregatedTicks(long ticks) {
-        return Math.min(Math.max(ECOAggregatedCraftingTiming.MINIMUM_DURATION_TICKS, ticks),
-                NEConfig.getBatchProcessingMaxDurationTicks());
+        return GTOConfigCompat.limitBatchProcessingDurationTicks(
+                Math.max(ECOAggregatedCraftingTiming.MINIMUM_DURATION_TICKS, ticks));
     }
 
     private int getEffectiveCraftingParallel() {
@@ -788,7 +787,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     public boolean isInstantAeComponentAvailable() {
-        return BuiltInRegistries.ITEM.get(INSTANT_AE_COMPONENT_ID) != Items.AIR;
+        return getInstantAeComponentItem() != Items.AIR;
     }
 
     public boolean canUseInstantAeComponents() {
@@ -813,8 +812,18 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     private static boolean isInstantAeComponent(ItemStack stack) {
-        Item component = BuiltInRegistries.ITEM.get(INSTANT_AE_COMPONENT_ID);
+        Item component = getInstantAeComponentItem();
         return component != Items.AIR && stack != null && !stack.isEmpty() && stack.is(component);
+    }
+
+    private static Item getInstantAeComponentItem() {
+        for (ResourceLocation id : INSTANT_AE_COMPONENT_IDS) {
+            Item component = BuiltInRegistries.ITEM.get(id);
+            if (component != Items.AIR) {
+                return component;
+            }
+        }
+        return Items.AIR;
     }
 
     private static boolean areItemStacks(List<appeng.api.stacks.GenericStack> stacks) {
@@ -1064,9 +1073,8 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         int totalParallelism = threadCount;
         int availThreads = getAvailableThreads();
         int effParallel = Math.min(totalParallelism, availThreads);
-        int maxRecipeSlots = NEConfig.isGtlStyleCraftingAggregationEnabled()
-                ? getMaxConcurrentRecipes()
-                : Math.max(0, workerCount);
+        int maxRecipeSlots =
+                NEConfig.isGtlStyleCraftingAggregationEnabled() ? getMaxConcurrentRecipes() : Math.max(0, workerCount);
         int occupiedRecipeSlots = NEConfig.isGtlStyleCraftingAggregationEnabled()
                 ? Math.min(maxRecipeSlots, getOccupiedAggregatedSlots())
                 : Math.min(maxRecipeSlots, getActiveWorkerCount());

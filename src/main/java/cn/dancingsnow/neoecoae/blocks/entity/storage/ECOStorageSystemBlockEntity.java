@@ -28,11 +28,11 @@ import cn.dancingsnow.neoecoae.api.storage.IECOStorageCell;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOMachineInterfaceBlockEntity;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
-import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
-import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiMatrixState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiTypeState;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
 import cn.dancingsnow.neoecoae.impl.storage.ECOHostDomainStorage;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellMetadata;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageHostMode;
@@ -95,8 +95,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     private static final int MIGRATION_COMMITTED_TO_DOMAIN = 2;
     private static final int MIGRATION_SOURCE_CLEARED = 3;
     private static final int MIGRATION_BOUND_AS_MEMBER = 4;
-    private static final ResourceLocation INFINITE_STORAGE_COMPONENT_ID =
-            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component");
+    private static final List<ResourceLocation> INFINITE_STORAGE_COMPONENT_IDS = List.of(
+            ResourceLocation.fromNamespaceAndPath("gtocore", "infinite_cell_component"),
+            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component"));
     private static final String NBT_INFINITE_STORAGE_COMPONENT = "infiniteStorageComponent";
     private static final String NBT_HOST_MODE = "hostMode";
     private static final String NBT_HOST_DOMAIN_ID = "hostDomainId";
@@ -773,7 +774,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     }
 
     public static boolean isInfiniteStorageComponentAvailable() {
-        return BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID) != Items.AIR;
+        return getInfiniteStorageComponentItem() != Items.AIR;
     }
 
     public boolean isInfiniteStorageUnlocked() {
@@ -876,8 +877,18 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     }
 
     private static boolean isInfiniteStorageComponent(ItemStack stack) {
-        Item component = BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID);
+        Item component = getInfiniteStorageComponentItem();
         return component != Items.AIR && stack.is(component);
+    }
+
+    private static Item getInfiniteStorageComponentItem() {
+        for (ResourceLocation id : INFINITE_STORAGE_COMPONENT_IDS) {
+            Item component = BuiltInRegistries.ITEM.get(id);
+            if (component != Items.AIR) {
+                return component;
+            }
+        }
+        return Items.AIR;
     }
 
     private void updateHostStorageState() {

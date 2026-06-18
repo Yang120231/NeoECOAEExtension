@@ -131,9 +131,11 @@ public class NEComputationCluster extends NECluster<NEComputationCluster> {
                 }
                 if (!activeCpus.containsKey(cpu)) {
                     this.activeCpus.put(cpu, cpu.getPlan());
-                    this.activeJobBytes = saturatedAdd(this.activeJobBytes, Math.max(0L, cpu.getPlan().bytes()));
+                    this.activeJobBytes = saturatedAdd(
+                            this.activeJobBytes, Math.max(0L, cpu.getPlan().bytes()));
                     restored++;
-                    restoredBytes = saturatedAdd(restoredBytes, Math.max(0L, cpu.getPlan().bytes()));
+                    restoredBytes = saturatedAdd(
+                            restoredBytes, Math.max(0L, cpu.getPlan().bytes()));
                 }
             }
         }

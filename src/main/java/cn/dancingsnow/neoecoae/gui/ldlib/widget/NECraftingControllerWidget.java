@@ -233,8 +233,7 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 state.maxRecipeSlots());
         drawGaugeArea(graphics, state);
         if (showSpecialModeSlot) {
-            NELDLibAe2StyleRenderer.drawAeSlot(
-                    graphics, ox + WIRELESS_ENERGY_SLOT_X, oy + WIRELESS_ENERGY_SLOT_Y);
+            NELDLibAe2StyleRenderer.drawAeSlot(graphics, ox + WIRELESS_ENERGY_SLOT_X, oy + WIRELESS_ENERGY_SLOT_Y);
         }
         drawPlayerInventorySlots(graphics);
         NELDLibClientStyle.drawDarkInsetRect(
@@ -981,25 +980,22 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
         }
         List<Component> lines = new ArrayList<>();
         if (crafting.canUseInstantAeComponents()) {
-            lines.add(Component.translatable(crafting.canUseWirelessEnergyCovers()
-                    ? "gui.neoecoae.crafting.special_mode_slot"
-                    : "gui.neoecoae.crafting.instant_ae_slot"));
+            lines.add(Component.translatable(
+                    crafting.canUseWirelessEnergyCovers()
+                            ? "gui.neoecoae.crafting.special_mode_slot"
+                            : "gui.neoecoae.crafting.instant_ae_slot"));
             lines.add(Component.translatable(
                     "gui.neoecoae.crafting.instant_ae_component",
                     currentState().instantAeComponentCount() + " / "
                             + currentState().requiredInstantAeComponentCount()));
-            lines.add(currentState().instantAeCraftingUnlocked()
-                    ? Component.translatable("gui.neoecoae.crafting.instant_ae_ready")
-                    : Component.translatable("gui.neoecoae.crafting.instant_ae_waiting"));
+            lines.add(
+                    currentState().instantAeCraftingUnlocked()
+                            ? Component.translatable("gui.neoecoae.crafting.instant_ae_ready")
+                            : Component.translatable("gui.neoecoae.crafting.instant_ae_waiting"));
         } else {
             lines.add(Component.translatable("gui.neoecoae.crafting.wireless_energy_cover_slot"));
         }
-        g.renderTooltip(
-                font(),
-                lines,
-                Optional.empty(),
-                mouseX,
-                mouseY);
+        g.renderTooltip(font(), lines, Optional.empty(), mouseX, mouseY);
         return true;
     }
 

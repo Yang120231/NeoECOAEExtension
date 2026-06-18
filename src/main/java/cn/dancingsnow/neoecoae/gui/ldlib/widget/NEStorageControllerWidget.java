@@ -406,8 +406,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         return TEXT_LINE_STEP;
     }
 
-    private boolean renderInfiniteStorageTooltip(
-            GuiGraphics graphics, NEStorageUiState state, int mouseX, int mouseY) {
+    private boolean renderInfiniteStorageTooltip(GuiGraphics graphics, NEStorageUiState state, int mouseX, int mouseY) {
         if (!showInfiniteStorage
                 || !isMouseIn(INFINITE_SLOT_X, INFINITE_SLOT_Y, SLOT_SIZE, SLOT_SIZE, mouseX, mouseY)) {
             return false;

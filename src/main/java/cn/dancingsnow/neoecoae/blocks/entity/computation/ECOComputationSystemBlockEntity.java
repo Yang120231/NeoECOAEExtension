@@ -14,10 +14,10 @@ import cn.dancingsnow.neoecoae.api.me.ElapsedTimeTracker;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEComputationUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingRecipeUiEntry;
+import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import cn.dancingsnow.neoecoae.multiblock.BuildPreviewState;
 import cn.dancingsnow.neoecoae.multiblock.INEMultiblockBuildHost;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
-import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,8 +59,9 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
     private boolean computationStatsDirty = true;
 
     public static final int REQUIRED_INFINITE_STORAGE_COMPONENTS = 64;
-    private static final ResourceLocation INFINITE_STORAGE_COMPONENT_ID =
-            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component");
+    private static final List<ResourceLocation> INFINITE_STORAGE_COMPONENT_IDS = List.of(
+            ResourceLocation.fromNamespaceAndPath("gtocore", "infinite_cell_component"),
+            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component"));
     private static final String NBT_INFINITE_STORAGE_COMPONENT = "infiniteStorageComponent";
 
     private final ItemStackHandler infiniteStorageComponent = new ItemStackHandler(1) {
@@ -243,7 +244,7 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
     }
 
     public static boolean isInfiniteStorageComponentAvailable() {
-        return BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID) != Items.AIR;
+        return getInfiniteStorageComponentItem() != Items.AIR;
     }
 
     private void onInfiniteStorageComponentChanged() {
@@ -256,8 +257,18 @@ public class ECOComputationSystemBlockEntity extends AbstractComputationBlockEnt
     }
 
     private static boolean isInfiniteStorageComponent(ItemStack stack) {
-        Item component = BuiltInRegistries.ITEM.get(INFINITE_STORAGE_COMPONENT_ID);
+        Item component = getInfiniteStorageComponentItem();
         return component != Items.AIR && stack.is(component);
+    }
+
+    private static Item getInfiniteStorageComponentItem() {
+        for (ResourceLocation id : INFINITE_STORAGE_COMPONENT_IDS) {
+            Item component = BuiltInRegistries.ITEM.get(id);
+            if (component != Items.AIR) {
+                return component;
+            }
+        }
+        return Items.AIR;
     }
 
     public void setCpuSelectionMode(CpuSelectionMode mode) {

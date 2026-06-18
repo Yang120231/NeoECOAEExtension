@@ -39,8 +39,8 @@ import cn.dancingsnow.neoecoae.all.NERecipeTypes;
 import cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NEIntegratedWorkingStationUiState;
-import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibBlockEntityUI;
+import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -222,7 +222,6 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
     public ModularUI createUI(Player player) {
         return NELDLibUis.createIntegratedWorkingStation(this, player);
     }
-
 
     // ── State ──
 

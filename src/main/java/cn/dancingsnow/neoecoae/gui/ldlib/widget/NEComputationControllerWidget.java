@@ -112,7 +112,7 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                             syncStateNow();
                         }
                     }
-        });
+                });
         addWidget(cpuModeButton);
         if (showInfiniteStorage) {
             addWidget(new SlotWidget(
@@ -215,7 +215,8 @@ public class NEComputationControllerWidget extends NELDLibSyncedStateWidget<NECo
                     font(),
                     List.of(
                             Component.translatable("gui.neoecoae.computation.available_storage"),
-                            Component.literal(computationStorageBytes(currentState().usedStorage()) + " / "
+                            Component.literal(computationStorageBytes(
+                                            currentState().usedStorage()) + " / "
                                     + computationStorageBytes(currentState().totalStorage()) + " bytes")),
                     Optional.empty(),
                     mouseX,

@@ -25,8 +25,7 @@ public enum ECODriveProvider implements IBlockComponentProvider, IServerDataProv
     public void appendTooltip(ITooltip tooltip, BlockAccessor accessor, IPluginConfig config) {
         CompoundTag data = accessor.getServerData();
         if (data.getBoolean("infiniteMember")) {
-            tooltip.add(Component.translatable("jade.neoecoae.drive_infinite")
-                    .withStyle(ChatFormatting.LIGHT_PURPLE));
+            tooltip.add(Component.translatable("jade.neoecoae.drive_infinite").withStyle(ChatFormatting.LIGHT_PURPLE));
             return;
         }
         if (data.getBoolean("migratingToInfinite")) {

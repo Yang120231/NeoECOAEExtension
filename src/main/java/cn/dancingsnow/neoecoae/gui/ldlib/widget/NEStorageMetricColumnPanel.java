@@ -150,10 +150,7 @@ final class NEStorageMetricColumnPanel {
                                     metric.infiniteCapacity()
                                             ? "\u221e"
                                             : NELDLibText.percentOrNA(metric.used(), metric.max())),
-                            Component.translatable(
-                                    TOOLTIP_USED_TOTAL,
-                                    metric.usedText(),
-                                    metric.maxText()),
+                            Component.translatable(TOOLTIP_USED_TOTAL, metric.usedText(), metric.maxText()),
                             Component.translatable(
                                     "gui.neoecoae.machine.types_value",
                                     metric.usedTypesText(),
@@ -239,7 +236,8 @@ final class NEStorageMetricColumnPanel {
         int percentColor = metric.max() <= 0 && !metric.infiniteCapacity()
                 ? NELDLibStyle.DARK_TEXT_MUTED
                 : NELDLibStyle.metricColor(metric.accentColor(), metric.max(), pct);
-        String percentText = metric.infiniteCapacity() ? "\u221e" : NELDLibText.percentOrNA(metric.used(), metric.max());
+        String percentText =
+                metric.infiniteCapacity() ? "\u221e" : NELDLibText.percentOrNA(metric.used(), metric.max());
         NELDLibClientStyle.drawTinyInsetRect(g, x - 2, percentY, w + 4, PERCENT_H, 0xFF201E27);
         NELDLibClientStyle.drawCenteredScaledString(
                 g, font(), percentText, x - 2, percentY, w + 4, PERCENT_H, percentColor, 0.9F);

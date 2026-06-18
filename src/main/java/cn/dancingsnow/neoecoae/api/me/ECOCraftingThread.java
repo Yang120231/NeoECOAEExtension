@@ -221,13 +221,7 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
         var inputTotal = ECOBatchCraftingHelper.multiply(request.inputsPerCraft(), request.batchSize());
         var remainingTotal = ECOBatchCraftingHelper.multiply(request.remainingPerCraft(), request.batchSize());
         var work = new ECOBatchCraftingWork(
-                batchSize,
-                inputTotal,
-                outputTotal,
-                remainingTotal,
-                request.craftingJobId(),
-                0,
-                batchSize);
+                batchSize, inputTotal, outputTotal, remainingTotal, request.craftingJobId(), 0, batchSize);
         return acceptBatch(work, controller);
     }
 

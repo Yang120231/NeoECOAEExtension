@@ -170,7 +170,9 @@ final class NEStorageMetricsModel {
         }
 
         boolean infiniteCapacity() {
-            return max == Long.MAX_VALUE || totalTypes == Long.MAX_VALUE || NELDLibText.INFINITE.equals(maxText)
+            return max == Long.MAX_VALUE
+                    || totalTypes == Long.MAX_VALUE
+                    || NELDLibText.INFINITE.equals(maxText)
                     || NELDLibText.INFINITE.equals(totalTypesText);
         }
     }

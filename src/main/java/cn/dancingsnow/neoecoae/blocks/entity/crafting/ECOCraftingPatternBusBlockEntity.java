@@ -180,8 +180,8 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
             if (result == null || result.isNegative()) {
                 continue;
             }
-            int maxBatchSize =
-                    ECOFastPathLimits.limitBatchSize(saturatedInt(requestedBatchSize), availableSlots, controllerAvailableSlots);
+            int maxBatchSize = ECOFastPathLimits.limitBatchSize(
+                    saturatedInt(requestedBatchSize), availableSlots, controllerAvailableSlots);
             if (maxBatchSize > 0) {
                 return new BatchFastPathOffer(worker, result, maxBatchSize, false);
             }

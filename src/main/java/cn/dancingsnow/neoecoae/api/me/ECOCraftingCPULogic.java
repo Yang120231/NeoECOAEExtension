@@ -581,8 +581,9 @@ public class ECOCraftingCPULogic {
             return 0L;
         }
 
-        int requestedCrafts =
-                Math.min(saturatedInt(progress.value), maxBatchSizeFromEnergy(energyService, attempt.patternPower(), saturatedInt(progress.value)));
+        int requestedCrafts = Math.min(
+                saturatedInt(progress.value),
+                maxBatchSizeFromEnergy(energyService, attempt.patternPower(), saturatedInt(progress.value)));
         if (requestedCrafts <= 1) {
             return 0L;
         }
@@ -803,7 +804,8 @@ public class ECOCraftingCPULogic {
         if (!aggregatedOffer) {
             int nonAggregatedBatchSize = saturatedInt(batchSize);
             nonAggregatedBatchSize = Math.min(
-                    nonAggregatedBatchSize, maxBatchSizeFromEnergy(energyService, patternPower, nonAggregatedBatchSize));
+                    nonAggregatedBatchSize,
+                    maxBatchSizeFromEnergy(energyService, patternPower, nonAggregatedBatchSize));
             nonAggregatedBatchSize = controller.getCraftingCoolantCraftLimit(
                     5, controller.getEffectiveOverclockTimes(), nonAggregatedBatchSize);
             batchSize = nonAggregatedBatchSize;
