@@ -73,6 +73,8 @@ public final class NELDLibStateCodecs {
             buf.writeUtf(type.totalTypesDisplay(), 64);
             buf.writeUtf(type.usedBytesDisplay(), 64);
             buf.writeUtf(type.totalBytesDisplay(), 64);
+            buf.writeBoolean(type.infiniteTypesDisplay());
+            buf.writeBoolean(type.infiniteBytesDisplay());
         }
     }
 
@@ -123,7 +125,9 @@ public final class NELDLibStateCodecs {
                     buf.readUtf(64),
                     buf.readUtf(64),
                     buf.readUtf(64),
-                    buf.readUtf(64)));
+                    buf.readUtf(64),
+                    buf.readBoolean(),
+                    buf.readBoolean()));
         }
         return new NEStorageUiState(
                 pos,

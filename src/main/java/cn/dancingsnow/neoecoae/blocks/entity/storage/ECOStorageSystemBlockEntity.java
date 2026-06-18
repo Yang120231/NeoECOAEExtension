@@ -484,7 +484,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                                 Long.toString(Math.max(0L, usedTypes)),
                                 infiniteDisplay(),
                                 NELDLibText.storageBytes(usedBytes),
-                                infiniteDisplay()));
+                                infiniteDisplay(),
+                                true,
+                                true));
             } else {
                 grouped.put(
                         typeId,
@@ -498,7 +500,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                                 Long.toString(Math.max(0L, usedTypes)),
                                 infiniteDisplay(),
                                 NELDLibText.storageBytes(usedBytes),
-                                infiniteDisplay()));
+                                infiniteDisplay(),
+                                true,
+                                true));
             }
         }
         List<NEStorageUiTypeState> states = new ArrayList<>(grouped.values());
@@ -547,7 +551,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                         "0",
                         infiniteDisplay(),
                         "0",
-                        infiniteDisplay()));
+                        infiniteDisplay(),
+                        true,
+                        true));
     }
 
     private static String infiniteDisplay() {

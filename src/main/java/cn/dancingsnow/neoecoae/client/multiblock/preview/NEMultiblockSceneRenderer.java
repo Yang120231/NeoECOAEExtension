@@ -1,8 +1,11 @@
 package cn.dancingsnow.neoecoae.client.multiblock.preview;
 
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -11,8 +14,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
@@ -20,6 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
+import org.lwjgl.opengl.GL11;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,42 +89,42 @@ public final class NEMultiblockSceneRenderer {
             return;
         }
 
-        g.flush();
         SceneViewport viewport = new SceneViewport(x, y, width, height);
+        MultiBufferSource.BufferSource buffer = null;
+        g.flush();
         if (clip) {
             PreviewScissor.enable(g, viewport);
         }
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
+        beginCompatSceneState();
 
         PoseStack pose = g.pose();
         pose.pushPose();
         try {
+            clearSceneDepth();
+            CameraFit.ProjectedBounds projectedBounds = CameraFit.project(cameraBounds, yaw, pitch);
             float scale = CameraFit.calculateStableScale(cameraBounds, width, height, FIT_PADDING) * zoom;
             pose.translate(x + width * 0.5F, y + height * 0.50F, 240.0F);
+            pose.translate(-projectedBounds.centerX() * scale, projectedBounds.centerY() * scale, 0.0F);
             pose.scale(scale, -scale, scale);
             pose.mulPose(Axis.XP.rotationDegrees(pitch));
             pose.mulPose(Axis.YP.rotationDegrees(yaw));
             pose.translate(-cameraBounds.centerX(), -cameraBounds.centerY(), -cameraBounds.centerZ());
 
             BlockRenderDispatcher dispatcher = minecraft.getBlockRenderer();
-            MultiBufferSource.BufferSource buffer = minecraft.renderBuffers().bufferSource();
+            buffer = minecraft.renderBuffers().bufferSource();
             Map<BlockPos, BlockState> blocks = scene.blocks();
-            for (BlockPos pos : positions) {
-                BlockState state = blocks.get(pos);
-                if (state == null || state.isAir() || state.getRenderShape() == RenderShape.INVISIBLE) {
-                    continue;
-                }
-                renderBlock(dispatcher, buffer, pose, pos, state);
-            }
+            renderOpaquePass(dispatcher, buffer, pose, blocks, positions);
             buffer.endBatch();
+            renderTranslucentPass(dispatcher, buffer, pose, blocks, positions, yaw, pitch);
         } finally {
+            if (buffer != null) {
+                buffer.endBatch();
+            }
             pose.popPose();
-            RenderSystem.disableDepthTest();
             if (clip) {
                 g.disableScissor();
             }
+            endCompatSceneState(g);
         }
     }
 
@@ -158,6 +164,105 @@ public final class NEMultiblockSceneRenderer {
      */
     public void rotateFromMouseDrag(double dragX, double dragY) {
         rotate((float) dragX * MOUSE_YAW_SPEED, (float) dragY * MOUSE_PITCH_SPEED);
+    }
+
+    private static void beginCompatSceneState() {
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.disableCull();
+        RenderSystem.disableBlend();
+    }
+
+    private static void clearSceneDepth() {
+        RenderSystem.depthMask(true);
+        RenderSystem.clearDepth(1.0D);
+        RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
+    }
+
+    private static void endCompatSceneState(GuiGraphics g) {
+        g.flush();
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableCull();
+        Lighting.setupFor3DItems();
+    }
+
+    private static void renderOpaquePass(
+            BlockRenderDispatcher dispatcher,
+            MultiBufferSource buffer,
+            PoseStack pose,
+            Map<BlockPos, BlockState> blocks,
+            List<BlockPos> positions) {
+        RenderSystem.disableBlend();
+        RenderSystem.depthMask(true);
+        for (BlockPos pos : positions) {
+            BlockState state = blocks.get(pos);
+            if (!isRenderable(state) || isTranslucent(state)) {
+                continue;
+            }
+            renderBlock(dispatcher, buffer, pose, pos, state);
+        }
+    }
+
+    private static void renderTranslucentPass(
+            BlockRenderDispatcher dispatcher,
+            MultiBufferSource.BufferSource buffer,
+            PoseStack pose,
+            Map<BlockPos, BlockState> blocks,
+            List<BlockPos> positions,
+            float yaw,
+            float pitch) {
+        List<BlockPos> translucentPositions = collectTranslucentPositions(blocks, positions, yaw, pitch);
+        if (translucentPositions.isEmpty()) {
+            return;
+        }
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.depthMask(false);
+        for (BlockPos pos : translucentPositions) {
+            BlockState state = blocks.get(pos);
+            renderBlock(dispatcher, buffer, pose, pos, state);
+        }
+        buffer.endBatch(RenderType.translucent());
+        RenderSystem.depthMask(true);
+        RenderSystem.disableBlend();
+    }
+
+    private static List<BlockPos> collectTranslucentPositions(
+            Map<BlockPos, BlockState> blocks, List<BlockPos> positions, float yaw, float pitch) {
+        List<BlockPos> translucent = new ArrayList<>();
+        for (BlockPos pos : positions) {
+            BlockState state = blocks.get(pos);
+            if (isRenderable(state) && isTranslucent(state)) {
+                translucent.add(pos);
+            }
+        }
+        translucent.sort(Comparator.comparingDouble(pos -> viewDepth(pos, yaw, pitch)));
+        return translucent;
+    }
+
+    private static boolean isRenderable(BlockState state) {
+        return state != null && !state.isAir() && state.getRenderShape() != RenderShape.INVISIBLE;
+    }
+
+    private static boolean isTranslucent(BlockState state) {
+        return ItemBlockRenderTypes.getChunkRenderType(state) == RenderType.translucent();
+    }
+
+    private static double viewDepth(BlockPos pos, float yaw, float pitch) {
+        double x = pos.getX() + 0.5D;
+        double y = pos.getY() + 0.5D;
+        double z = pos.getZ() + 0.5D;
+        double yawRad = Math.toRadians(yaw);
+        double pitchRad = Math.toRadians(pitch);
+        double cosYaw = Math.cos(yawRad);
+        double sinYaw = Math.sin(yawRad);
+        double yawZ = -x * sinYaw + z * cosYaw;
+        return y * Math.sin(pitchRad) + yawZ * Math.cos(pitchRad);
     }
 
     private static void renderBlock(

@@ -65,21 +65,23 @@ final class NEStorageMetricsModel {
                 state.usedTypes(),
                 state.totalTypes(),
                 accentColor,
-                displayOrBytes(state.usedBytesDisplay(), state.usedBytes()),
-                displayOrBytes(state.totalBytesDisplay(), state.totalBytes()),
-                displayOrTypeCount(state.usedTypesDisplay(), state.usedTypes()),
-                displayOrTypeCount(state.totalTypesDisplay(), state.totalTypes()));
+                displayOrBytes(state.usedBytesDisplay(), state.usedBytes(), false),
+                displayOrBytes(state.totalBytesDisplay(), state.totalBytes(), state.infiniteBytesDisplay()),
+                displayOrTypeCount(state.usedTypesDisplay(), state.usedTypes(), false),
+                displayOrTypeCount(state.totalTypesDisplay(), state.totalTypes(), state.infiniteTypesDisplay()),
+                state.infiniteTypesDisplay(),
+                state.infiniteBytesDisplay());
     }
 
-    private static String displayOrBytes(String display, long value) {
-        return display.isBlank() ? NELDLibText.storageBytes(value) : display;
+    private static String displayOrBytes(String display, long value, boolean displayAsInfinite) {
+        return display.isBlank() ? NELDLibText.storageBytes(value, displayAsInfinite) : display;
     }
 
-    private static String displayOrTypeCount(String display, long value) {
-        if (value == Long.MAX_VALUE) {
+    private static String displayOrTypeCount(String display, long value, boolean displayAsInfinite) {
+        if (value == Long.MAX_VALUE && displayAsInfinite) {
             return NELDLibText.INFINITE;
         }
-        return display.isBlank() ? NELDLibText.typeCount(value) : display;
+        return display.isBlank() ? NELDLibText.typeCount(value, displayAsInfinite) : display;
     }
 
     private static NEStorageUiTypeState findTypeState(List<NEStorageUiTypeState> types, String needle) {
@@ -149,7 +151,9 @@ final class NEStorageMetricsModel {
             String usedText,
             String maxText,
             String usedTypesText,
-            String totalTypesText) {
+            String totalTypesText,
+            boolean infiniteTypes,
+            boolean infiniteBytes) {
         Metric(String key, Component label, long used, long max, long usedTypes, long totalTypes, int accentColor) {
             this(
                     key,
@@ -161,8 +165,10 @@ final class NEStorageMetricsModel {
                     accentColor,
                     NELDLibText.storageBytes(used),
                     NELDLibText.storageBytes(max),
-                    NELDLibText.typeCount(usedTypes),
-                    NELDLibText.typeCount(totalTypes));
+                    NELDLibText.typeCount(usedTypes, false),
+                    NELDLibText.typeCount(totalTypes, false),
+                    false,
+                    false);
         }
 
         double percent() {
@@ -170,8 +176,7 @@ final class NEStorageMetricsModel {
         }
 
         boolean infiniteCapacity() {
-            return max == Long.MAX_VALUE || totalTypes == Long.MAX_VALUE || NELDLibText.INFINITE.equals(maxText)
-                    || NELDLibText.INFINITE.equals(totalTypesText);
+            return infiniteBytes;
         }
     }
 }

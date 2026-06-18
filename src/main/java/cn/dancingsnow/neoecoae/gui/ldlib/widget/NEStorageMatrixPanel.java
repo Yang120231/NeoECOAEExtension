@@ -185,15 +185,15 @@ final class NEStorageMatrixPanel {
                             NELDLibValueText.usedTotalComponent(
                                     Component.translatable("gui.neoecoae.common.types")
                                                     .getString() + ": ",
-                                    NELDLibText.typeCount(matrix.usedTypes()),
-                                    NELDLibText.typeCount(matrix.totalTypes()),
+                                    NELDLibText.typeCount(matrix.usedTypes(), matrix.infiniteMember()),
+                                    NELDLibText.typeCount(matrix.totalTypes(), matrix.infiniteMember()),
                                     matrix.usedTypes(),
                                     matrix.totalTypes(),
                                     ""),
                             NELDLibValueText.usedTotalComponent(
                                     "",
-                                    NELDLibText.storageBytes(matrix.usedBytes()),
-                                    NELDLibText.storageBytes(matrix.totalBytes()),
+                                    NELDLibText.storageBytes(matrix.usedBytes(), matrix.infiniteMember()),
+                                    NELDLibText.storageBytes(matrix.totalBytes(), matrix.infiniteMember()),
                                     matrix.usedBytes(),
                                     matrix.totalBytes(),
                                     Component.translatable("gui.neoecoae.storage.bytes_used")

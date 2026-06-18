@@ -16,13 +16,7 @@ final class CameraFit {
         return scale;
     }
 
-    /**
-     * @deprecated Use {@link #calculateStableScale} for multiblock previews.
-     *             This method depends on yaw/pitch and causes scale breathing
-     *             during rotation.
-     */
-    @Deprecated
-    static float calculateScale(SceneBounds bounds, float yaw, float pitch, int width, int height, float padding) {
+    static ProjectedBounds project(SceneBounds bounds, float yaw, float pitch) {
         float centerX = bounds.centerX();
         float centerY = bounds.centerY();
         float centerZ = bounds.centerZ();
@@ -57,10 +51,45 @@ final class CameraFit {
             }
         }
 
-        float projectedWidth = Math.max(1.0F, maxScreenX - minScreenX);
-        float projectedHeight = Math.max(1.0F, maxScreenY - minScreenY);
+        if (!Float.isFinite(minScreenX)
+                || !Float.isFinite(maxScreenX)
+                || !Float.isFinite(minScreenY)
+                || !Float.isFinite(maxScreenY)) {
+            return new ProjectedBounds(0.0F, 0.0F, 1.0F, 1.0F);
+        }
+        return new ProjectedBounds(minScreenX, maxScreenX, minScreenY, maxScreenY);
+    }
+
+    /**
+     * @deprecated Use {@link #calculateStableScale} for multiblock previews.
+     *             This method depends on yaw/pitch and causes scale breathing
+     *             during rotation.
+     */
+    @Deprecated
+    static float calculateScale(SceneBounds bounds, float yaw, float pitch, int width, int height, float padding) {
+        ProjectedBounds projectedBounds = project(bounds, yaw, pitch);
+        float projectedWidth = Math.max(1.0F, projectedBounds.width());
+        float projectedHeight = Math.max(1.0F, projectedBounds.height());
         float scaleX = width * padding / projectedWidth;
         float scaleY = height * padding / projectedHeight;
         return Math.min(scaleX, scaleY);
+    }
+
+    record ProjectedBounds(float minX, float maxX, float minY, float maxY) {
+        float width() {
+            return maxX - minX;
+        }
+
+        float height() {
+            return maxY - minY;
+        }
+
+        float centerX() {
+            return (minX + maxX) * 0.5F;
+        }
+
+        float centerY() {
+            return (minY + maxY) * 0.5F;
+        }
     }
 }

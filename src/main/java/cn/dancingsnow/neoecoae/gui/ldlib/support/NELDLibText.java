@@ -35,6 +35,13 @@ public final class NELDLibText {
         return value == Long.MAX_VALUE ? INFINITE : number(Math.max(0L, value));
     }
 
+    public static String typeCount(long value, boolean displayAsInfinite) {
+        if (value == Long.MAX_VALUE) {
+            return displayAsInfinite ? INFINITE : number(value);
+        }
+        return number(Math.max(0L, value));
+    }
+
     public static String percent(double value) {
         if (!Double.isFinite(value)) {
             return "N/A";
@@ -67,6 +74,10 @@ public final class NELDLibText {
             suffix = "T";
         }
         return COMPACT_DECIMAL.get().format((double) safe / (double) unit) + suffix;
+    }
+
+    public static String storageBytes(long value, boolean displayAsInfinite) {
+        return value == Long.MAX_VALUE && displayAsInfinite ? INFINITE : storageBytes(value);
     }
 
     public static String compactDecimal(long value, long unit, String suffix) {

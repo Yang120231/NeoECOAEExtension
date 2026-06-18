@@ -126,13 +126,9 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             return;
         }
         lines.add(Tooltips.bytesUsed(handler.getUsedBytes(), handler.getTotalBytes()));
-        if (handler.getTotalItemTypes() == Long.MAX_VALUE) {
-            lines.add(Component.literal("Types: " + NELDLibText.typeCount(handler.getStoredItemTypes()) + " / "
-                            + NELDLibText.INFINITE)
-                    .withStyle(ChatFormatting.GRAY));
-        } else {
-            lines.add(Tooltips.typesUsed(handler.getStoredItemTypes(), handler.getTotalItemTypes()));
-        }
+        lines.add(Component.literal("Types: " + NELDLibText.typeCount(handler.getStoredItemTypes(), false) + " / "
+                        + NELDLibText.typeCount(handler.getTotalItemTypes(), false))
+                .withStyle(ChatFormatting.GRAY));
     }
 
     @Override
