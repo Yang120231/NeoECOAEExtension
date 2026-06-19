@@ -18,13 +18,60 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+def javaTargetVersion = (project.findProperty('javaTargetVersion') ?: '21') as int
+java.toolchain.languageVersion = JavaLanguageVersion.of(javaTargetVersion)
 
 jarJar.enable()
+
+def gtoModsDir = file(project.findProperty('gtoModsDir')
+        ?: 'D:/Minecraft/1.20.0/.minecraft/versions/GregTech Odyssey 0.5.6/mods')
+def gtoDevLibsDir = file(project.findProperty('gtoDevLibsDir')
+        ?: 'E:/Minecraft Project/GTOCore/build/devlibs')
+def gtoLibsDir = file(project.findProperty('gtoLibsDir')
+        ?: 'E:/Minecraft Project/GTOCore/libs')
+
+def latestJarFrom = { String displayName, String include, List<File> dirs ->
+    for (File dir : dirs) {
+        if (!dir.exists()) {
+            continue
+        }
+
+        def jars = fileTree(dir: dir, include: include).files
+        if (!jars.empty) {
+            return jars.max { File jarFile -> jarFile.lastModified() }
+        }
+    }
+    throw new GradleException("Unable to find ${displayName} jar matching ${include} in ${dirs*.path}")
+}
+
+def requireJar = { String displayName, File jarFile ->
+    if (!jarFile.isFile()) {
+        throw new GradleException("${displayName} jar does not exist: ${jarFile}")
+    }
+    return jarFile
+}
+
+def flatDirDependencyFor = { String groupId, String artifactId, File jarFile ->
+    def prefix = "${artifactId}-"
+    def suffix = '.jar'
+    if (!jarFile.name.startsWith(prefix) || !jarFile.name.endsWith(suffix)) {
+        throw new GradleException("Cannot derive ${artifactId} version from jar name: ${jarFile.name}")
+    }
+    def jarVersion = jarFile.name.substring(prefix.length(), jarFile.name.length() - suffix.length())
+    return "${groupId}:${artifactId}:${jarVersion}"
+}
+
+def gtoCoreJar = project.findProperty('gtoCoreJar')
+        ? requireJar('GTCore', file(project.property('gtoCoreJar')))
+        : latestJarFrom('GTCore', 'gtocore-*.jar', [gtoDevLibsDir, gtoModsDir])
+def gtoCoreDependency = flatDirDependencyFor('dev', 'gtocore', gtoCoreJar)
 
 repositories {
     mavenLocal()
     mavenCentral()
+    flatDir {
+        dirs gtoModsDir, gtoLibsDir, gtoDevLibsDir, gtoCoreJar.parentFile
+    }
     maven { url = 'https://maven.minecraftforge.net' }
     maven {
         name = "Modrinth Maven"
@@ -114,7 +161,6 @@ spotless {
 minecraft {
     mappings channel: 'official', version: minecraft_version
     copyIdeResources = true
-
     runs {
         client {
             workingDirectory project.file('run/client')
@@ -178,12 +224,21 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:5.10.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
     testImplementation fg.deobf("curse.maven:ldlib-626676:${ldlib_file_id}")
+    implementation("curse.maven:kotlin-for-forge-351264:${kotlin_for_forge_file_id}")
 
     implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
     jarJar(fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")) {
         jarJar.ranged(it, "[${registrate_version},)")
     }
-    implementation fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")
+    implementation fg.deobf(gtoCoreDependency)
+    implementation fg.deobf("dev:gtceu-1.20.1:1.8.0")
+    implementation fg.deobf("dev:gtolib:1.0")
+    implementation fg.deobf("dev:gtonativelib:1.0")
+    implementation fg.deobf("dev:gtmthings:1.5.5-GTO-Port")
+    implementation fg.deobf("dev:fastcollection:1.0")
+    implementation fg.deobf("dev:RecipeSearch:1.3")
+    implementation fg.deobf("dev:gtoepp:1.0.1")
+    implementation fg.deobf("dev:appliedenergistics2-forge:${ae2_version}")
 
     compileOnly("org.appliedenergistics:guideme:${guideme_version}:api")
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
@@ -284,11 +339,11 @@ jar {
 
 tasks.register('verifyReleaseJar') {
     group = 'verification'
-    description = 'Verifies that the distributable jar is reobfuscated and contains the expected production mixins.'
-    dependsOn 'reobfJar'
+    description = 'Verifies that the distributable jarJar artifact is reobfuscated and contains the expected production mixins.'
+    dependsOn 'reobfJarJar'
 
     doLast {
-        def jarFile = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        def jarFile = tasks.named('jarJar', Jar).get().archiveFile.get().asFile
         def zip = new java.util.zip.ZipFile(jarFile)
 
         try {
@@ -313,6 +368,10 @@ tasks.register('verifyReleaseJar') {
                 throw new GradleException("Release jar still contains the removed IO port ticking mixin: ${jarFile}")
             }
 
+            if (zip.getEntry('META-INF/jarjar/metadata.json') == null) {
+                throw new GradleException("Release jar is not the jarJar artifact: ${jarFile}")
+            }
+
             def mixinConfigEntry = zip.getEntry("${mod_id}.mixins.json")
             if (mixinConfigEntry == null) {
                 throw new GradleException("Release jar is missing ${mod_id}.mixins.json: ${jarFile}")
@@ -325,10 +384,10 @@ tasks.register('verifyReleaseJar') {
 
 tasks.register('release', Copy) {
     group = 'build'
-    description = 'Builds the production reobfuscated mod jar and copies it to build/release.'
+    description = 'Builds the production reobfuscated jarJar mod jar and copies it to build/release.'
     dependsOn 'verifyReleaseJar'
 
-    from(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    from(tasks.named('jarJar', Jar).flatMap { it.archiveFile })
     into(layout.buildDirectory.dir('release'))
 
     doFirst {
@@ -355,6 +414,7 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+    options.release = javaTargetVersion
 }
 
 tasks.named('test', Test).configure {

@@ -1,6 +1,7 @@
 package cn.dancingsnow.neoecoae.compat.gtl;
 
 import appeng.api.networking.crafting.ICraftingProvider;
+import com.gtocore.common.machine.multiblock.part.ae.MEPatternPartMachineKt;
 
 public final class GTLCraftingProviderCompat {
     private static final String GTO_PACKAGE_MARKER = ".gtocore.";
@@ -21,6 +22,10 @@ public final class GTLCraftingProviderCompat {
 
     public static boolean isAutoExpandProvider(ICraftingProvider provider) {
         return provider != null && AUTO_EXPAND_PROVIDER.get(provider.getClass());
+    }
+
+    public static boolean isGTOCoreNativePatternProvider(ICraftingProvider provider) {
+        return provider instanceof MEPatternPartMachineKt<?>;
     }
 
     private static boolean isAutoExpandProviderType(Class<?> type) {

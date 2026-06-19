@@ -27,7 +27,7 @@ public class ECOStorageSavedData extends SavedData {
 
     private final Map<UUID, StoredContents> disks = new HashMap<>();
     private final Map<UUID, StoredContents> domains = new HashMap<>();
-    private final Map<UUID, MigrationRecord> migrations = new HashMap<>();
+    private final Map<UUID, List<UUID>> migrations = new HashMap<>();
 
     public static ECOStorageSavedData get(ServerLevel level) {
         return level.getDataStorage().computeIfAbsent(ECOStorageSavedData::load, ECOStorageSavedData::new, DATA_NAME);
@@ -104,18 +104,18 @@ public class ECOStorageSavedData extends SavedData {
 
     public void removeDomain(UUID domainId) {
         StoredContents removed = domains.remove(domainId);
-        MigrationRecord migration = migrations.remove(domainId);
+        List<UUID> migration = migrations.remove(domainId);
         if (removed != null || migration != null) {
             setDirty();
         }
     }
 
     public void beginMigration(UUID domainId, List<UUID> diskIds) {
-        MigrationRecord existing = migrations.get(domainId);
-        if (existing != null && existing.diskIds().equals(diskIds)) {
+        List<UUID> existing = migrations.get(domainId);
+        if (existing != null && existing.equals(diskIds)) {
             return;
         }
-        migrations.put(domainId, new MigrationRecord(diskIds));
+        migrations.put(domainId, List.copyOf(diskIds));
         getOrCreateDomain(domainId);
         setDirty();
     }
@@ -165,14 +165,19 @@ public class ECOStorageSavedData extends SavedData {
             if (domainId == null) {
                 continue;
             }
-            migrations.put(domainId, MigrationRecord.read(tag));
+            migrations.put(domainId, readDiskIds(tag.getList("diskIds", Tag.TAG_STRING)));
         }
     }
 
     private ListTag writeMigrationMap() {
         ListTag list = new ListTag();
-        for (Map.Entry<UUID, MigrationRecord> entry : migrations.entrySet()) {
-            CompoundTag tag = entry.getValue().write();
+        for (Map.Entry<UUID, List<UUID>> entry : migrations.entrySet()) {
+            CompoundTag tag = new CompoundTag();
+            ListTag disks = new ListTag();
+            for (UUID diskId : entry.getValue()) {
+                disks.add(StringTag.valueOf(diskId.toString()));
+            }
+            tag.put("diskIds", disks);
             tag.putString("domainId", entry.getKey().toString());
             list.add(tag);
         }
@@ -318,27 +323,14 @@ public class ECOStorageSavedData extends SavedData {
         }
     }
 
-    public record MigrationRecord(List<UUID> diskIds) {
-        private CompoundTag write() {
-            CompoundTag tag = new CompoundTag();
-            ListTag disks = new ListTag();
-            for (UUID diskId : diskIds) {
-                disks.add(StringTag.valueOf(diskId.toString()));
+    private static List<UUID> readDiskIds(ListTag diskList) {
+        List<UUID> ids = new java.util.ArrayList<>(diskList.size());
+        for (int i = 0; i < diskList.size(); i++) {
+            UUID diskId = readUuid(diskList.getString(i));
+            if (diskId != null) {
+                ids.add(diskId);
             }
-            tag.put("diskIds", disks);
-            return tag;
         }
-
-        private static MigrationRecord read(CompoundTag tag) {
-            ListTag diskList = tag.getList("diskIds", Tag.TAG_STRING);
-            List<UUID> ids = new java.util.ArrayList<>(diskList.size());
-            for (int i = 0; i < diskList.size(); i++) {
-                UUID diskId = readUuid(diskList.getString(i));
-                if (diskId != null) {
-                    ids.add(diskId);
-                }
-            }
-            return new MigrationRecord(List.copyOf(ids));
-        }
+        return List.copyOf(ids);
     }
 }

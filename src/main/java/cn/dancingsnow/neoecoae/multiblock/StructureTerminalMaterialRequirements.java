@@ -31,7 +31,8 @@ public final class StructureTerminalMaterialRequirements {
             entries.add(new NEStructureTerminalUiState.BuildMaterialEntry(
                     required.copyWithCount(1), requiredCount, availableCount));
         }
-        entries.sort(Comparator.comparingInt(NEStructureTerminalUiState.BuildMaterialEntry::missing)
+        entries.sort(Comparator.<NEStructureTerminalUiState.BuildMaterialEntry>comparingInt(
+                        NEStructureTerminalUiState.BuildMaterialEntry::missing)
                 .reversed()
                 .thenComparing(entry -> entry.item().getHoverName().getString()));
         return entries;

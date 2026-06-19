@@ -10,6 +10,7 @@
     "CraftingCpuListEntryMixin120",
     "CraftingStatusMenuMixin120",
     "IOPortMenuMixin120",
+    "JadeLoadCompleteMixin120",
     "PatternEncodingTermMenuMixin120",
     "StorageCellsMixin120",
     "ae2.AECraftingPatternAccessor"

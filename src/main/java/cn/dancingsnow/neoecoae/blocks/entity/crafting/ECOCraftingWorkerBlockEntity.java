@@ -20,7 +20,7 @@ import cn.dancingsnow.neoecoae.api.me.fastpath.ECOExtractedPatternExecution;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathLimits;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathResult;
 import com.mojang.logging.LogUtils;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -367,7 +367,7 @@ public class ECOCraftingWorkerBlockEntity extends AbstractCraftingBlockEntity<EC
                 KeyCounter threadOutput = thread.collectOutputItems();
                 readyThreads.add(thread);
                 perThreadOutputs.add(threadOutput);
-                for (Object2LongMap.Entry<AEKey> entry : threadOutput) {
+                for (Reference2LongMap.Entry<AEKey> entry : threadOutput) {
                     combinedOutputs.add(entry.getKey(), entry.getLongValue());
                 }
             }
@@ -385,7 +385,7 @@ public class ECOCraftingWorkerBlockEntity extends AbstractCraftingBlockEntity<EC
         CraftingService craftingService = (CraftingService) grid.getCraftingService();
         MEStorage storage = grid.getStorageService().getInventory();
         KeyCounter totalAcceptedOutputs = new KeyCounter();
-        for (Object2LongMap.Entry<AEKey> entry : combinedOutputs) {
+        for (Reference2LongMap.Entry<AEKey> entry : combinedOutputs) {
             AEKey key = entry.getKey();
             long requested = entry.getLongValue();
             long accepted = craftingService.insertIntoCpus(key, requested, Actionable.MODULATE);
@@ -400,7 +400,7 @@ public class ECOCraftingWorkerBlockEntity extends AbstractCraftingBlockEntity<EC
         // ── Fair proportional allocation across threads ──
         // Track remainder per key to distribute rounding leftovers
         java.util.Map<AEKey, Long> remainingAccepted = new java.util.HashMap<>();
-        for (Object2LongMap.Entry<AEKey> entry : totalAcceptedOutputs) {
+        for (Reference2LongMap.Entry<AEKey> entry : totalAcceptedOutputs) {
             remainingAccepted.put(entry.getKey(), entry.getLongValue());
         }
 
@@ -409,7 +409,7 @@ public class ECOCraftingWorkerBlockEntity extends AbstractCraftingBlockEntity<EC
             KeyCounter threadOutput = perThreadOutputs.get(i);
             KeyCounter allocation = new KeyCounter();
 
-            for (Object2LongMap.Entry<AEKey> entry : threadOutput) {
+            for (Reference2LongMap.Entry<AEKey> entry : threadOutput) {
                 AEKey key = entry.getKey();
                 long threadAmount = entry.getLongValue();
                 long totalForKey = combinedOutputs.get(key);

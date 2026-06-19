@@ -32,7 +32,6 @@ public final class NELDLibTaskCards {
         g.fill(x + 1, y + 1, x + w - 1, y + h - 1, withAlpha(0xFF121016, alpha));
         g.fill(x + 2, y + 2, x + w - 2, y + h - 2, withAlpha(0xFF4D4855, alpha));
         g.fill(x + 3, y + 3, x + w - 3, y + h - 3, withAlpha(0xFF2C2735, alpha));
-        g.fill(x + 3, y + h - 3, x + w - 3, y + h - 2, withAlpha(accentColor, alpha));
     }
 
     public static void drawProgressBar(GuiGraphics g, int x, int y, int w, int h, NECraftingRecipeUiEntry entry) {
@@ -44,7 +43,7 @@ public final class NELDLibTaskCards {
         g.fill(x, y, x + w, y + h, withAlpha(0xAA17141E, alpha));
         int fillW = progressWidth(entry, w);
         if (fillW > 0) {
-            g.fill(x, y, x + fillW, y + h, withAlpha(statusColor(entry.status()), alpha));
+            g.fill(x, y, x + fillW, y + h, withAlpha(0xFF49F27D, alpha));
         }
     }
 

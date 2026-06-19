@@ -1,6 +1,7 @@
 package cn.dancingsnow.neoecoae.api.me;
 
 import appeng.api.config.CpuSelectionMode;
+import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.CraftingJobStatus;
@@ -8,10 +9,11 @@ import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.GenericStack;
-import appeng.crafting.CraftingPlan;
+import appeng.api.stacks.KeyCounter;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationThreadingCoreBlockEntity;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NEComputationCluster;
+import java.util.Map;
 import lombok.Getter;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
@@ -149,12 +151,12 @@ public class ECOCraftingCPU implements ICraftingCPU {
         tag.putBoolean("multiplePaths", plan.multiplePaths());
     }
 
-    private CraftingPlan readCraftingPlanFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
+    private ICraftingPlan readCraftingPlanFromNBT(CompoundTag tag, HolderLookup.Provider registries) {
         GenericStack output = GenericStack.readTag(tag.getCompound("output"));
         long bytes = tag.getLong("bytes");
         boolean simulation = tag.getBoolean("simulation");
         boolean multiplePaths = tag.getBoolean("multiplePaths");
-        return new CraftingPlan(output, bytes, simulation, multiplePaths, null, null, null, null);
+        return new PersistedCraftingPlan(output, bytes, simulation, multiplePaths);
     }
 
     public void writeToNBT(CompoundTag data, HolderLookup.Provider registries) {
@@ -176,5 +178,28 @@ public class ECOCraftingCPU implements ICraftingCPU {
 
     public boolean hasRemainingItems() {
         return !logic.getInventory().list.isEmpty();
+    }
+
+    private record PersistedCraftingPlan(
+            GenericStack finalOutput, long bytes, boolean simulation, boolean multiplePaths) implements ICraftingPlan {
+        @Override
+        public KeyCounter usedItems() {
+            return new KeyCounter();
+        }
+
+        @Override
+        public KeyCounter emittedItems() {
+            return new KeyCounter();
+        }
+
+        @Override
+        public KeyCounter missingItems() {
+            return new KeyCounter();
+        }
+
+        @Override
+        public Map<IPatternDetails, Long> patternTimes() {
+            return Map.of();
+        }
     }
 }

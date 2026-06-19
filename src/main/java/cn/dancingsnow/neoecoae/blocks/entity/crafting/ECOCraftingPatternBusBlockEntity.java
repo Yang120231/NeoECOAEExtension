@@ -41,7 +41,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandlerModifiable;
+import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntity<ECOCraftingPatternBusBlockEntity>
@@ -60,8 +60,8 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
     private final AppEngInternalInventory inventory;
     private final InternalInventory effectiveInventory = new EffectivePatternInventory();
     private final List<IPatternDetails> patternDetails = new ArrayList<>();
-    public final IItemHandlerModifiable itemHandler;
-    private final LazyOptional<IItemHandlerModifiable> itemHandlerCap;
+    public final IItemHandler itemHandler;
+    private final LazyOptional<IItemHandler> itemHandlerCap;
     private int nextWorkerIndex = 0;
     private int activePages = NEConfig.getCraftingPatternBusPages();
 
@@ -283,7 +283,7 @@ public class ECOCraftingPatternBusBlockEntity extends AbstractCraftingBlockEntit
         super(type, pos, blockState);
         this.inventory = new AppEngInternalInventory(this, NEConfig.getMaxCraftingPatternBusSlotCount());
         this.inventory.setFilter(new AEEncodedPatternFilter());
-        this.itemHandler = (IItemHandlerModifiable) effectiveInventory.toItemHandler();
+        this.itemHandler = (IItemHandler) effectiveInventory.toItemHandler();
         this.itemHandlerCap = LazyOptional.of(() -> this.itemHandler);
         this.getMainNode().addService(ICraftingProvider.class, this).addService(IECOPatternStorage.class, this);
     }

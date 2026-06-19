@@ -179,7 +179,9 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         double[] values = new double[columns.size()];
         for (int i = 0; i < columns.size(); i++) {
             Metric metric = columns.get(i);
-            double value = animateTo(animatedTypePct.getOrDefault(metric.key(), 0.0D), metric.percent());
+            double value = metric.infiniteCapacity()
+                    ? 1.0D
+                    : animateTo(animatedTypePct.getOrDefault(metric.key(), 0.0D), metric.percent());
             animatedTypePct.put(metric.key(), value);
             values[i] = value;
         }
@@ -339,9 +341,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
                 y);
         y += lineStep;
 
-        for (Metric metric : metrics.types()) {
-            y = drawStorageTypeBlock(g, metric, x, y, lineStep);
-        }
+        drawStorageTypeBlock(g, NEStorageMetricsModel.totalStorageMetric(currentState()), x, y, lineStep);
         g.disableScissor();
     }
 
@@ -350,8 +350,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     }
 
     private double maxLeftScrollPixels(StorageMetrics metrics) {
-        int typeCount = metrics.types().size();
-        int lineCount = 2 + typeCount * 3;
+        int lineCount = 5;
         int contentHeight = (lineCount - 1) * TEXT_LINE_STEP + font().lineHeight;
         int viewportHeight = leftPanelTextViewportHeight() - 8;
         return Math.max(0, contentHeight - viewportHeight);
@@ -430,20 +429,15 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     private int drawStorageTypeBlock(GuiGraphics g, Metric metric, int x, int y, int lineStep) {
         drawPlainLine(g, metric.label(), x, y, metric.accentColor());
         y += lineStep;
-        NELDLibValueText.drawUsedTotal(
-                g,
-                font(),
-                "",
-                metric.usedTypesText(),
-                metric.totalTypesText(),
-                metric.usedTypes(),
-                metric.totalTypes(),
-                Component.translatable("gui.neoecoae.common.types").getString(),
-                x,
-                y);
+        drawTypeCountLine(g, metric, x, y);
         y += lineStep;
         drawByteUsedTotalLine(g, metric, x, y);
         return y + lineStep;
+    }
+
+    private void drawTypeCountLine(GuiGraphics g, Metric metric, int x, int y) {
+        String suffix = Component.translatable("gui.neoecoae.common.types").getString();
+        NELDLibValueText.drawTypeCount(g, font(), metric.usedTypesText(), suffix, x, y);
     }
 
     private void drawByteUsedTotalLine(GuiGraphics g, Metric metric, int x, int y) {

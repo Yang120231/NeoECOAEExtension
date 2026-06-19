@@ -16,7 +16,7 @@ import cn.dancingsnow.neoecoae.api.me.ECOCraftingCPU;
 import cn.dancingsnow.neoecoae.api.me.ECOCraftingCPULogic;
 import cn.dancingsnow.neoecoae.compat.ae2.NeoECOCraftingCpuMenuBridge;
 import com.google.common.collect.ImmutableList;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -162,7 +162,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
 
             KeyCounter allItems = new KeyCounter();
             ecoCpu.getLogic().getAllItems(allItems);
-            for (Object2LongMap.Entry<AEKey> entry : allItems) {
+            for (Reference2LongMap.Entry<AEKey> entry : allItems) {
                 this.incrementalUpdateHelper.addChange(entry.getKey());
                 this.neoecoae$trackedEcoKeys.add(entry.getKey());
             }
@@ -180,6 +180,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
             method = {"broadcastChanges()V", "m_38946_()V"},
             at = @At("HEAD"),
             require = 1)
+    @SuppressWarnings("target")
     private void neoecoae$onBroadcastChanges(CallbackInfo ci) {
         this.neoecoae$broadcastEcoCpuChanges();
     }
@@ -191,6 +192,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
             },
             at = @At("TAIL"),
             require = 1)
+    @SuppressWarnings("target")
     private void neoecoae$onRemoved(Player player, CallbackInfo ci) {
         this.neoecoae$cleanupEcoCpuListener();
     }
@@ -261,7 +263,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
             // (no waiting-for / pending-output keys when job is null).
             KeyCounter currentItems = new KeyCounter();
             logic.getAllItems(currentItems);
-            for (Object2LongMap.Entry<AEKey> entry : currentItems) {
+            for (Reference2LongMap.Entry<AEKey> entry : currentItems) {
                 if (entry.getLongValue() > 0) {
                     this.neoecoae$trackedEcoKeys.add(entry.getKey());
                 }
@@ -372,7 +374,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
         }
         KeyCounter allItems = new KeyCounter();
         this.neoecoae$cpu.getLogic().getAllItems(allItems);
-        for (Object2LongMap.Entry<AEKey> entry : allItems) {
+        for (Reference2LongMap.Entry<AEKey> entry : allItems) {
             this.neoecoae$trackedEcoKeys.add(entry.getKey());
         }
     }
@@ -386,7 +388,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
     @Unique private void neoecoae$queueAllCurrentEcoKeys(ECOCraftingCPULogic logic) {
         KeyCounter allItems = new KeyCounter();
         logic.getAllItems(allItems);
-        for (Object2LongMap.Entry<AEKey> entry : allItems) {
+        for (Reference2LongMap.Entry<AEKey> entry : allItems) {
             this.incrementalUpdateHelper.addChange(entry.getKey());
             this.neoecoae$trackedEcoKeys.add(entry.getKey());
         }
@@ -396,7 +398,7 @@ public abstract class CraftingCPUMenuMixin120 extends AEBaseMenu implements NeoE
         KeyCounter allItems = new KeyCounter();
         logic.getAllItems(allItems);
         Set<AEKey> keys = new HashSet<>(this.neoecoae$trackedEcoKeys);
-        for (Object2LongMap.Entry<AEKey> entry : allItems) {
+        for (Reference2LongMap.Entry<AEKey> entry : allItems) {
             keys.add(entry.getKey());
         }
 

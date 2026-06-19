@@ -173,9 +173,7 @@ public class GuiLangs {
         provider.add("gui.neoecoae.crafting.tasks", "Crafting Tasks");
         provider.add("gui.neoecoae.crafting.no_tasks", "No active tasks");
         provider.add("gui.neoecoae.crafting.wireless_energy_cover_slot", "GTMThings Wireless Energy Cover");
-        provider.add(
-                "gui.neoecoae.crafting.special_mode_slot",
-                "GTMThings Wireless Energy Cover / Infinite Storage Component");
+        provider.add("gui.neoecoae.crafting.special_mode_slot", "GTMThings Wireless Energy Cover");
         provider.add("gui.neoecoae.crafting.instant_ae_slot", "Infinite Storage Component");
         provider.add("gui.neoecoae.crafting.instant_ae_component", "Infinite storage component: %s");
         provider.add("gui.neoecoae.crafting.instant_ae_ready", "AE instant crafting ready");

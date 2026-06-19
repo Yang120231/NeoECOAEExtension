@@ -129,8 +129,10 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
     private static final int TASK_CARD_X = TASK_PANEL_X + 8;
     private static final int TASK_CARD_Y = TASK_PANEL_Y + 19;
     private static final int TASK_CARD_W = TASK_PANEL_W - 16;
-    private static final int TASK_CARD_H = 16;
-    private static final int TASK_CARD_STRIDE = 18;
+    private static final int TASK_CARD_H = 20;
+    private static final int TASK_CARD_STRIDE = 22;
+    private static final int TASK_CARD_ICON_SIZE = 14;
+    private static final int TASK_CARD_PROGRESS_H = 3;
     private static final int TASK_LIST_BOTTOM_Y = TASK_PANEL_Y + TASK_PANEL_H - 4;
     private static final int TASK_SCROLLBAR_W = 3;
 
@@ -192,9 +194,12 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
         });
         if (showSpecialModeSlot) {
             addWidget(new SlotWidget(
-                            new NEForgeItemTransfer(
-                                    crafting.getWirelessEnergyCoverInventory(),
-                                    () -> crafting.onWirelessEnergyCoverSlotChanged(playerInventory.player)),
+                            new NEForgeItemTransfer(crafting.getWirelessEnergyCoverInventory(), () -> {
+                                crafting.onWirelessEnergyCoverSlotChanged(playerInventory.player);
+                                if (!playerInventory.player.level().isClientSide) {
+                                    syncStateNow();
+                                }
+                            }),
                             0,
                             WIRELESS_ENERGY_SLOT_X,
                             WIRELESS_ENERGY_SLOT_Y,
@@ -250,13 +255,13 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
         drawStatusArea(graphics, state);
         drawStatsArea(graphics, state);
         drawGaugeLabels(graphics);
-        drawSpecialModeSlotItem(graphics);
         drawLine(
                 graphics,
                 Component.translatable("gui.neoecoae.common.inventory"),
                 PLAYER_INV_X,
                 PLAYER_INV_LABEL_Y,
                 TEXT_MUTED);
+        drawSpecialModeSlotItem(graphics, state);
         drawTaskPanel(graphics, state);
     }
 
@@ -292,27 +297,6 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 toolbarIcon(currentState(), index),
                 action);
         addWidget(toolbarButtons[index]);
-    }
-
-    // 添加玩家背包格子控件
-    private void drawSpecialModeSlotItem(GuiGraphics graphics) {
-        if (!showSpecialModeSlot) {
-            return;
-        }
-        if (currentState().instantAeComponentCount() <= 0) {
-            return;
-        }
-        ItemStack stack = crafting.getWirelessEnergyCoverInventory().getStackInSlot(0);
-        if (stack.isEmpty()) {
-            return;
-        }
-        NELDLibGuiRenderState.beginVanillaGuiItemBatch(graphics);
-        try {
-            NELDLibGuiRenderState.renderVanillaSlotItem(
-                    graphics, font(), stack, absX(WIRELESS_ENERGY_SLOT_X + 1), absY(WIRELESS_ENERGY_SLOT_Y + 1), null);
-        } finally {
-            NELDLibGuiRenderState.endVanillaGuiItemBatch(graphics);
-        }
     }
 
     private void addPlayerInventorySlots() {
@@ -797,19 +781,15 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
         NELDLibTaskCards.drawCardRect(
                 g, absX, absY, TASK_CARD_W, TASK_CARD_H, alpha, NELDLibTaskCards.statusColor(entry.status()));
         if (alpha > 0.22F && !entry.output().isEmpty()) {
-            NELDLibGuiRenderState.beginVanillaGuiItemBatch(g);
-            try {
-                NELDLibGuiRenderState.renderVanillaSlotItem(g, font(), entry.output(), absX + 1, absY, "");
-            } finally {
-                NELDLibGuiRenderState.endVanillaGuiItemBatch(g);
-            }
+            drawTaskCardItem(
+                    g, entry.output(), absX + 4, absY + (TASK_CARD_H - TASK_CARD_PROGRESS_H - TASK_CARD_ICON_SIZE) / 2);
         }
 
-        int textX = x + 20;
-        int textY = y + 4;
+        int textX = x + 23;
+        int textY = y + 5;
         String amountText = "x" + NELDLibText.compactTaskAmount(entry.outputAmount());
         int amountW = scaledWidth(amountText);
-        int maxNameW = Math.max(16, TASK_CARD_W - 28 - amountW);
+        int maxNameW = Math.max(16, TASK_CARD_W - 34 - amountW);
         String name = fitText(entry.output().getHoverName().getString(), maxNameW);
         drawScaledString(
                 g, name, absX(textX), absY(textY), NELDLibTaskCards.withAlpha(NELDLibStyle.DARK_TEXT_PRIMARY, alpha));
@@ -819,7 +799,31 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                 absX(TASK_CARD_X + TASK_CARD_W - 5),
                 absY(textY),
                 NELDLibTaskCards.withAlpha(NELDLibStyle.DARK_TEXT_VALUE, alpha));
-        NELDLibTaskCards.drawProgressBar(g, absX + 20, absY + TASK_CARD_H - 4, TASK_CARD_W - 25, 2, entry, alpha);
+        NELDLibTaskCards.drawProgressBar(
+                g,
+                absX + 4,
+                absY + TASK_CARD_H - TASK_CARD_PROGRESS_H - 2,
+                TASK_CARD_W - 8,
+                TASK_CARD_PROGRESS_H,
+                entry,
+                alpha);
+    }
+
+    private void drawTaskCardItem(GuiGraphics g, ItemStack stack, int x, int y) {
+        if (stack.isEmpty()) {
+            return;
+        }
+        float scale = TASK_CARD_ICON_SIZE / 16.0F;
+        NELDLibGuiRenderState.beginVanillaGuiItemBatch(g);
+        try {
+            g.pose().pushPose();
+            g.pose().translate(x, y, 0.0F);
+            g.pose().scale(scale, scale, 1.0F);
+            NELDLibGuiRenderState.renderVanillaSlotItem(g, font(), stack, 0, 0, "");
+            g.pose().popPose();
+        } finally {
+            NELDLibGuiRenderState.endVanillaGuiItemBatch(g);
+        }
     }
 
     // 绘制任务面板滚动条
@@ -979,24 +983,26 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
             return false;
         }
         List<Component> lines = new ArrayList<>();
-        if (crafting.canUseInstantAeComponents()) {
-            lines.add(Component.translatable(
-                    crafting.canUseWirelessEnergyCovers()
-                            ? "gui.neoecoae.crafting.special_mode_slot"
-                            : "gui.neoecoae.crafting.instant_ae_slot"));
-            lines.add(Component.translatable(
-                    "gui.neoecoae.crafting.instant_ae_component",
-                    currentState().instantAeComponentCount() + " / "
-                            + currentState().requiredInstantAeComponentCount()));
-            lines.add(
-                    currentState().instantAeCraftingUnlocked()
-                            ? Component.translatable("gui.neoecoae.crafting.instant_ae_ready")
-                            : Component.translatable("gui.neoecoae.crafting.instant_ae_waiting"));
-        } else {
-            lines.add(Component.translatable("gui.neoecoae.crafting.wireless_energy_cover_slot"));
-        }
+        lines.add(Component.translatable("gui.neoecoae.crafting.wireless_energy_cover_slot"));
         g.renderTooltip(font(), lines, Optional.empty(), mouseX, mouseY);
         return true;
+    }
+
+    private void drawSpecialModeSlotItem(GuiGraphics g, NECraftingUiState state) {
+        if (!showSpecialModeSlot) {
+            return;
+        }
+        ItemStack stack = state.wirelessCoverStack();
+        if (stack.isEmpty()) {
+            return;
+        }
+        NELDLibGuiRenderState.beginVanillaGuiItemBatch(g);
+        try {
+            NELDLibGuiRenderState.renderVanillaSlotItem(
+                    g, font(), stack, absX(WIRELESS_ENERGY_SLOT_X + 1), absY(WIRELESS_ENERGY_SLOT_Y + 1), "");
+        } finally {
+            NELDLibGuiRenderState.endVanillaGuiItemBatch(g);
+        }
     }
 
     private boolean renderGaugeTooltip(GuiGraphics g, int mouseX, int mouseY) {

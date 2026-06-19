@@ -19,6 +19,7 @@ public class NELangGenerator {
         provider.add("jade.neoecoae.drive_migrating_to_infinite", "Entering Infinite Storage Mode");
         provider.add("jade.neoecoae.worker_threads", "Threads: %d/%d");
         provider.add("jade.neoecoae.formed", "Formed: %s");
+        provider.add("jade.neoecoae.online", "Online: %s");
         provider.add("jade.neoecoae.running", "Running: %s");
         provider.add("jade.neoecoae.yes", "Yes");
         provider.add("jade.neoecoae.no", "No");
@@ -30,6 +31,17 @@ public class NELangGenerator {
         provider.add("jade.neoecoae.overclock_status", "Theoretical/Effective Overclock: %d/%d");
         provider.add("jade.neoecoae.crafting.worker_count", "Worker Cores: %s");
         provider.add("jade.neoecoae.crafting.thread_usage", "Threads: %s/%s");
+        provider.add("jade.neoecoae.crafting.runtime", "Runtime: %s / %s");
+        provider.add("jade.neoecoae.duration.ticks", "%s t");
+        provider.add("jade.neoecoae.duration.seconds", "%s s");
+        provider.add("jade.neoecoae.crafting.energy_usage", "Energy Usage: %s AE/t");
+        provider.add("jade.neoecoae.crafting.ae_energy_usage", "AE Energy Usage: %s AE/t");
+        provider.add("jade.neoecoae.crafting.gt_energy_usage", "GT Energy Usage: %s EU/t");
+        provider.add("jade.neoecoae.crafting.time_multiplier", "Time Multiplier: %s");
+        provider.add("jade.neoecoae.crafting.overclock_ratio", "Overclock Ratio: %s/%s");
+        provider.add("jade.neoecoae.crafting.parallel_recipes", "Recipes per Round: %s");
+        provider.add("jade.neoecoae.crafting.working_crafts", "Working Crafts: %s");
+        provider.add("jade.neoecoae.crafting.recipes_per_operation", "Recipes per Operation: %s");
         provider.add("jade.neoecoae.crafting.progress", "Batch Progress: %s / %s t");
         provider.add("jade.neoecoae.crafting.progress_value", "Thread Progress: %s / 100");
         provider.add("jade.neoecoae.crafting.avg_progress", "Average Progress: %s / 100");
@@ -39,12 +51,15 @@ public class NELangGenerator {
         provider.add("jade.neoecoae.crafting.queue_per_worker", "Queue per Worker: %s");
         provider.add("jade.neoecoae.computation.accelerators", "Accelerators: %s");
         provider.add("jade.neoecoae.computation.dispatch_limit", "CPU Dispatch Limit: %s patterns/t");
-        provider.add("jade.neoecoae.computation.thread_usage", "Threads: %s/%s");
+        provider.add("jade.neoecoae.computation.thread_usage", "Threads: %s / %s");
         provider.add("jade.neoecoae.computation.storage_usage", "Storage Used: %s / %s bytes");
 
         provider.add("neoecoae.tooltip.upload_pattern", "Upload Pattern into available ECO Crafting System");
 
         provider.add("cell_type.neoecoae.chemical", "Chemical");
+        provider.add("cell_type.neoecoae.source", "Source");
+        provider.add("cell_type.neoecoae.mana", "Mana");
+        provider.add("gui.neoecoae.storage.universal", "Storage");
 
         provider.add("category.neoecoae.cooling", "Cooling");
         provider.add("category.neoecoae.cooling.coolant", "Coolant: %d");
@@ -57,6 +72,16 @@ public class NELangGenerator {
 
         provider.add("tooltip.neoecoae.holdshift", "Hold [Shift] to show more info");
         provider.add("tooltip.neoecoae.max_lenth", "Maximum length of structure: %d");
+        provider.add("tooltip.neoecoae.storage_cell.bytes_used", "%d / %d bytes used");
+        provider.add("tooltip.neoecoae.storage_cell.bytes_used.label", "bytes used");
+        provider.add("tooltip.neoecoae.storage_cell.types_used", "%s types");
+        provider.add("tooltip.neoecoae.storage_cell.types_used.label", "types");
+        provider.add("tooltip.neoecoae.storage_cell.domain_member.mode", "Mode: Infinite storage member");
+        provider.add("tooltip.neoecoae.storage_cell.domain_member.state", "State: Managed by ECO storage host");
+        provider.add("tooltip.neoecoae.storage_cell.domain_member.unbind", "Empty the host domain to unbind");
+        provider.add("tooltip.neoecoae.storage_cell.migrating.mode", "Mode: Migrating to infinite domain");
+        provider.add("tooltip.neoecoae.storage_cell.migrating.state", "Storage access is temporarily locked");
+        provider.add("tooltip.neoecoae.storage_cell.legacy_locked", "Legacy infinite matrix lock");
 
         provider.add("tooltip.neoecoae.storage_system", "The core of the storage subsystem");
         addLangs(

@@ -4,9 +4,12 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.NumberFormat;
 import java.util.Locale;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 
 public final class NELDLibText {
     public static final String INFINITE = "\u221e";
+    public static final int TYPE_COUNT_COLOR = 0x54FCFC;
 
     private static final long BYTES_IN_K = 1024L;
     private static final long BYTES_IN_M = BYTES_IN_K * 1024L;
@@ -35,6 +38,17 @@ public final class NELDLibText {
         return value == Long.MAX_VALUE ? INFINITE : number(Math.max(0L, value));
     }
 
+    public static Component typesUsedComponent(long usedTypes) {
+        return typesUsedComponent(typeCount(usedTypes));
+    }
+
+    public static Component typesUsedComponent(String usedTypesText) {
+        return Component.literal(usedTypesText)
+                .withStyle(style -> style.withColor(TYPE_COUNT_COLOR))
+                .append(Component.literal(" ").withStyle(ChatFormatting.GRAY))
+                .append(Component.translatable("gui.neoecoae.common.types").withStyle(ChatFormatting.GRAY));
+    }
+
     public static String percent(double value) {
         if (!Double.isFinite(value)) {
             return "N/A";
@@ -52,6 +66,9 @@ public final class NELDLibText {
     }
 
     public static String storageBytes(long value) {
+        if (value == Long.MAX_VALUE) {
+            return INFINITE;
+        }
         long safe = Math.max(0L, value);
         if (safe < BYTES_IN_G) {
             return number(safe);

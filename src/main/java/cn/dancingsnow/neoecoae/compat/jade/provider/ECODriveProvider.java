@@ -48,15 +48,7 @@ public enum ECODriveProvider implements IBlockComponentProvider, IServerDataProv
             tooltip.add(Tooltips.bytesUsed(data.getLong("usedBytes"), data.getLong("totalBytes")));
         }
         if (data.contains("storedItemTypes") && data.contains("totalItemTypes")) {
-            long storedItemTypes = data.getLong("storedItemTypes");
-            long totalItemTypes = data.getLong("totalItemTypes");
-            if (storedItemTypes == Long.MAX_VALUE || totalItemTypes == Long.MAX_VALUE) {
-                tooltip.add(Component.literal("Types: " + NELDLibText.typeCount(storedItemTypes) + " / "
-                                + NELDLibText.typeCount(totalItemTypes))
-                        .withStyle(ChatFormatting.GRAY));
-            } else {
-                tooltip.add(Tooltips.typesUsed(storedItemTypes, totalItemTypes));
-            }
+            tooltip.add(NELDLibText.typesUsedComponent(data.getLong("storedItemTypes")));
         }
     }
 

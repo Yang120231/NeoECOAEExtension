@@ -861,7 +861,7 @@ public class NEItems {
                         .unlockedBy("has_aluminum", RegistrateRecipeProvider.has(NETags.Items.ALUMINUM_INGOT))
                         .save(prov);
             })
-            .lang("ECO Storage Matrix Housing (Item)")
+            .lang("ECO Storage Matrix Housing")
             .register();
 
     public static final ItemEntry<MaterialItem> ECO_FLUID_CELL_HOUSING = REGISTRATE
@@ -887,7 +887,11 @@ public class NEItems {
             .item(
                     "eco_item_storage_cell_16m",
                     p -> new ECOStorageCellItem(
-                            p.stacksTo(1).rarity(Rarity.UNCOMMON), ECOTier.L4, AEKeyType.items(), NECellTypes.ITEM))
+                            p.stacksTo(1).rarity(Rarity.UNCOMMON),
+                            ECOTier.L4,
+                            AEKeyType.items(),
+                            NECellTypes.ITEM,
+                            true))
             .recipe((ctx, prov) -> {
                 ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NEItems.ECO_ITEM_CELL_HOUSING)
@@ -895,7 +899,7 @@ public class NEItems {
                         .unlockedBy("has_16m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_16M))
                         .save(prov);
             })
-            .lang("ECO - LE4 Storage Matrix (Item)")
+            .lang("ECO - LE4 Storage Matrix")
             .model(ItemModelUtil.cellModel("item", "16m"))
             .register();
 
@@ -903,7 +907,7 @@ public class NEItems {
             .item(
                     "eco_item_storage_cell_64m",
                     p -> new ECOStorageCellItem(
-                            p.stacksTo(1).rarity(Rarity.RARE), ECOTier.L6, AEKeyType.items(), NECellTypes.ITEM))
+                            p.stacksTo(1).rarity(Rarity.RARE), ECOTier.L6, AEKeyType.items(), NECellTypes.ITEM, true))
             .recipe((ctx, prov) -> {
                 ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NEItems.ECO_ITEM_CELL_HOUSING)
@@ -911,7 +915,7 @@ public class NEItems {
                         .unlockedBy("has_64m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_64M))
                         .save(prov);
             })
-            .lang("ECO - LE6 Storage Matrix (Item)")
+            .lang("ECO - LE6 Storage Matrix")
             .model(ItemModelUtil.cellModel("item", "64m"))
             .register();
 
@@ -919,7 +923,7 @@ public class NEItems {
             .item(
                     "eco_item_storage_cell_256m",
                     p -> new ECOStorageCellItem(
-                            p.stacksTo(1).rarity(Rarity.EPIC), ECOTier.L9, AEKeyType.items(), NECellTypes.ITEM))
+                            p.stacksTo(1).rarity(Rarity.EPIC), ECOTier.L9, AEKeyType.items(), NECellTypes.ITEM, true))
             .recipe((ctx, prov) -> {
                 ShapelessRecipeBuilder.shapeless(RecipeCategory.MISC, ctx.get())
                         .requires(NEItems.ECO_ITEM_CELL_HOUSING)
@@ -927,7 +931,7 @@ public class NEItems {
                         .unlockedBy("has_256m_component", RegistrateRecipeProvider.has(NEItems.ECO_CELL_COMPONENT_256M))
                         .save(prov);
             })
-            .lang("ECO - LE9 Storage Matrix (Item)")
+            .lang("ECO - LE9 Storage Matrix")
             .model(ItemModelUtil.cellModel("item", "256m"))
             .register();
 

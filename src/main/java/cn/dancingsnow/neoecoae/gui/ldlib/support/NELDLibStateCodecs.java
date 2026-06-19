@@ -55,6 +55,7 @@ public final class NELDLibStateCodecs {
             buf.writeLong(matrix.usedBytes());
             buf.writeLong(matrix.totalBytes());
             buf.writeBoolean(matrix.infiniteMember());
+            buf.writeItem(matrix.previewStack());
         }
         List<NEStorageUiTypeState> types = state.typeStates();
         buf.writeVarInt(Math.min(types.size(), MAX_STORAGE_UI_TYPES));
@@ -105,7 +106,8 @@ public final class NELDLibStateCodecs {
                     buf.readLong(),
                     buf.readLong(),
                     buf.readLong(),
-                    buf.readBoolean()));
+                    buf.readBoolean(),
+                    buf.readItem()));
         }
         int typeCount = buf.readVarInt();
         if (typeCount > MAX_STORAGE_UI_TYPES) {

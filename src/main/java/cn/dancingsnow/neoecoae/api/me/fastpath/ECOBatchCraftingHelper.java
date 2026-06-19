@@ -1,11 +1,9 @@
 package cn.dancingsnow.neoecoae.api.me.fastpath;
 
 import appeng.api.config.Actionable;
-import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.crafting.inv.ListCraftingInventory;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -74,11 +72,11 @@ public final class ECOBatchCraftingHelper {
 
     private static List<GenericStack> copyCounter(KeyCounter counter) {
         List<GenericStack> stacks = new ArrayList<>();
-        for (Object2LongMap.Entry<AEKey> entry : counter) {
-            if (entry.getLongValue() > 0) {
-                stacks.add(new GenericStack(entry.getKey(), entry.getLongValue()));
+        ECOFastPathStacks.forEachCounterEntry(counter, (key, amount) -> {
+            if (amount > 0) {
+                stacks.add(new GenericStack(key, amount));
             }
-        }
+        });
         return List.copyOf(stacks);
     }
 

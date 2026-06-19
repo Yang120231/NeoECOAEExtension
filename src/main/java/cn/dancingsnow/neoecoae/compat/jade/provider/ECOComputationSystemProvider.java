@@ -24,8 +24,7 @@ public enum ECOComputationSystemProvider implements IBlockComponentProvider, ISe
     public void appendServerData(CompoundTag tag, BlockAccessor accessor) {
         if (accessor.getBlockEntity() instanceof ECOComputationSystemBlockEntity system) {
             long totalStorage = system.getTotalBytes();
-            long availableStorage = system.getAvailableBytes();
-            long usedStorage = Math.max(0L, totalStorage - availableStorage);
+            long usedStorage = system.getUsedBytes();
             tag.putBoolean("formed", system.isFormed());
             tag.putBoolean("online", system.isFormed() && system.getMainNode().isActive());
             tag.putInt("usedThread", system.getUsedThread());

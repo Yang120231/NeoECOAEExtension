@@ -68,7 +68,8 @@ public class NEConfig {
             .define("ecoAe2FastPathEnabled", true);
 
     private static final ForgeConfigSpec.BooleanValue USE_GTL_STYLE_CRAFTING_AGGREGATION = BUILDER.comment(
-                    "Use aggregated crafting batches for ECO C-series and F-series systems.",
+                    "Use aggregated crafting batches for ECO C-series systems.",
+                    "GTOCore native F-series providers keep their own crafting path.",
                     "Each accepted pattern becomes one delayed batch instead of occupying one worker thread per craft.",
                     "Set JVM property -Dneoecoae.gtlStyleCraftingAggregation=false to force-disable it.")
             .define("gtlStyleCraftingAggregation", true);

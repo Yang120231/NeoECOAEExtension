@@ -37,6 +37,12 @@ public class NECraftingCluster extends NECluster<NECraftingCluster> {
     @Getter
     private ECOFluidOutputHatchBlockEntity outputHatch = null;
 
+    @Getter
+    private BlockPos inputHatchPos = null;
+
+    @Getter
+    private BlockPos outputHatchPos = null;
+
     public NECraftingCluster(BlockPos boundMin, BlockPos boundMax) {
         super(boundMin, boundMax);
     }
@@ -68,10 +74,20 @@ public class NECraftingCluster extends NECluster<NECraftingCluster> {
         }
         if (blockEntity instanceof ECOFluidInputHatchBlockEntity inputHatchBlockEntity) {
             this.inputHatch = inputHatchBlockEntity;
+            this.inputHatchPos = inputHatchBlockEntity.getBlockPos();
         }
         if (blockEntity instanceof ECOFluidOutputHatchBlockEntity outputHatchBlockEntity) {
             this.outputHatch = outputHatchBlockEntity;
+            this.outputHatchPos = outputHatchBlockEntity.getBlockPos();
         }
+        if (controller != null) {
+            controller.markStructureStatsDirty();
+        }
+    }
+
+    public void setFluidHatchPositions(BlockPos inputHatchPos, BlockPos outputHatchPos) {
+        this.inputHatchPos = inputHatchPos;
+        this.outputHatchPos = outputHatchPos;
         if (controller != null) {
             controller.markStructureStatsDirty();
         }

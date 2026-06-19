@@ -8,7 +8,7 @@ import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.api.me.ECOCraftingCPU;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NEComputationCluster;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -267,7 +267,7 @@ public class ECOComputationThreadingCoreBlockEntity
 
     private static void addCpuInventoryDrops(ECOCraftingCPU cpu, Level level, BlockPos pos, List<ItemStack> drops) {
         ListCraftingInventory inventory = cpu.getLogic().getInventory();
-        for (Object2LongMap.Entry<AEKey> entry : inventory.list) {
+        for (Reference2LongMap.Entry<AEKey> entry : inventory.list) {
             if (entry.getKey() instanceof AEItemKey itemKey) {
                 long amount = entry.getLongValue();
                 while (amount > 0) {

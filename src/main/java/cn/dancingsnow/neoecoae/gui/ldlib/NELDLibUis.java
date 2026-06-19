@@ -70,14 +70,12 @@ public final class NELDLibUis {
 
     public static ModularUI createFluidInputHatch(ECOFluidInputHatchBlockEntity hatch, Player player) {
         return new ModularUI(NEFluidHatchWidget.INPUT_UI_WIDTH, NEFluidHatchWidget.INPUT_UI_HEIGHT, hatch, player)
-                .widget(new NEFluidHatchWidget(
-                        hatch.getBlockState().getBlock().getName(), hatch.tank, player.getInventory(), true));
+                .widget(new NEFluidHatchWidget(hatch, player.getInventory()));
     }
 
     public static ModularUI createFluidOutputHatch(ECOFluidOutputHatchBlockEntity hatch, Player player) {
         return new ModularUI(NEFluidHatchWidget.OUTPUT_UI_WIDTH, NEFluidHatchWidget.OUTPUT_UI_HEIGHT, hatch, player)
-                .widget(new NEFluidHatchWidget(
-                        hatch.getBlockState().getBlock().getName(), hatch.tank, player.getInventory(), false));
+                .widget(new NEFluidHatchWidget(hatch, player.getInventory()));
     }
 
     public static ModularUI createStructureTerminal(Player player, HeldItemUIFactory.HeldItemHolder holder) {

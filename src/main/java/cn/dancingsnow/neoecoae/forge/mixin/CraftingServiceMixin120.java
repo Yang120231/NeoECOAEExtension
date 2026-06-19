@@ -91,23 +91,6 @@ public abstract class CraftingServiceMixin120 {
         neoecoae$submitJobCommon(job, requestingMachine, target, src, cir);
     }
 
-    @Inject(
-            method =
-                    "submitJob(Lappeng/api/networking/crafting/ICraftingPlan;Lappeng/api/networking/crafting/ICraftingRequester;Lappeng/api/networking/crafting/ICraftingCPU;ZLappeng/api/networking/security/IActionSource;Z)Lappeng/api/networking/crafting/ICraftingSubmitResult;",
-            at = @At("HEAD"),
-            cancellable = true,
-            require = 0)
-    private void neoecoae$submitJobWithNotify(
-            ICraftingPlan job,
-            ICraftingRequester requestingMachine,
-            ICraftingCPU target,
-            boolean prioritizePower,
-            IActionSource src,
-            boolean notifyRequester,
-            CallbackInfoReturnable<ICraftingSubmitResult> cir) {
-        neoecoae$submitJobCommon(job, requestingMachine, target, src, cir);
-    }
-
     private void neoecoae$submitJobCommon(
             ICraftingPlan job,
             ICraftingRequester requestingMachine,

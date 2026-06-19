@@ -43,13 +43,32 @@ final class NEStorageMetricsModel {
     }
 
     static List<Metric> columnMetrics(StorageMetrics metrics) {
-        List<Metric> activeMetrics = new ArrayList<>();
+        return List.of(metrics.total());
+    }
+
+    static Metric totalStorageMetric(NEStorageUiState state) {
+        return totalStorageMetric(from(state));
+    }
+
+    private static Metric totalStorageMetric(StorageMetrics metrics) {
+        long usedTypes = 0L;
+        long totalTypes = 0L;
+        long usedBytes = 0L;
+        long totalBytes = 0L;
         for (Metric metric : metrics.types()) {
-            if (metric.max() > 0 || metric.totalTypes() > 0) {
-                activeMetrics.add(metric);
-            }
+            usedTypes = saturatedAdd(usedTypes, metric.usedTypes());
+            totalTypes = saturatedAdd(totalTypes, metric.totalTypes());
+            usedBytes = saturatedAdd(usedBytes, metric.used());
+            totalBytes = saturatedAdd(totalBytes, metric.max());
         }
-        return activeMetrics.isEmpty() ? metrics.types() : activeMetrics;
+        return new Metric(
+                "neoecoae:universal",
+                Component.translatableWithFallback("gui.neoecoae.storage.universal", "存储总览"),
+                usedBytes,
+                totalBytes,
+                usedTypes,
+                totalTypes,
+                0xFF43B678);
     }
 
     private static Metric createTypeMetric(
@@ -136,7 +155,18 @@ final class NEStorageMetricsModel {
         return false;
     }
 
-    record StorageMetrics(Metric energy, List<Metric> types) {}
+    private static long saturatedAdd(long left, long right) {
+        if (left == Long.MAX_VALUE || right == Long.MAX_VALUE || right > 0L && left > Long.MAX_VALUE - right) {
+            return Long.MAX_VALUE;
+        }
+        return left + right;
+    }
+
+    record StorageMetrics(Metric energy, List<Metric> types) {
+        Metric total() {
+            return totalStorageMetric(this);
+        }
+    }
 
     record Metric(
             String key,
@@ -170,10 +200,7 @@ final class NEStorageMetricsModel {
         }
 
         boolean infiniteCapacity() {
-            return max == Long.MAX_VALUE
-                    || totalTypes == Long.MAX_VALUE
-                    || NELDLibText.INFINITE.equals(maxText)
-                    || NELDLibText.INFINITE.equals(totalTypesText);
+            return max == Long.MAX_VALUE || NELDLibText.INFINITE.equals(maxText);
         }
     }
 }

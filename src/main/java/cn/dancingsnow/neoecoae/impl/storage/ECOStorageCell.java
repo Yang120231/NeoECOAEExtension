@@ -163,6 +163,12 @@ public class ECOStorageCell implements IECOStorageCell {
         return remaining > 0 ? remaining : 0;
     }
 
+    private long getRemainingItemCount(AEKey what) {
+        final long remaining = saturatedAdd(
+                saturatedMultiply(this.getFreeBytes(), amountPerByte(what)), this.getUnusedItemCount(what));
+        return remaining > 0 ? remaining : 0;
+    }
+
     public long getFreeBytes() {
         return Math.max(0L, this.getTotalBytes() - this.getUsedBytes());
     }
@@ -177,6 +183,10 @@ public class ECOStorageCell implements IECOStorageCell {
         return keyType.getAmountPerByte() - div;
     }
 
+    private int getUnusedItemCount(AEKey what) {
+        return unusedItemCount(what, getStoredAmount(what));
+    }
+
     public int getBytesPerType() {
         return this.cellType.getBytesPerType();
     }
@@ -185,9 +195,13 @@ public class ECOStorageCell implements IECOStorageCell {
         if (summaryOnly) {
             return ECOStorageCellMetadata.getSummaryUsedBytes(cellStack);
         }
-        BigInteger itemCount = totalAmount();
-        BigInteger unused = BigInteger.valueOf(unusedItemCount(itemCount));
-        BigInteger bytesForItems = itemCount.add(unused).divide(BigInteger.valueOf(keyType.getAmountPerByte()));
+        BigInteger bytesForItems = BigInteger.ZERO;
+        for (Map.Entry<AEKey, BigInteger> entry : storedAmounts.entrySet()) {
+            BigInteger itemCount = entry.getValue();
+            BigInteger unused = BigInteger.valueOf(unusedItemCount(entry.getKey(), itemCount));
+            bytesForItems =
+                    bytesForItems.add(itemCount.add(unused).divide(BigInteger.valueOf(amountPerByte(entry.getKey()))));
+        }
         BigInteger bytesForTypes =
                 BigInteger.valueOf(getStoredItemTypes()).multiply(BigInteger.valueOf(getBytesPerType()));
         return ECOStorageSavedData.saturate(bytesForTypes.add(bytesForItems));
@@ -285,7 +299,7 @@ public class ECOStorageCell implements IECOStorageCell {
 
     @Override
     public long insert(AEKey what, long amount, Actionable mode, IActionSource source) {
-        if (amount <= 0 || !keyType.contains(what) || summaryOnly) {
+        if (amount <= 0 || !cellType.acceptsKey(what) || summaryOnly) {
             return 0;
         }
 
@@ -317,14 +331,14 @@ public class ECOStorageCell implements IECOStorageCell {
         }
 
         BigInteger currentAmount = getStoredAmount(what);
-        long remainingItemCount = this.getRemainingItemCount();
+        long remainingItemCount = this.getRemainingItemCount(what);
 
         if (currentAmount.signum() <= 0) {
             if (!canHoldNewItem()) {
                 return 0;
             }
 
-            remainingItemCount -= (long) this.getBytesPerType() * keyType.getAmountPerByte();
+            remainingItemCount -= (long) this.getBytesPerType() * amountPerByte(what);
             if (remainingItemCount <= 0) {
                 return 0;
             }
@@ -442,18 +456,14 @@ public class ECOStorageCell implements IECOStorageCell {
         this.storedItemCount = total.compareTo(LONG_MAX) >= 0 ? Long.MAX_VALUE : total.longValue();
     }
 
-    private BigInteger totalAmount() {
-        BigInteger total = BigInteger.ZERO;
-        for (BigInteger amount : storedAmounts.values()) {
-            total = total.add(amount);
-        }
-        return total;
-    }
-
-    private int unusedItemCount(BigInteger itemCount) {
-        int amountPerByte = keyType.getAmountPerByte();
+    private int unusedItemCount(AEKey what, BigInteger itemCount) {
+        int amountPerByte = amountPerByte(what);
         int div = itemCount.mod(BigInteger.valueOf(amountPerByte)).intValue();
         return div == 0 ? 0 : amountPerByte - div;
+    }
+
+    private int amountPerByte(AEKey what) {
+        return Math.max(1, cellType.getAmountPerByte(what));
     }
 
     private Map<AEKey, BigInteger> readLegacyContents(ItemStack stack) {

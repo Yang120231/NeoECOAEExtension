@@ -6,7 +6,6 @@ import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiState;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibScrollBar;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibStyle;
 import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibText;
-import cn.dancingsnow.neoecoae.gui.ldlib.support.NELDLibValueText;
 import com.lowdragmc.lowdraglib.gui.widget.Widget;
 import java.util.List;
 import java.util.function.DoubleConsumer;
@@ -138,11 +137,14 @@ final class NEStorageMatrixPanel {
             int accent = matrix.infiniteMember() ? INFINITE_CARD_ACCENT : tierColor(matrix.tier());
             boolean hovered = isMouseInCard(x, y, mouseX, mouseY);
             drawRoundedCard(graphics, absX(x), absY(y), CARD_W, CARD_H, hovered, matrix.infiniteMember());
-            graphics.renderItem(matrix.stack(), absX(x + 1), absY(y + 1));
+            ItemStack displayStack = matrix.previewStack().isEmpty() ? matrix.stack() : matrix.previewStack();
+            graphics.renderItem(displayStack, absX(x + 1), absY(y + 1));
             drawCompressedTitle(
                     graphics,
-                    Component.translatable("gui.neoecoae.storage.matrix_card.title", tierName(matrix.tier()))
-                            .getString(),
+                    matrix.previewStack().isEmpty()
+                            ? Component.translatable("gui.neoecoae.storage.matrix_card.title", tierName(matrix.tier()))
+                                    .getString()
+                            : matrix.previewStack().getHoverName().getString(),
                     absX(x + 18),
                     absY(y + 2),
                     CARD_W - 20,
@@ -182,22 +184,11 @@ final class NEStorageMatrixPanel {
                     List.of(
                             stack.getHoverName(),
                             tierTooltipLine(matrix.tier()),
-                            NELDLibValueText.usedTotalComponent(
-                                    Component.translatable("gui.neoecoae.common.types")
-                                                    .getString() + ": ",
-                                    NELDLibText.typeCount(matrix.usedTypes()),
-                                    NELDLibText.typeCount(matrix.totalTypes()),
-                                    matrix.usedTypes(),
-                                    matrix.totalTypes(),
-                                    ""),
-                            NELDLibValueText.usedTotalComponent(
-                                    "",
+                            NELDLibText.typesUsedComponent(matrix.usedTypes()),
+                            Component.translatable(
+                                    "gui.neoecoae.storage.matrix_card.bytes",
                                     NELDLibText.storageBytes(matrix.usedBytes()),
-                                    NELDLibText.storageBytes(matrix.totalBytes()),
-                                    matrix.usedBytes(),
-                                    matrix.totalBytes(),
-                                    Component.translatable("gui.neoecoae.storage.bytes_used")
-                                            .getString())),
+                                    NELDLibText.storageBytes(matrix.totalBytes()))),
                     mouseX,
                     mouseY);
             return true;

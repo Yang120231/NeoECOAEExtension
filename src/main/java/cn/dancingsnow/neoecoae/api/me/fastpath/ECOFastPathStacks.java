@@ -5,12 +5,14 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
+import java.util.function.ObjLongConsumer;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -135,11 +137,11 @@ public final class ECOFastPathStacks {
 
     private static List<GenericStack> copySorted(KeyCounter counter) {
         List<GenericStack> stacks = new ArrayList<>();
-        for (Object2LongMap.Entry<AEKey> entry : counter) {
-            if (entry.getLongValue() > 0) {
-                stacks.add(new GenericStack(entry.getKey(), entry.getLongValue()));
+        forEachCounterEntry(counter, (key, amount) -> {
+            if (amount > 0) {
+                stacks.add(new GenericStack(key, amount));
             }
-        }
+        });
         if (stacks.size() <= 1) {
             return List.copyOf(stacks);
         }
@@ -170,6 +172,22 @@ public final class ECOFastPathStacks {
             return key.toTagGeneric().toString();
         } catch (RuntimeException e) {
             return key.getClass().getName() + ":" + key.hashCode();
+        }
+    }
+
+    public static void forEachCounterEntry(KeyCounter counter, ObjLongConsumer<AEKey> consumer) {
+        for (Object entry : (Iterable<?>) counter) {
+            if (entry instanceof Reference2LongMap.Entry<?> referenceEntry) {
+                acceptCounterEntry(referenceEntry.getKey(), referenceEntry.getLongValue(), consumer);
+            } else if (entry instanceof Object2LongMap.Entry<?> objectEntry) {
+                acceptCounterEntry(objectEntry.getKey(), objectEntry.getLongValue(), consumer);
+            }
+        }
+    }
+
+    private static void acceptCounterEntry(Object key, long amount, ObjLongConsumer<AEKey> consumer) {
+        if (key instanceof AEKey aeKey) {
+            consumer.accept(aeKey, amount);
         }
     }
 

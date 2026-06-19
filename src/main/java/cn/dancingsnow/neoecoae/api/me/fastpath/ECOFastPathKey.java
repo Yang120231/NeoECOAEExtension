@@ -2,7 +2,6 @@ package cn.dancingsnow.neoecoae.api.me.fastpath;
 
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -45,13 +44,11 @@ public final class ECOFastPathKey {
             for (KeyCounter counter : craftingContainer) {
                 List<EntrySignature> entries = new ArrayList<>();
                 if (counter != null) {
-                    for (Object2LongMap.Entry<AEKey> entry : counter) {
-                        if (entry.getLongValue() > 0) {
-                            AEKey key = entry.getKey();
-                            entries.add(
-                                    new EntrySignature(key, entry.getLongValue(), ECOFastPathStacks.keySortId(key)));
+                    ECOFastPathStacks.forEachCounterEntry(counter, (key, amount) -> {
+                        if (amount > 0) {
+                            entries.add(new EntrySignature(key, amount, ECOFastPathStacks.keySortId(key)));
                         }
-                    }
+                    });
                 }
                 entries.sort(Comparator.comparing(EntrySignature::sortId).thenComparingLong(EntrySignature::amount));
                 slots.add(new SlotSignature(entries));

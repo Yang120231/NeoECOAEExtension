@@ -2,6 +2,9 @@ package cn.dancingsnow.neoecoae.multiblock.calculator;
 
 import appeng.me.cluster.MBCalculator;
 import cn.dancingsnow.neoecoae.blocks.entity.NEBlockEntity;
+import cn.dancingsnow.neoecoae.blocks.entity.computation.ECOComputationSystemBlockEntity;
+import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingSystemBlockEntity;
+import cn.dancingsnow.neoecoae.blocks.entity.storage.ECOStorageSystemBlockEntity;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NECluster;
 import com.mojang.serialization.DataResult;
 import com.tterrag.registrate.util.entry.BlockEntry;
@@ -67,6 +70,10 @@ public abstract class NEClusterCalculator<C extends NECluster<C>> extends MBCalc
 
     protected void setMirroredStructure(boolean mirroredStructure) {
         this.mirroredStructure = mirroredStructure;
+    }
+
+    protected boolean isMirroredStructure() {
+        return mirroredStructure;
     }
 
     @FunctionalInterface
@@ -157,6 +164,39 @@ public abstract class NEClusterCalculator<C extends NECluster<C>> extends MBCalc
     public static <T> boolean validateBlocks(
             Level level, BlockPos from, BlockPos to, BiPredicate<BlockState, T> fn, T value) {
         return validateBlocks(level, BlockPos.betweenClosed(from, to), fn, value);
+    }
+
+    @SafeVarargs
+    protected static boolean hasAdditionalBlockEntity(
+            ServerLevel level,
+            BlockPos min,
+            BlockPos max,
+            BlockPos allowedPos,
+            Class<? extends BlockEntity>... blockEntityTypes) {
+        for (BlockPos blockPos : BlockPos.betweenClosed(min, max)) {
+            if (blockPos.equals(allowedPos)) {
+                continue;
+            }
+            BlockEntity blockEntity = level.getBlockEntity(blockPos);
+            for (Class<? extends BlockEntity> blockEntityType : blockEntityTypes) {
+                if (blockEntityType.isInstance(blockEntity)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    protected static boolean hasAdditionalController(
+            ServerLevel level, BlockPos min, BlockPos max, BlockPos allowedPos) {
+        return hasAdditionalBlockEntity(
+                level,
+                min,
+                max,
+                allowedPos,
+                ECOStorageSystemBlockEntity.class,
+                ECOCraftingSystemBlockEntity.class,
+                ECOComputationSystemBlockEntity.class);
     }
 
     protected static boolean validateCasing(

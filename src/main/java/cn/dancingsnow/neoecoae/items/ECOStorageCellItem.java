@@ -5,6 +5,7 @@ import appeng.api.config.IncludeExclude;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
+import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.cells.ISaveProvider;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.UpgradeInventories;
@@ -33,6 +34,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -60,9 +62,19 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
     private final int totalTypes;
     private final AEKeyType keyType;
     private final RegistryEntry<ECOCellType> cellType;
+    private final boolean universalStorage;
 
     public ECOStorageCellItem(
             Properties properties, IECOTier tier, AEKeyType keyType, RegistryEntry<ECOCellType> cellType) {
+        this(properties, tier, keyType, cellType, false);
+    }
+
+    public ECOStorageCellItem(
+            Properties properties,
+            IECOTier tier,
+            AEKeyType keyType,
+            RegistryEntry<ECOCellType> cellType,
+            boolean universalStorage) {
         super(properties);
         this.tier = tier;
         this.fallbackTotalBytes = tier.getStorageTotalBytes();
@@ -70,11 +82,27 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         this.totalTypes = tier.getStorageTotalTypes(keyType);
         this.keyType = keyType;
         this.cellType = cellType;
+        this.universalStorage = universalStorage;
     }
 
     @Override
     public AEKeyType getKeyType() {
         return keyType;
+    }
+
+    @Override
+    public boolean acceptsKey(AEKey what) {
+        return universalStorage || keyType.contains(what);
+    }
+
+    @Override
+    public int getAmountPerByte(AEKey what) {
+        return universalStorage ? what.getType().getAmountPerByte() : keyType.getAmountPerByte();
+    }
+
+    @Override
+    public boolean isUniversalStorage() {
+        return universalStorage;
     }
 
     @Override
@@ -107,18 +135,30 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             ItemStack stack, @Nullable Level level, List<Component> lines, TooltipFlag tooltipFlag) {
         ECOStorageCellMode mode = ECOStorageCellMetadata.getMode(stack);
         if (mode == ECOStorageCellMode.DOMAIN_MEMBER) {
-            lines.add(Component.literal("Mode: Infinite storage member").withStyle(ChatFormatting.GOLD));
-            lines.add(Component.literal("State: Managed by ECO storage host").withStyle(ChatFormatting.GRAY));
-            lines.add(Component.literal("Empty the host domain to unbind").withStyle(ChatFormatting.DARK_GRAY));
+            lines.add(Component.translatableWithFallback(
+                            "tooltip.neoecoae.storage_cell.domain_member.mode", "Mode: Infinite storage member")
+                    .withStyle(ChatFormatting.GOLD));
+            lines.add(Component.translatableWithFallback(
+                            "tooltip.neoecoae.storage_cell.domain_member.state", "State: Managed by ECO storage host")
+                    .withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatableWithFallback(
+                            "tooltip.neoecoae.storage_cell.domain_member.unbind", "Empty the host domain to unbind")
+                    .withStyle(ChatFormatting.DARK_GRAY));
             return;
         }
         if (mode == ECOStorageCellMode.MIGRATING) {
-            lines.add(Component.literal("Mode: Migrating to infinite domain").withStyle(ChatFormatting.GOLD));
-            lines.add(Component.literal("Storage access is temporarily locked").withStyle(ChatFormatting.GRAY));
+            lines.add(Component.translatableWithFallback(
+                            "tooltip.neoecoae.storage_cell.migrating.mode", "Mode: Migrating to infinite domain")
+                    .withStyle(ChatFormatting.GOLD));
+            lines.add(Component.translatableWithFallback(
+                            "tooltip.neoecoae.storage_cell.migrating.state", "Storage access is temporarily locked")
+                    .withStyle(ChatFormatting.GRAY));
             return;
         }
         if (ECOStorageCellMetadata.isLegacyInfiniteLocked(stack)) {
-            lines.add(Component.literal("Legacy infinite matrix lock").withStyle(ChatFormatting.GOLD));
+            lines.add(Component.translatableWithFallback(
+                            "tooltip.neoecoae.storage_cell.legacy_locked", "Legacy infinite matrix lock")
+                    .withStyle(ChatFormatting.GOLD));
         }
 
         var handler = getCellInventory(stack);
@@ -126,13 +166,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             return;
         }
         lines.add(Tooltips.bytesUsed(handler.getUsedBytes(), handler.getTotalBytes()));
-        if (handler.getTotalItemTypes() == Long.MAX_VALUE) {
-            lines.add(Component.literal("Types: " + NELDLibText.typeCount(handler.getStoredItemTypes()) + " / "
-                            + NELDLibText.INFINITE)
-                    .withStyle(ChatFormatting.GRAY));
-        } else {
-            lines.add(Tooltips.typesUsed(handler.getStoredItemTypes(), handler.getTotalItemTypes()));
-        }
+        lines.add(typesUsed(handler.getStoredItemTypes()));
     }
 
     @Override
@@ -156,10 +190,8 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         boolean hasMoreContent;
         List<GenericStack> content;
         if (AEConfig.instance().isTooltipShowCellContent()) {
-            content = new ArrayList<>();
-
             var maxCountShown = AEConfig.instance().getTooltipMaxCellContentShown();
-            content.addAll(handler.getStoredStacks());
+            content = topStoredStacks(handler, maxCountShown);
 
             if (content.size() < maxCountShown && handler.getPartitionListMode() == IncludeExclude.WHITELIST) {
                 var config = handler.getConfigInventory();
@@ -175,7 +207,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             }
 
             content.sort(Comparator.comparingLong(GenericStack::amount).reversed());
-            hasMoreContent = content.size() > maxCountShown;
+            hasMoreContent = handler.getStoredItemTypes() > maxCountShown || content.size() > maxCountShown;
             if (content.size() > maxCountShown) {
                 content.subList(maxCountShown, content.size()).clear();
             }
@@ -185,6 +217,30 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         }
 
         return Optional.of(new StorageCellTooltipComponent(upgradeStacks, content, hasMoreContent, true));
+    }
+
+    private static List<GenericStack> topStoredStacks(ECOStorageCell handler, int maxCountShown) {
+        int limit = Math.max(0, maxCountShown);
+        if (limit == 0) {
+            return new ArrayList<>();
+        }
+        PriorityQueue<GenericStack> top = new PriorityQueue<>(Comparator.comparingLong(GenericStack::amount));
+        KeyCounter available = new KeyCounter();
+        handler.getAvailableStacks(available);
+        for (var entry : available) {
+            long amount = entry.getLongValue();
+            if (amount <= 0L) {
+                continue;
+            }
+            GenericStack candidate = new GenericStack(entry.getKey(), amount);
+            if (top.size() < limit + 1) {
+                top.offer(candidate);
+            } else if (candidate.amount() > top.peek().amount()) {
+                top.poll();
+                top.offer(candidate);
+            }
+        }
+        return new ArrayList<>(top);
     }
 
     @Nullable public static ECOStorageCell getCellInventory(ItemStack stack) {
@@ -224,6 +280,10 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         return false;
     }
 
+    private static Component typesUsed(long storedTypes) {
+        return NELDLibText.typesUsedComponent(storedTypes);
+    }
+
     @Override
     public FuzzyMode getFuzzyMode(ItemStack is) {
         if (is.hasTag() && is.getTag().contains("fuzzyMode")) {
@@ -242,7 +302,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
 
     @Override
     public ConfigInventory getConfigInventory(ItemStack is) {
-        return CellConfig.create(key -> key.getType() == keyType, is);
+        return CellConfig.create(this::acceptsKey, is);
     }
 
     @Override
@@ -306,7 +366,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         @Override
         public boolean isCell(ItemStack stack) {
             if (stack.getItem() instanceof ECOStorageCellItem item) {
-                return item.getCellType() == NECellTypes.ITEM.get() && item.getKeyType() == AEKeyType.items();
+                return item.getCellType() == NECellTypes.ITEM.get();
             }
             return false;
         }

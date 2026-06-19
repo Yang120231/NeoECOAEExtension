@@ -16,6 +16,7 @@ import cn.dancingsnow.neoecoae.all.NERegistries;
 import cn.dancingsnow.neoecoae.api.integration.IntegrationManager;
 import cn.dancingsnow.neoecoae.api.storage.ECOStorageCells;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
+import cn.dancingsnow.neoecoae.compat.ae2.ExternalAE2CellHandler;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.forge.event.NELightningTransformEvents;
 import cn.dancingsnow.neoecoae.items.ECOStorageCellItem;
@@ -114,6 +115,7 @@ public class NeoECOAE {
         event.enqueueWork(() -> {
             ECOStorageCells.register(ECOStorageCellItem.ItemCellHandler.INSTANCE);
             ECOStorageCells.register(ECOStorageCellItem.FluidCellHandler.INSTANCE);
+            ECOStorageCells.register(ExternalAE2CellHandler.INSTANCE);
         });
     }
 

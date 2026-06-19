@@ -35,7 +35,6 @@ import cn.dancingsnow.neoecoae.api.me.fastpath.ECOExtractedPatternExecution;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathPatternMetadata;
 import cn.dancingsnow.neoecoae.api.me.fastpath.ECOFastPathStacks;
 import cn.dancingsnow.neoecoae.config.NEConfig;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -330,11 +329,11 @@ public class ExecutingCraftingJob {
 
     private static ListTag writeCounter(KeyCounter counter) {
         ListTag list = new ListTag();
-        for (Object2LongMap.Entry<AEKey> entry : counter) {
-            if (entry.getLongValue() > 0) {
-                list.add(GenericStack.writeTag(new GenericStack(entry.getKey(), entry.getLongValue())));
+        ECOFastPathStacks.forEachCounterEntry(counter, (key, amount) -> {
+            if (amount > 0) {
+                list.add(GenericStack.writeTag(new GenericStack(key, amount)));
             }
-        }
+        });
         return list;
     }
 

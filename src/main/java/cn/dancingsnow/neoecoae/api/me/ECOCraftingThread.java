@@ -23,7 +23,7 @@ import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingSystemBlockEnti
 import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingWorkerBlockEntity;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import com.mojang.logging.LogUtils;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -435,7 +435,7 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
         }
 
         KeyCounter remainder = new KeyCounter();
-        for (Object2LongMap.Entry<AEKey> entry : collectOutputItems()) {
+        for (Reference2LongMap.Entry<AEKey> entry : collectOutputItems()) {
             long accepted = Math.min(entry.getLongValue(), acceptedOutputs.get(entry.getKey()));
             if (accepted > 0) {
                 acceptedOutputs.remove(entry.getKey(), accepted);
@@ -507,7 +507,7 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
     @Nullable private List<ItemStack> toItemStacksOrLog(KeyCounter remainder, String kind) {
         List<ItemStack> retained = new ArrayList<>();
 
-        for (Object2LongMap.Entry<AEKey> entry : remainder) {
+        for (Reference2LongMap.Entry<AEKey> entry : remainder) {
             if (!(entry.getKey() instanceof AEItemKey itemKey)) {
                 LOGGER.error(
                         "ECO crafting {} could not be retained because it is not an item key: key={} amount={}",
@@ -531,7 +531,7 @@ public class ECOCraftingThread implements INBTSerializable<CompoundTag> {
 
     private KeyCounter insertAllAndCollectRemainder(MEStorage storage, KeyCounter stacks) {
         KeyCounter remainder = new KeyCounter();
-        for (Object2LongMap.Entry<AEKey> entry : stacks) {
+        for (Reference2LongMap.Entry<AEKey> entry : stacks) {
             long remaining = entry.getLongValue();
             long inserted = storage.insert(entry.getKey(), remaining, Actionable.MODULATE, actionSource);
             remaining -= inserted;

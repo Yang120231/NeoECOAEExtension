@@ -15,7 +15,6 @@ import appeng.me.service.CraftingService;
 import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
-import cn.dancingsnow.neoecoae.api.ECOTier;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyAdapter;
 import cn.dancingsnow.neoecoae.api.me.energy.ECOCraftingEnergyAdapters;
@@ -33,6 +32,8 @@ import cn.dancingsnow.neoecoae.blocks.NEBlock;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessCoverSlotValidator.CoverInfo;
 import cn.dancingsnow.neoecoae.compat.gtmthings.GTMWirelessEnergyAdapter;
+import cn.dancingsnow.neoecoae.compat.gtocore.GTOMECraftingHatches;
+import cn.dancingsnow.neoecoae.compat.gtocore.GTOMECraftingHatches.FluidPort;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.gui.ldlib.NELDLibUis;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NECraftingModuleCell;
@@ -54,25 +55,20 @@ import java.util.UUID;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.templates.FluidTank;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
@@ -95,10 +91,6 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
      */
     public static final int MAX_COOLANT = 1_000_000;
 
-    private static final int REQUIRED_INSTANT_AE_COMPONENTS = 64;
-    private static final List<ResourceLocation> INSTANT_AE_COMPONENT_IDS = List.of(
-            ResourceLocation.fromNamespaceAndPath("gtocore", "infinite_cell_component"),
-            ResourceLocation.fromNamespaceAndPath("gtlcore", "infinite_cell_component"));
     private static final String NBT_SPECIAL_MODE_ITEM = "specialModeItem";
     private static final String NBT_WIRELESS_ENERGY_COVER = "wirelessEnergyCover";
     private static final String NBT_EXTERNAL_ENERGY_OWNER = "externalEnergyOwner";
@@ -151,16 +143,12 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
 
         @Override
         public int getSlotLimit(int slot) {
-            ItemStack stack = getStackInSlot(slot);
-            if (!stack.isEmpty()) {
-                return canUseInstantAeComponents() && isInstantAeComponent(stack) ? REQUIRED_INSTANT_AE_COMPONENTS : 1;
-            }
-            return canUseInstantAeComponents() ? REQUIRED_INSTANT_AE_COMPONENTS : 1;
+            return 1;
         }
 
         @Override
         protected int getStackLimit(int slot, ItemStack stack) {
-            return canUseInstantAeComponents() && isInstantAeComponent(stack) ? REQUIRED_INSTANT_AE_COMPONENTS : 1;
+            return 1;
         }
     };
 
@@ -347,6 +335,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
             externalEnergyOwner = null;
         }
         applyWirelessEnergyAdapter();
+        markUiStateDirty();
         setChanged();
         markForUpdate();
     }
@@ -359,6 +348,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
             externalEnergyOwner = null;
         }
         applyWirelessEnergyAdapter();
+        markUiStateDirty();
         setChanged();
         markForUpdate();
     }
@@ -370,13 +360,6 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
             wirelessEnergyCover.deserializeNBT(tag.getCompound(NBT_SPECIAL_MODE_ITEM));
         } else if (tag.contains(NBT_WIRELESS_ENERGY_COVER, Tag.TAG_COMPOUND)) {
             wirelessEnergyCover.deserializeNBT(tag.getCompound(NBT_WIRELESS_ENERGY_COVER));
-        } else if (tag.contains(NBT_INSTANT_AE_COMPONENT, Tag.TAG_COMPOUND)) {
-            ItemStackHandler legacyInstant = new ItemStackHandler(1);
-            legacyInstant.deserializeNBT(tag.getCompound(NBT_INSTANT_AE_COMPONENT));
-            ItemStack legacyStack = legacyInstant.getStackInSlot(0);
-            if (isInstantAeComponent(legacyStack)) {
-                wirelessEnergyCover.setStackInSlot(0, legacyStack.copy());
-            }
         }
         ItemStack stack = wirelessEnergyCover.getStackInSlot(0);
         if (!stack.isEmpty() && !isSpecialModeItem(stack)) {
@@ -694,10 +677,7 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
                     external.source());
         }
         long energyPerTick = getAggregatedEnergyPerTick(batch);
-        long ticks = isInstantAeCraftingUnlocked() ? 1L : calculateAggregatedTicks(batch);
-        if (isInstantAeCraftingUnlocked()) {
-            energyPerTick = ECOAggregatedCraftingTiming.saturatedMultiply(energyPerTick, batch.craftCount());
-        }
+        long ticks = calculateAggregatedTicks(batch);
         return new ECOBatchEnergyProfile(ECOCraftingEnergyMode.AE, ECOCraftingEnergyStatus.READY, energyPerTick, ticks);
     }
 
@@ -775,23 +755,19 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     public int getInstantAeComponentCount() {
-        if (!canUseInstantAeComponents()) {
-            return 0;
-        }
-        ItemStack stack = wirelessEnergyCover.getStackInSlot(0);
-        return isInstantAeComponent(stack) ? stack.getCount() : 0;
+        return 0;
     }
 
     public int getRequiredInstantAeComponentCount() {
-        return REQUIRED_INSTANT_AE_COMPONENTS;
+        return 0;
     }
 
     public boolean isInstantAeComponentAvailable() {
-        return getInstantAeComponentItem() != Items.AIR;
+        return false;
     }
 
     public boolean canUseInstantAeComponents() {
-        return tier.getTier() == ECOTier.L9.getTier() && isInstantAeComponentAvailable();
+        return false;
     }
 
     public boolean canUseWirelessEnergyCovers() {
@@ -799,31 +775,15 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     public boolean canUseSpecialModeSlot() {
-        return canUseInstantAeComponents() || canUseWirelessEnergyCovers();
+        return canUseWirelessEnergyCovers();
     }
 
     public boolean isInstantAeCraftingUnlocked() {
-        return canUseInstantAeComponents() && getInstantAeComponentCount() >= REQUIRED_INSTANT_AE_COMPONENTS;
+        return false;
     }
 
     private boolean isSpecialModeItem(ItemStack stack) {
-        return (canUseInstantAeComponents() && isInstantAeComponent(stack))
-                || GTMWirelessCoverSlotValidator.isWirelessEnergyCover(stack);
-    }
-
-    private static boolean isInstantAeComponent(ItemStack stack) {
-        Item component = getInstantAeComponentItem();
-        return component != Items.AIR && stack != null && !stack.isEmpty() && stack.is(component);
-    }
-
-    private static Item getInstantAeComponentItem() {
-        for (ResourceLocation id : INSTANT_AE_COMPONENT_IDS) {
-            Item component = BuiltInRegistries.ITEM.get(id);
-            if (component != Items.AIR) {
-                return component;
-            }
-        }
-        return Items.AIR;
+        return GTMWirelessCoverSlotValidator.isWirelessEnergyCover(stack);
     }
 
     private static boolean areItemStacks(List<appeng.api.stacks.GenericStack> stacks) {
@@ -954,6 +914,39 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         int averageProgress = occupiedSlots <= 0 ? 0 : Math.round((float) weightedProgress / occupiedSlots);
         return new ECOCraftingWorkerBlockEntity.ThreadProgressSummary(
                 busyThreadCount, occupiedSlots, maxProgress, averageProgress);
+    }
+
+    public RuntimeProgressSummary getRuntimeProgressSummary() {
+        long runningTicks = 0L;
+        long totalTicks = 0L;
+        boolean running = false;
+        for (ECOAggregatedCraftingBatch batch : craftingBatches) {
+            if (!batch.isProcessing()) {
+                continue;
+            }
+            long batchTotalTicks = Math.max(1L, batch.totalTicks());
+            totalTicks = ECOAggregatedCraftingTiming.saturatedAdd(totalTicks, batchTotalTicks);
+            runningTicks = ECOAggregatedCraftingTiming.saturatedAdd(
+                    runningTicks, Math.max(0L, batchTotalTicks - batch.remainingTicks()));
+            running = true;
+        }
+        if (running && totalTicks > 0L) {
+            return new RuntimeProgressSummary(true, runningTicks, totalTicks);
+        }
+
+        ECOCraftingWorkerBlockEntity.ThreadProgressSummary progress = getThreadProgressSummary();
+        if (progress.busyThreadCount() <= 0 && !isRunning()) {
+            return RuntimeProgressSummary.IDLE;
+        }
+
+        int fallbackTotalTicks = Math.max(1, getTheoreticalCraftTicks());
+        int progressPerTick = Math.max(1, getProgressPerTick());
+        long fallbackRunningTicks = fallbackTotalTicks <= 1 ? 1L : 0L;
+        if (progress.maxProgress() > 0) {
+            fallbackRunningTicks = (long) Math.ceil(progress.maxProgress() / (double) progressPerTick);
+            fallbackRunningTicks = Math.min(fallbackTotalTicks, Math.max(1L, fallbackRunningTicks));
+        }
+        return new RuntimeProgressSummary(fallbackRunningTicks > 0L, fallbackRunningTicks, fallbackTotalTicks);
     }
 
     public int getThreadCount() {
@@ -1295,6 +1288,10 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
 
     private record WorkerUiEntry(int column, ItemStack output) {}
 
+    public record RuntimeProgressSummary(boolean running, long runningTicks, long totalTicks) {
+        private static final RuntimeProgressSummary IDLE = new RuntimeProgressSummary(false, 0L, 0L);
+    }
+
     private record WorkerTaskKey(UUID craftingJobId, ItemStack output) {
         private WorkerTaskKey {
             output = output.copyWithCount(1);
@@ -1386,24 +1383,28 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     @Nullable private CoolingRecipe getCoolingRecipe() {
-        if (cluster == null
-                || cluster.getInputHatch() == null
-                || cluster.getOutputHatch() == null
-                || getLevel() == null) {
+        Level level = getLevel();
+        if (cluster == null || level == null) {
             return null;
         }
-        FluidTank inputHatch = cluster.getInputHatch().tank;
-        if (inputHatch.getFluidAmount() <= 0) {
+        FluidPort inputPort = GTOMECraftingHatches.inputPort(level, cluster.getInputHatchPos());
+        FluidPort outputPort = GTOMECraftingHatches.outputPort(level, cluster.getOutputHatchPos());
+        if (inputPort == null || outputPort == null) {
             return null;
         }
-        FluidTank outputHatch = cluster.getOutputHatch().tank;
-        return getLevel()
-                .getRecipeManager()
-                .getRecipeFor(
-                        NERecipeTypes.COOLING.get(),
-                        new CoolingRecipe.Input(inputHatch.getFluid(), outputHatch.getFluid()),
-                        getLevel())
-                .orElse(null);
+        FluidStack outputSample = autoClearCoolingWaste ? FluidStack.EMPTY : outputPort.getFirstFluid();
+        for (FluidStack inputFluid : inputPort.getAvailableFluids()) {
+            if (inputFluid.isEmpty()) {
+                continue;
+            }
+            CoolingRecipe recipe = level.getRecipeManager()
+                    .getRecipeFor(NERecipeTypes.COOLING.get(), new CoolingRecipe.Input(inputFluid, outputSample), level)
+                    .orElse(null);
+            if (recipe != null && canAcceptCoolingWaste(outputPort, recipe, 1, IFluidHandler.FluidAction.SIMULATE)) {
+                return recipe;
+            }
+        }
+        return null;
     }
 
     private boolean canRefillWith(int maxOverclock) {
@@ -1433,24 +1434,40 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
     }
 
     private int refillCoolant(CoolingRecipe recipe, int deficit) {
-        if (cluster == null || cluster.getInputHatch() == null || cluster.getOutputHatch() == null) {
+        Level level = getLevel();
+        if (cluster == null || level == null) {
             return 0;
         }
-        FluidTank inputHatch = cluster.getInputHatch().tank;
-        FluidTank outputHatch = cluster.getOutputHatch().tank;
+        FluidPort inputPort = GTOMECraftingHatches.inputPort(level, cluster.getInputHatchPos());
+        FluidPort outputPort = GTOMECraftingHatches.outputPort(level, cluster.getOutputHatchPos());
+        if (inputPort == null || outputPort == null) {
+            return 0;
+        }
         int inputAmount = recipe.inputAmount();
         if (deficit <= 0 || inputAmount <= 0 || recipe.coolant() <= 0) {
             return 0;
         }
 
-        long drainAmount = Math.min(inputHatch.getFluidAmount(), getMaxDrainByOutput(recipe, outputHatch));
+        FluidStack inputTemplate = selectCoolingInput(inputPort, recipe);
+        if (inputTemplate.isEmpty()) {
+            return 0;
+        }
+        long drainAmount = Math.min(inputTemplate.getAmount(), getMaxDrainByOutput(recipe, outputPort));
+        drainAmount = Math.min(drainAmount, maxDrainForDeficit(recipe, deficit));
         if (drainAmount <= 0) {
             return 0;
         }
+        FluidStack drainStack = new FluidStack(inputTemplate, saturatedInt(drainAmount));
 
-        int drained = inputHatch
-                .drain((int) drainAmount, IFluidHandler.FluidAction.EXECUTE)
-                .getAmount();
+        int simulatedDrain = inputPort.drain(drainStack, IFluidHandler.FluidAction.SIMULATE);
+        if (simulatedDrain <= 0) {
+            return 0;
+        }
+        drainStack.setAmount(simulatedDrain);
+        if (!canAcceptCoolingWaste(outputPort, recipe, simulatedDrain, IFluidHandler.FluidAction.SIMULATE)) {
+            return 0;
+        }
+        int drained = inputPort.drain(drainStack, IFluidHandler.FluidAction.EXECUTE);
         if (drained <= 0) {
             return 0;
         }
@@ -1459,7 +1476,14 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         if (!output.isEmpty() && !autoClearCoolingWaste) {
             int outputAmount = (int) ((long) drained * recipe.outputAmount() / inputAmount);
             if (outputAmount > 0) {
-                outputHatch.fill(new FluidStack(output, outputAmount), IFluidHandler.FluidAction.EXECUTE);
+                int filled = outputPort.fill(new FluidStack(output, outputAmount), IFluidHandler.FluidAction.EXECUTE);
+                if (filled < outputAmount) {
+                    LOGGER.warn(
+                            "Cooling waste output accepted less than simulated: recipe={} expected={} filled={}",
+                            recipe.getId(),
+                            outputAmount,
+                            filled);
+                }
             }
         }
 
@@ -1474,7 +1498,16 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         return coolantGain;
     }
 
-    private long getMaxDrainByOutput(CoolingRecipe recipe, FluidTank outputHatch) {
+    private FluidStack selectCoolingInput(FluidPort inputPort, CoolingRecipe recipe) {
+        for (FluidStack inputFluid : inputPort.getAvailableFluids()) {
+            if (recipe.input().test(inputFluid)) {
+                return inputFluid.copy();
+            }
+        }
+        return FluidStack.EMPTY;
+    }
+
+    private long getMaxDrainByOutput(CoolingRecipe recipe, FluidPort outputPort) {
         if (autoClearCoolingWaste) {
             return Long.MAX_VALUE;
         }
@@ -1482,16 +1515,41 @@ public class ECOCraftingSystemBlockEntity extends AbstractCraftingBlockEntity<EC
         if (output.isEmpty()) {
             return Long.MAX_VALUE;
         }
-        FluidStack stored = outputHatch.getFluid();
-        if (!stored.isEmpty() && !stored.isFluidStackIdentical(output)) {
-            return 0;
-        }
         int outputAmount = recipe.outputAmount();
         if (outputAmount <= 0) {
             return Long.MAX_VALUE;
         }
-        long outputSpace = outputHatch.getCapacity() - outputHatch.getFluidAmount();
-        return outputSpace * recipe.inputAmount() / outputAmount;
+        int accepted = outputPort.fill(new FluidStack(output, Integer.MAX_VALUE), IFluidHandler.FluidAction.SIMULATE);
+        return (long) accepted * recipe.inputAmount() / outputAmount;
+    }
+
+    private boolean canAcceptCoolingWaste(
+            FluidPort outputPort, CoolingRecipe recipe, int drainedInput, IFluidHandler.FluidAction action) {
+        if (autoClearCoolingWaste) {
+            return true;
+        }
+        FluidStack output = recipe.output();
+        if (output.isEmpty()) {
+            return true;
+        }
+        int inputAmount = recipe.inputAmount();
+        if (inputAmount <= 0 || drainedInput <= 0) {
+            return false;
+        }
+        int outputAmount = (int) ((long) drainedInput * recipe.outputAmount() / inputAmount);
+        if (outputAmount <= 0) {
+            return true;
+        }
+        return outputPort.fill(new FluidStack(output, outputAmount), action) >= outputAmount;
+    }
+
+    private long maxDrainForDeficit(CoolingRecipe recipe, int deficit) {
+        long required = ((long) deficit * recipe.inputAmount() + recipe.coolant() - 1L) / recipe.coolant();
+        return Math.max(1L, required);
+    }
+
+    private static int saturatedInt(long amount) {
+        return amount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) Math.max(0L, amount);
     }
 
     public void tick(Level level, BlockPos pos, BlockState state) {

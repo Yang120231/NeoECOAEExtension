@@ -3,11 +3,9 @@ package cn.dancingsnow.neoecoae.all;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.registries.ForgeRegistries;
 
 /**
  * Controls the order of items in the ECO creative tab.
@@ -179,20 +177,9 @@ public final class NECreativeTabContents {
         add(NEItems.ECO_CELL_COMPONENT_64M);
         add(NEItems.ECO_CELL_COMPONENT_256M);
         add(NEItems.ECO_ITEM_CELL_HOUSING);
-        add(NEItems.ECO_FLUID_CELL_HOUSING);
         add(NEItems.ECO_ITEM_CELL_16M);
         add(NEItems.ECO_ITEM_CELL_64M);
         add(NEItems.ECO_ITEM_CELL_256M);
-        add(NEItems.ECO_FLUID_CELL_16M);
-        add(NEItems.ECO_FLUID_CELL_64M);
-        add(NEItems.ECO_FLUID_CELL_256M);
-
-        // --- Chemical Cells (looked up by registry name; only present if AppMek
-        // loaded) ---
-        addIfPresent("eco_chemical_cell_housing");
-        addIfPresent("eco_chemical_storage_cell_16m");
-        addIfPresent("eco_chemical_storage_cell_64m");
-        addIfPresent("eco_chemical_storage_cell_256m");
 
         // ═════════════════════════════════════════════════════════════
         // Computation Cells
@@ -205,20 +192,6 @@ public final class NECreativeTabContents {
         // Miscellaneous
         // ═════════════════════════════════════════════════════════════
         add(NEItems.STRUCTURE_TERMINAL);
-    }
-
-    /**
-     * Look up an item by its registry path name (under the neoecoae namespace)
-     * and add it to the entry list if it exists in the registry.
-     * <p>
-     * This is used for items registered by conditional integrations
-     * (e.g. AppMek chemical cells) where the class may not be loadable.
-     */
-    private static void addIfPresent(String registryPath) {
-        ResourceLocation id = ResourceLocation.tryBuild("neoecoae", registryPath);
-        if (id != null && ForgeRegistries.ITEMS.containsKey(id)) {
-            ENTRIES.add(() -> new ItemStack(ForgeRegistries.ITEMS.getValue(id)));
-        }
     }
 
     private static void add(Supplier<?> entry) {

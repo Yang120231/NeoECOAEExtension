@@ -47,7 +47,8 @@ public final class ChemicalCellValidation {
 
         validateInsertMatrix(chemicalCell, itemCell, fluidCell);
         return "NeoECOAE chemical cell validation passed: item keys rejected by chemical cells, "
-                + "chemical keys accepted by chemical cells, and item/fluid cells reject chemical keys.";
+                + "chemical keys accepted by chemical cells, item matrices accept chemical keys, "
+                + "and fluid cells reject chemical keys.";
     }
 
     public static String runInsertMatrixOnly() {
@@ -72,7 +73,7 @@ public final class ChemicalCellValidation {
         require(chemicalIntoChemical > 0, "Chemical cell rejected a valid Mekanism chemical key");
 
         long chemicalIntoItem = itemCell.insert(chemicalKey, CHEMICAL_AMOUNT, Actionable.SIMULATE, source);
-        require(chemicalIntoItem == 0, "Item cell accepted a Mekanism chemical key: inserted=" + chemicalIntoItem);
+        require(chemicalIntoItem > 0, "Item matrix rejected a Mekanism chemical key");
 
         long chemicalIntoFluid = fluidCell.insert(chemicalKey, CHEMICAL_AMOUNT, Actionable.SIMULATE, source);
         require(chemicalIntoFluid == 0, "Fluid cell accepted a Mekanism chemical key: inserted=" + chemicalIntoFluid);

@@ -168,10 +168,6 @@ public class NEBlockEntities {
             .forBlock(NEBlocks.INPUT_HATCH)
             .validBlock(NEBlocks.INPUT_HATCH)
             .serverTicker(ECOFluidInputHatchBlockEntity::tick)
-            .registerCapability(event -> {
-                event.registerBlockEntity(
-                        ForgeCapabilities.FLUID_HANDLER, NEBlockEntities.INPUT_HATCH.get(), (be, side) -> be.tank);
-            })
             .register();
 
     public static final NEBlockEntityEntry<ECOFluidOutputHatchBlockEntity> OUTPUT_HATCH = REGISTRATE
@@ -179,10 +175,6 @@ public class NEBlockEntities {
             .forBlock(NEBlocks.OUTPUT_HATCH)
             .validBlock(NEBlocks.OUTPUT_HATCH)
             .serverTicker(ECOFluidOutputHatchBlockEntity::tick)
-            .registerCapability(event -> {
-                event.registerBlockEntity(
-                        ForgeCapabilities.FLUID_HANDLER, NEBlockEntities.OUTPUT_HATCH.get(), (be, side) -> be.tank);
-            })
             .register();
 
     public static final NEBlockEntityEntry<ECOCraftingWorkerBlockEntity> CRAFTING_WORKER = REGISTRATE

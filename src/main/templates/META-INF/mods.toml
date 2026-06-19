@@ -46,6 +46,20 @@ config="${mod_id}.mixins.json"
     side="BOTH"
 
 [[dependencies.${mod_id}]]
+    modId="gtceu"
+    mandatory=true
+    versionRange="[1.8.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="gtocore"
+    mandatory=true
+    versionRange="[0.5.6,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
     modId="jade"
     mandatory=false
     versionRange="[11.13.0,)"

@@ -393,7 +393,10 @@ public class ECOCraftingCPULogic {
                 batchBuses.add(patternBus);
             }
         }
-        return new ProviderSelection(List.copyOf(providers), List.copyOf(batchBuses));
+        return new ProviderSelection(
+                List.copyOf(providers),
+                List.copyOf(batchBuses),
+                providers.stream().anyMatch(GTLCraftingProviderCompat::isGTOCoreNativePatternProvider));
     }
 
     private boolean hasPotentialProvider(ProviderSelection providers) {
@@ -495,22 +498,24 @@ public class ECOCraftingCPULogic {
             ExtractedPatternAttempt attempt,
             CraftingExecutionProgress executionProgress,
             IEnergyService energyService) {
-        BatchPushResult batchResult = tryPushVerifiedFastPathBatch(
-                details,
-                attempt.execution(),
-                attempt.craftingContainer(),
-                providers.batchBuses(),
-                energyService,
-                attempt.patternPower(),
-                progress.value,
-                executionProgress.totalBudgetRemaining(),
-                executionProgress.batchBudgetRemaining());
-        if (batchResult.acceptedCrafts() > 0) {
-            executionProgress.recordBatchPush(batchResult.batchBudgetCost(), batchResult.dispatchCost());
-            return PushResult.pushed(batchResult.acceptedCrafts());
-        }
-        if (batchResult.firstInputsReinjected()) {
-            return PushResult.notPushed();
+        if (!providers.hasGTOCoreNativeProvider()) {
+            BatchPushResult batchResult = tryPushVerifiedFastPathBatch(
+                    details,
+                    attempt.execution(),
+                    attempt.craftingContainer(),
+                    providers.batchBuses(),
+                    energyService,
+                    attempt.patternPower(),
+                    progress.value,
+                    executionProgress.totalBudgetRemaining(),
+                    executionProgress.batchBudgetRemaining());
+            if (batchResult.acceptedCrafts() > 0) {
+                executionProgress.recordBatchPush(batchResult.batchBudgetCost(), batchResult.dispatchCost());
+                return PushResult.pushed(batchResult.acceptedCrafts());
+            }
+            if (batchResult.firstInputsReinjected()) {
+                return PushResult.notPushed();
+            }
         }
         if (!executionProgress.canPushSlowPath()) {
             reinjectExtractedInputs(attempt);
@@ -536,8 +541,9 @@ public class ECOCraftingCPULogic {
                 break;
             }
 
-            long gtlAcceptedCrafts =
-                    tryPushGtlAutoExpand(provider, details, attempt.execution(), progress, attempt, energyService);
+            long gtlAcceptedCrafts = GTLCraftingProviderCompat.isGTOCoreNativePatternProvider(provider)
+                    ? 0L
+                    : tryPushGtlAutoExpand(provider, details, attempt.execution(), progress, attempt, energyService);
             if (gtlAcceptedCrafts > 0) {
                 executionProgress.recordSlowPush();
                 recordPushedPattern(attempt.execution(), gtlAcceptedCrafts);
@@ -1190,7 +1196,10 @@ public class ECOCraftingCPULogic {
         }
     }
 
-    private record ProviderSelection(List<ICraftingProvider> all, List<ECOCraftingPatternBusBlockEntity> batchBuses) {}
+    private record ProviderSelection(
+            List<ICraftingProvider> all,
+            List<ECOCraftingPatternBusBlockEntity> batchBuses,
+            boolean hasGTOCoreNativeProvider) {}
 
     private record ExtractedPatternAttempt(
             KeyCounter[] craftingContainer, ECOExtractedPatternExecution execution, double patternPower) {}

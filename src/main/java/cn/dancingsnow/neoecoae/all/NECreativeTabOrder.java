@@ -1,13 +1,8 @@
 package cn.dancingsnow.neoecoae.all;
 
-import cn.dancingsnow.neoecoae.NeoECOAE;
 import java.util.function.Supplier;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
-import net.minecraftforge.registries.ForgeRegistries;
 
 public final class NECreativeTabOrder {
     private NECreativeTabOrder() {}
@@ -81,17 +76,10 @@ public final class NECreativeTabOrder {
 
     private static void acceptStorageCells(CreativeModeTab.Output output) {
         accept(output, NEItems.ECO_ITEM_CELL_HOUSING);
-        accept(output, NEItems.ECO_FLUID_CELL_HOUSING);
 
         accept(output, NEItems.ECO_ITEM_CELL_16M);
         accept(output, NEItems.ECO_ITEM_CELL_64M);
         accept(output, NEItems.ECO_ITEM_CELL_256M);
-
-        accept(output, NEItems.ECO_FLUID_CELL_16M);
-        accept(output, NEItems.ECO_FLUID_CELL_64M);
-        accept(output, NEItems.ECO_FLUID_CELL_256M);
-
-        acceptChemicalCells(output);
     }
 
     private static void acceptComputationCells(CreativeModeTab.Output output) {
@@ -191,25 +179,10 @@ public final class NECreativeTabOrder {
     }
 
     private static void acceptCompat(CreativeModeTab.ItemDisplayParameters params, CreativeModeTab.Output output) {
-        // Chemical cells are inserted in acceptStorageCells(), not appended here.
-    }
-
-    private static void acceptChemicalCells(CreativeModeTab.Output output) {
-        acceptById(output, "eco_chemical_cell_housing");
-        acceptById(output, "eco_chemical_storage_cell_16m");
-        acceptById(output, "eco_chemical_storage_cell_64m");
-        acceptById(output, "eco_chemical_storage_cell_256m");
+        // Compatibility-only storage matrices stay registered but are not shown.
     }
 
     private static void accept(CreativeModeTab.Output output, Supplier<? extends ItemLike> supplier) {
         output.accept(supplier.get());
-    }
-
-    private static void acceptById(CreativeModeTab.Output output, String path) {
-        ResourceLocation id = NeoECOAE.id(path);
-        Item item = ForgeRegistries.ITEMS.getValue(id);
-        if (item != null && item != Items.AIR) {
-            output.accept(item);
-        }
     }
 }

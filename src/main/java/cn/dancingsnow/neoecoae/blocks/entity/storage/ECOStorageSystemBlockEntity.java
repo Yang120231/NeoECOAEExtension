@@ -2,6 +2,7 @@ package cn.dancingsnow.neoecoae.blocks.entity.storage;
 
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.IGridNodeListener;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.networking.ticking.IGridTickable;
 import appeng.api.networking.ticking.TickRateModulation;
@@ -9,9 +10,11 @@ import appeng.api.networking.ticking.TickingRequest;
 import appeng.api.orientation.IOrientationStrategy;
 import appeng.api.orientation.OrientationStrategies;
 import appeng.api.orientation.RelativeSide;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.AEKeyTypes;
+import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.IStorageMounts;
 import appeng.api.storage.IStorageProvider;
 import appeng.api.storage.MEStorage;
@@ -49,7 +52,7 @@ import cn.dancingsnow.neoecoae.multiblock.placement.MultiBlockPlacementService;
 import com.lowdragmc.lowdraglib.gui.factory.BlockEntityUIFactory;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import com.mojang.logging.LogUtils;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -113,6 +116,11 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     private long[] usedBytes;
     private long[] totalBytes;
     private boolean storageStatsDirty = true;
+    private long storageUiRevision;
+
+    @Nullable private transient NEStorageUiState cachedStorageUiState;
+
+    private transient long cachedStorageUiRevision = -1L;
     private ECOStorageHostMode hostMode = ECOStorageHostMode.UNFORMED;
 
     @Nullable private UUID hostDomainId;
@@ -122,6 +130,8 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     private final Set<Byte> domainKeyTypes = new HashSet<>();
 
     @Nullable private ECOHostDomainStorage hostDomainStorage;
+
+    private transient boolean hostDomainMountRefreshPending = true;
 
     private final ItemStackHandler infiniteStorageComponent = new ItemStackHandler(1) {
         @Override
@@ -210,11 +220,18 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         }
     }
 
+    @Override
+    public void onMainNodeStateChanged(IGridNodeListener.State reason) {
+        super.onMainNodeStateChanged(reason);
+        refreshPersistedInfiniteDomainMount();
+    }
+
     public void onStorageClusterFormed() {
         if (level == null || level.isClientSide || !formed || cluster == null) {
             return;
         }
         updateHostStorageState();
+        refreshPersistedInfiniteDomainMount();
         markStorageStatsDirty();
         updateInfos();
         requestProviderUpdates();
@@ -271,12 +288,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     @SuppressWarnings("UnstableApiUsage")
     private void recalculateStorageStats() {
         if (cluster != null) {
-            storedEnergy = 0;
-            maxEnergy = 0;
-            for (ECOEnergyCellBlockEntity energyCell : cluster.getEnergyCells()) {
-                storedEnergy += (long) energyCell.getAECurrentPower();
-                maxEnergy += (long) energyCell.getAEMaxPower();
-            }
+            refreshEnergyStats();
 
             int typeCount = getCellTypeCount();
             usedTypes = new long[typeCount];
@@ -294,8 +306,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 return;
             }
 
-            // Aggregate scalars - always populated regardless of registry-id lookup
+            // Aggregate scalars - always populated regardless of display-domain lookup.
             long aggUsedTypes = 0, aggTotalTypes = 0, aggUsedBytes = 0, aggTotalBytes = 0;
+            Map<Byte, DomainTypeInfo> keyTypeInfos = seedNormalTypeStates(new LinkedHashMap<>());
 
             for (ECODriveBlockEntity drive : cluster.getDrives()) {
                 IECOStorageCell inv = drive.getCellInventory();
@@ -311,15 +324,19 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 aggUsedBytes = saturatedAdd(aggUsedBytes, ub);
                 aggTotalBytes = saturatedAdd(aggTotalBytes, tb);
 
-                // Per-cell-type arrays - best-effort, may skip if id lookup fails
-                ECOCellType cellType = inv.getCellType();
-                var reg = NERegistries.cellTypeRegistry();
-                int id = reg != null ? reg.getId(cellType) : -1;
-                if (id >= 0 && id < typeCount) {
-                    usedTypes[id] = saturatedAdd(usedTypes[id], st);
-                    totalTypes[id] = saturatedAdd(totalTypes[id], tt);
-                    usedBytes[id] = saturatedAdd(usedBytes[id], ub);
-                    totalBytes[id] = saturatedAdd(totalBytes[id], tb);
+                for (NormalDomainStats stats :
+                        getNormalDriveUsedStats(keyTypeInfos, inv).values()) {
+                    addLegacyTypeStats(keyTypeInfos, stats.keyType(), stats.usedTypes(), 0L, stats.usedBytes(), 0L);
+                }
+                distributeLegacyTotalCapacityByDomain(keyTypeInfos, drive.getCellStack(), inv, tt, tb);
+            }
+
+            for (int i = 0; i < typeCount; i++) {
+                if (usedTypes[i] > totalTypes[i] && totalTypes[i] != Long.MAX_VALUE) {
+                    totalTypes[i] = usedTypes[i];
+                }
+                if (usedBytes[i] > totalBytes[i] && totalBytes[i] != Long.MAX_VALUE) {
+                    totalBytes[i] = usedBytes[i];
                 }
             }
 
@@ -335,6 +352,10 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
     @SuppressWarnings("UnstableApiUsage")
     private void updateInfos() {
         boolean changed = ensureStorageStatsCurrent();
+        if (!changed && refreshEnergyStats()) {
+            markStorageUiStateChanged();
+            changed = true;
+        }
         changed |= applyInfiniteStorageMatrixLocks();
         if (changed) {
             setChanged();
@@ -359,7 +380,13 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
      */
     public NEStorageUiState createStorageUiState() {
         if (level != null && !level.isClientSide) {
-            ensureStorageStatsCurrent();
+            boolean statsChanged = ensureStorageStatsCurrent();
+            if (!statsChanged && refreshEnergyStats()) {
+                markStorageUiStateChanged();
+            }
+        }
+        if (cachedStorageUiState != null && cachedStorageUiRevision == storageUiRevision) {
+            return cachedStorageUiState;
         }
 
         List<NEStorageUiTypeState> typeStates;
@@ -371,8 +398,8 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             typeStates = createDomainTypeStates(serverLevel);
             matrixStates = createDomainMatrixStates();
         } else if (cluster != null) {
-            // Group by cell type key; LinkedHashMap preserves insertion order
             Map<ResourceLocation, NEStorageUiTypeState> grouped = new LinkedHashMap<>();
+            Map<Byte, DomainTypeInfo> keyTypeInfos = seedNormalTypeStates(grouped);
             matrixStates = new ArrayList<>(cluster.getDrives().size());
             IOrientationStrategy strategy = OrientationStrategies.horizontalFacing();
             Direction top = strategy.getSide(getBlockState(), RelativeSide.TOP);
@@ -386,39 +413,32 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 ItemStack cellStack = drive.getCellStack();
                 IECOStorageCell inv = drive.getCellInventory();
                 if (inv == null || cellStack == null || cellStack.isEmpty()) {
-                    matrixStates.add(new NEStorageUiMatrixState(row, column, ItemStack.EMPTY, 0, 0L, 0L, 0L, 0L));
+                    matrixStates.add(new NEStorageUiMatrixState(
+                            row, column, ItemStack.EMPTY, 0, 0L, 0L, 0L, 0L, false, ItemStack.EMPTY));
                     continue;
                 }
-
-                ECOCellType cellType = inv.getCellType();
-                ResourceLocation typeId = getCellTypeKey(cellType);
-                String displayName = cellType.desc().getString();
 
                 long st = inv.getStoredItemTypes();
                 long tt = inv.getTotalItemTypes();
                 long ub = inv.getUsedBytes();
                 long tb = inv.getTotalBytes();
                 int matrixTier = Math.max(0, Math.min(3, inv.getTier().getTier()));
+                ItemStack previewStack = previewStackForCell(inv);
                 matrixStates.add(new NEStorageUiMatrixState(
-                        row, column, new ItemStack(cellStack.getItem()), matrixTier, st, tt, ub, tb));
+                        row,
+                        column,
+                        new ItemStack(cellStack.getItem()),
+                        matrixTier,
+                        st,
+                        tt,
+                        ub,
+                        tb,
+                        false,
+                        previewStack));
 
-                NEStorageUiTypeState existing = grouped.get(typeId);
-                if (existing != null) {
-                    grouped.put(
-                            typeId,
-                            new NEStorageUiTypeState(
-                                    typeId,
-                                    displayName,
-                                    saturatedAdd(existing.usedTypes(), st),
-                                    saturatedAdd(existing.totalTypes(), tt),
-                                    saturatedAdd(existing.usedBytes(), ub),
-                                    saturatedAdd(existing.totalBytes(), tb)));
-                } else {
-                    grouped.put(typeId, new NEStorageUiTypeState(typeId, displayName, st, tt, ub, tb));
-                }
+                addNormalDriveTypeStates(grouped, keyTypeInfos, cellStack, inv, tt, tb);
             }
             typeStates = new ArrayList<>(grouped.values());
-            // Stable ordering: Items first, Fluids second, others by typeId string
             typeStates.sort(
                     java.util.Comparator.comparingInt((NEStorageUiTypeState s) -> storageTypeSortPriority(s.typeId()))
                             .thenComparing(s -> s.typeId().toString()));
@@ -429,7 +449,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             matrixStates = List.of();
         }
 
-        return new NEStorageUiState(
+        NEStorageUiState state = new NEStorageUiState(
                 worldPosition,
                 typeStates,
                 matrixStates,
@@ -445,12 +465,262 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 getRequiredL9MatrixDriveCount(),
                 getL9MatrixStorageCapacityBytes(),
                 INFINITE_STORAGE_CAPACITY_THRESHOLD + 1L);
+        cachedStorageUiState = state;
+        cachedStorageUiRevision = storageUiRevision;
+        return state;
+    }
+
+    private Map<Byte, DomainTypeInfo> seedNormalTypeStates(Map<ResourceLocation, NEStorageUiTypeState> grouped) {
+        Map<Byte, DomainTypeInfo> cellTypeByKeyType = new HashMap<>();
+        if (cluster == null) {
+            return cellTypeByKeyType;
+        }
+
+        for (ECODriveBlockEntity drive : cluster.getDrives()) {
+            ItemStack stack = drive.getCellStack();
+            if (stack != null && stack.getItem() instanceof ECOStorageCellItem cellItem) {
+                if (cellItem.isUniversalStorage()) {
+                    for (AEKeyType keyType : AEKeyTypes.getAll()) {
+                        cellTypeByKeyType.put(
+                                keyType.getRawId(),
+                                new DomainTypeInfo(fallbackDomainTypeId(keyType), cellItem.getBytesPerType()));
+                    }
+                } else {
+                    ECOCellType cellType = cellItem.getCellType();
+                    ResourceLocation typeId = getCellTypeKey(cellType);
+                    cellTypeByKeyType.put(
+                            cellItem.getKeyType().getRawId(), new DomainTypeInfo(typeId, cellItem.getBytesPerType()));
+                    seedNormalTypeState(grouped, typeId, cellType.desc().getString());
+                }
+                continue;
+            }
+
+            IECOStorageCell cell = drive.getCellInventory();
+            if (cell == null) {
+                continue;
+            }
+            KeyCounter available = new KeyCounter();
+            cell.getAvailableStacks(available);
+            for (var entry : available) {
+                AEKeyType keyType = entry.getKey().getType();
+                cellTypeByKeyType.putIfAbsent(keyType.getRawId(), fallbackDomainTypeInfo(keyType));
+            }
+        }
+        return cellTypeByKeyType;
+    }
+
+    private static void seedNormalTypeState(
+            Map<ResourceLocation, NEStorageUiTypeState> grouped, ResourceLocation typeId, String displayName) {
+        grouped.putIfAbsent(typeId, new NEStorageUiTypeState(typeId, displayName, 0L, 0L, 0L, 0L));
+    }
+
+    private void addNormalDriveTypeStates(
+            Map<ResourceLocation, NEStorageUiTypeState> grouped,
+            Map<Byte, DomainTypeInfo> keyTypeInfos,
+            ItemStack cellStack,
+            IECOStorageCell cell,
+            long totalTypes,
+            long totalBytes) {
+        Map<Byte, NormalDomainStats> usedByDomain = getNormalDriveUsedStats(keyTypeInfos, cell);
+        if (usedByDomain.isEmpty()) {
+            AEKeyType keyType = preferredKeyTypeForCell(cellStack, cell);
+            if (keyType != null) {
+                addNormalTypeState(grouped, keyTypeInfos, keyType, 0L, totalTypes, 0L, totalBytes);
+            }
+            return;
+        }
+
+        long remainingTypes = totalTypes;
+        long remainingBytes = totalBytes;
+        int index = 0;
+        for (NormalDomainStats stats : usedByDomain.values()) {
+            boolean last = ++index == usedByDomain.size();
+            long domainTotalTypes =
+                    last ? remainingTypes : boundedShare(totalTypes, stats.usedTypes(), cell.getStoredItemTypes());
+            long domainTotalBytes =
+                    last ? remainingBytes : boundedShare(totalBytes, stats.usedBytes(), cell.getUsedBytes());
+            remainingTypes = saturatedSubtract(remainingTypes, domainTotalTypes);
+            remainingBytes = saturatedSubtract(remainingBytes, domainTotalBytes);
+            addNormalTypeState(
+                    grouped,
+                    keyTypeInfos,
+                    stats.keyType(),
+                    stats.usedTypes(),
+                    Math.max(stats.usedTypes(), domainTotalTypes),
+                    stats.usedBytes(),
+                    Math.max(stats.usedBytes(), domainTotalBytes));
+        }
+    }
+
+    private static Map<Byte, NormalDomainStats> getNormalDriveUsedStats(
+            Map<Byte, DomainTypeInfo> keyTypeInfos, IECOStorageCell cell) {
+        Map<Byte, NormalDomainStats> usedByDomain = new LinkedHashMap<>();
+        KeyCounter available = new KeyCounter();
+        cell.getAvailableStacks(available);
+        for (var entry : available) {
+            long amount = entry.getLongValue();
+            if (amount <= 0L) {
+                continue;
+            }
+            AEKey key = entry.getKey();
+            AEKeyType keyType = key.getType();
+            DomainTypeInfo typeInfo = keyTypeInfos.getOrDefault(keyType.getRawId(), fallbackDomainTypeInfo(keyType));
+            long bytes = normalEntryUsedBytes(key, amount, typeInfo);
+            NormalDomainStats existing = usedByDomain.get(keyType.getRawId());
+            if (existing == null) {
+                usedByDomain.put(keyType.getRawId(), new NormalDomainStats(keyType, 1L, bytes));
+            } else {
+                usedByDomain.put(
+                        keyType.getRawId(),
+                        new NormalDomainStats(
+                                keyType,
+                                saturatedAdd(existing.usedTypes(), 1L),
+                                saturatedAdd(existing.usedBytes(), bytes)));
+            }
+        }
+        return usedByDomain;
+    }
+
+    private void addNormalTypeState(
+            Map<ResourceLocation, NEStorageUiTypeState> grouped,
+            Map<Byte, DomainTypeInfo> keyTypeInfos,
+            AEKeyType keyType,
+            long usedTypes,
+            long totalTypes,
+            long usedBytes,
+            long totalBytes) {
+        DomainTypeInfo typeInfo = keyTypeInfos.getOrDefault(keyType.getRawId(), fallbackDomainTypeInfo(keyType));
+        ResourceLocation typeId = typeInfo.typeId();
+        String displayName = keyType.getDescription().getString();
+        NEStorageUiTypeState existing = grouped.get(typeId);
+        if (existing == null) {
+            grouped.put(
+                    typeId,
+                    new NEStorageUiTypeState(typeId, displayName, usedTypes, totalTypes, usedBytes, totalBytes));
+            return;
+        }
+        grouped.put(
+                typeId,
+                new NEStorageUiTypeState(
+                        typeId,
+                        existing.displayName().isBlank() ? displayName : existing.displayName(),
+                        saturatedAdd(existing.usedTypes(), usedTypes),
+                        saturatedAdd(existing.totalTypes(), totalTypes),
+                        saturatedAdd(existing.usedBytes(), usedBytes),
+                        saturatedAdd(existing.totalBytes(), totalBytes)));
+    }
+
+    private void distributeLegacyTotalCapacityByDomain(
+            Map<Byte, DomainTypeInfo> keyTypeInfos,
+            @Nullable ItemStack cellStack,
+            IECOStorageCell cell,
+            long totalTypes,
+            long totalBytes) {
+        Map<Byte, NormalDomainStats> usedByDomain = getNormalDriveUsedStats(keyTypeInfos, cell);
+        if (usedByDomain.isEmpty()) {
+            AEKeyType keyType = preferredKeyTypeForCell(cellStack, cell);
+            if (keyType != null) {
+                addLegacyTypeStats(keyTypeInfos, keyType, 0L, totalTypes, 0L, totalBytes);
+            }
+            return;
+        }
+
+        long remainingTypes = totalTypes;
+        long remainingBytes = totalBytes;
+        int index = 0;
+        for (NormalDomainStats stats : usedByDomain.values()) {
+            boolean last = ++index == usedByDomain.size();
+            long domainTotalTypes =
+                    last ? remainingTypes : boundedShare(totalTypes, stats.usedTypes(), cell.getStoredItemTypes());
+            long domainTotalBytes =
+                    last ? remainingBytes : boundedShare(totalBytes, stats.usedBytes(), cell.getUsedBytes());
+            remainingTypes = saturatedSubtract(remainingTypes, domainTotalTypes);
+            remainingBytes = saturatedSubtract(remainingBytes, domainTotalBytes);
+            addLegacyTypeStats(
+                    keyTypeInfos,
+                    stats.keyType(),
+                    0L,
+                    Math.max(stats.usedTypes(), domainTotalTypes),
+                    0L,
+                    Math.max(stats.usedBytes(), domainTotalBytes));
+        }
+    }
+
+    private void addLegacyTypeStats(
+            Map<Byte, DomainTypeInfo> keyTypeInfos,
+            AEKeyType keyType,
+            long usedTypeCount,
+            long totalTypeCount,
+            long usedByteCount,
+            long totalByteCount) {
+        DomainTypeInfo typeInfo = keyTypeInfos.getOrDefault(keyType.getRawId(), fallbackDomainTypeInfo(keyType));
+        int id = displayArrayIndex(typeInfo.typeId());
+        if (id < 0 || id >= getCellTypeCount()) {
+            return;
+        }
+        usedTypes[id] = saturatedAdd(usedTypes[id], usedTypeCount);
+        totalTypes[id] = saturatedAdd(totalTypes[id], totalTypeCount);
+        usedBytes[id] = saturatedAdd(usedBytes[id], usedByteCount);
+        totalBytes[id] = saturatedAdd(totalBytes[id], totalByteCount);
+    }
+
+    @Nullable private static AEKeyType preferredKeyTypeForCell(@Nullable ItemStack stack, IECOStorageCell cell) {
+        if (stack != null && stack.getItem() instanceof ECOStorageCellItem cellItem && !cellItem.isUniversalStorage()) {
+            return cellItem.getKeyType();
+        }
+        KeyCounter available = new KeyCounter();
+        cell.getAvailableStacks(available);
+        for (var entry : available) {
+            return entry.getKey().getType();
+        }
+        if (stack != null && stack.getItem() instanceof ECOStorageCellItem cellItem) {
+            return cellItem.getKeyType();
+        }
+        return null;
+    }
+
+    private int displayArrayIndex(ResourceLocation typeId) {
+        var reg = NERegistries.cellTypeRegistry();
+        if (reg != null) {
+            for (ECOCellType cellType : reg) {
+                if (typeId.equals(getCellTypeKey(cellType))) {
+                    int id = reg.getId(cellType);
+                    if (id >= 0) {
+                        return id;
+                    }
+                }
+            }
+        }
+        if (typeId.equals(NeoECOAE.id("items"))) {
+            return 0;
+        }
+        if (typeId.equals(NeoECOAE.id("fluids")) && getCellTypeCount() > 1) {
+            return 1;
+        }
+        return -1;
     }
 
     private static int directionDistance(BlockPos offset, Direction direction) {
         return offset.getX() * direction.getStepX()
                 + offset.getY() * direction.getStepY()
                 + offset.getZ() * direction.getStepZ();
+    }
+
+    private boolean refreshEnergyStats() {
+        long newStoredEnergy = 0L;
+        long newMaxEnergy = 0L;
+        if (cluster != null) {
+            for (ECOEnergyCellBlockEntity energyCell : cluster.getEnergyCells()) {
+                newStoredEnergy = saturatedAdd(newStoredEnergy, (long) energyCell.getAECurrentPower());
+                newMaxEnergy = saturatedAdd(newMaxEnergy, (long) energyCell.getAEMaxPower());
+            }
+        }
+        if (storedEnergy == newStoredEnergy && maxEnergy == newMaxEnergy) {
+            return false;
+        }
+        storedEnergy = newStoredEnergy;
+        maxEnergy = newMaxEnergy;
+        return true;
     }
 
     private List<NEStorageUiTypeState> createDomainTypeStates(ServerLevel serverLevel) {
@@ -516,8 +786,17 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 if (stack != null && stack.getItem() instanceof ECOStorageCellItem cellItem) {
                     ECOCellType cellType = cellItem.getCellType();
                     ResourceLocation typeId = getCellTypeKey(cellType);
-                    cellTypeByKeyType.put(
-                            cellItem.getKeyType().getRawId(), new DomainTypeInfo(typeId, cellItem.getBytesPerType()));
+                    if (cellItem.isUniversalStorage()) {
+                        for (AEKeyType keyType : AEKeyTypes.getAll()) {
+                            cellTypeByKeyType.put(
+                                    keyType.getRawId(),
+                                    new DomainTypeInfo(fallbackDomainTypeId(keyType), cellItem.getBytesPerType()));
+                        }
+                    } else {
+                        cellTypeByKeyType.put(
+                                cellItem.getKeyType().getRawId(),
+                                new DomainTypeInfo(typeId, cellItem.getBytesPerType()));
+                    }
                     seedDomainTypeState(grouped, typeId, cellType.desc().getString());
                 }
             }
@@ -553,6 +832,27 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
 
     private static String infiniteDisplay() {
         return "\u221e";
+    }
+
+    private static ItemStack previewStackForCell(@Nullable IECOStorageCell cell) {
+        if (cell == null) {
+            return ItemStack.EMPTY;
+        }
+        KeyCounter available = new KeyCounter();
+        cell.getAvailableStacks(available);
+        for (var entry : available) {
+            if (entry.getLongValue() <= 0L) {
+                continue;
+            }
+            if (!(entry.getKey() instanceof AEItemKey itemKey)) {
+                continue;
+            }
+            ItemStack preview = itemKey.toStack((int) Math.min(Integer.MAX_VALUE, entry.getLongValue()));
+            if (!preview.isEmpty()) {
+                return preview;
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     private static ResourceLocation fallbackDomainTypeId(AEKeyType keyType) {
@@ -600,6 +900,15 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         return itemBytes.add(BigInteger.valueOf(Math.max(0, bytesPerType)));
     }
 
+    private static long normalEntryUsedBytes(AEKey key, long amount, DomainTypeInfo typeInfo) {
+        if (amount <= 0L) {
+            return 0L;
+        }
+        long amountPerByte = Math.max(1L, key.getAmountPerByte());
+        long itemBytes = amount / amountPerByte + (amount % amountPerByte == 0 ? 0 : 1);
+        return saturatedAdd(itemBytes, Math.max(0, typeInfo.bytesPerType()));
+    }
+
     private List<NEStorageUiMatrixState> createDomainMatrixStates() {
         if (cluster == null) {
             return List.of();
@@ -618,7 +927,8 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             ItemStack cellStack = drive.getCellStack();
             int matrixTier = getStorageCellTier(cellStack);
             if (cellStack == null || cellStack.isEmpty() || matrixTier < 0) {
-                matrixStates.add(new NEStorageUiMatrixState(row, column, ItemStack.EMPTY, 0, 0L, 0L, 0L, 0L));
+                matrixStates.add(new NEStorageUiMatrixState(
+                        row, column, ItemStack.EMPTY, 0, 0L, 0L, 0L, 0L, false, ItemStack.EMPTY));
             } else {
                 matrixStates.add(new NEStorageUiMatrixState(
                         row,
@@ -629,7 +939,8 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                         Long.MAX_VALUE,
                         0L,
                         Long.MAX_VALUE,
-                        true));
+                        true,
+                        previewStackForCell(drive.getCellInventory())));
             }
         }
         matrixStates.sort(
@@ -851,6 +1162,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         if (level == null || level.isClientSide || cluster == null) {
             return false;
         }
+        if (recoverStaleNormalModeMatrixBindings()) {
+            return true;
+        }
         if (tryExitInfiniteModeWithoutComponent()) {
             return true;
         }
@@ -899,6 +1213,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             if (hostMode == ECOStorageHostMode.UNFORMED || hostMode == ECOStorageHostMode.FORMED_NORMAL) {
                 hostMode = ECOStorageHostMode.UNFORMED;
             }
+            hostDomainMountRefreshPending = true;
             return;
         }
         if (hostMode == ECOStorageHostMode.UNFORMED) {
@@ -910,6 +1225,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
                 && areAllDriveCellsPortableEmpty()) {
             resetStorageInterfaceToStorageMode();
         }
+        recoverStaleNormalModeMatrixBindings();
         if (tryExitInfiniteModeWithoutComponent()) {
             return;
         }
@@ -917,7 +1233,27 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             startInfiniteMigration();
         } else if (hostMode == ECOStorageHostMode.MIGRATING_TO_INFINITE) {
             resumeInfiniteMigration();
+        } else if (hostMode == ECOStorageHostMode.FORMED_INFINITE) {
+            refreshPersistedInfiniteDomainMount();
         }
+    }
+
+    private void refreshPersistedInfiniteDomainMount() {
+        if (!(level instanceof ServerLevel) || !formed || cluster == null || hostDomainId == null) {
+            return;
+        }
+        if (hostMode != ECOStorageHostMode.FORMED_INFINITE) {
+            return;
+        }
+        if (!hostDomainMountRefreshPending) {
+            return;
+        }
+        hostDomainMountRefreshPending = false;
+        hostDomainStorage = null;
+        markStorageStatsDirty();
+        requestProviderUpdates();
+        markForUpdate();
+        setChanged();
     }
 
     private boolean startInfiniteMigration() {
@@ -932,6 +1268,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         List<UUID> diskIds = new ArrayList<>();
         Set<UUID> seenDisks = new HashSet<>();
         Set<Byte> keyTypes = new HashSet<>();
+        boolean hasUniversalMatrix = false;
         ECOStorageSavedData data = ECOStorageSavedData.get(serverLevel);
 
         for (ECODriveBlockEntity drive : cluster.getDrives()) {
@@ -950,7 +1287,11 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             ECOStorageCellMetadata.clearLegacyStacks(stack);
             diskIds.add(diskId);
             if (stack.getItem() instanceof ECOStorageCellItem cellItem) {
-                keyTypes.add(cellItem.getKeyType().getRawId());
+                if (cellItem.isUniversalStorage()) {
+                    hasUniversalMatrix = true;
+                } else if (!hasUniversalMatrix) {
+                    keyTypes.add(cellItem.getKeyType().getRawId());
+                }
             }
         }
 
@@ -967,7 +1308,9 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             migrationSteps.put(diskId, MIGRATION_NOT_STARTED);
         }
         domainKeyTypes.clear();
-        domainKeyTypes.addAll(keyTypes);
+        if (!hasUniversalMatrix) {
+            domainKeyTypes.addAll(keyTypes);
+        }
         data.beginMigration(domainId, List.copyOf(diskIds));
 
         for (int i = 0; i < cluster.getDrives().size(); i++) {
@@ -1042,6 +1385,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         }
         if (complete) {
             hostMode = ECOStorageHostMode.FORMED_INFINITE;
+            hostDomainMountRefreshPending = true;
             migrationSteps.clear();
             data.finishMigration(hostDomainId);
             markStorageStatsDirty();
@@ -1107,6 +1451,58 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             }
         }
         return true;
+    }
+
+    private boolean recoverStaleNormalModeMatrixBindings() {
+        if (!(level instanceof ServerLevel serverLevel) || cluster == null) {
+            return false;
+        }
+        if (hostMode != ECOStorageHostMode.UNFORMED && hostMode != ECOStorageHostMode.FORMED_NORMAL) {
+            return false;
+        }
+        if (isInfiniteUnlockConfigured()) {
+            return false;
+        }
+
+        ECOStorageSavedData data = ECOStorageSavedData.get(serverLevel);
+        boolean changed = false;
+        for (ECODriveBlockEntity drive : cluster.getDrives()) {
+            ItemStack stack = drive.getCellStack();
+            if (stack == null || stack.isEmpty()) {
+                continue;
+            }
+            if (!ECOStorageCellMetadata.hasNonPortableState(stack)
+                    && !ECOStorageCellMetadata.isLegacyInfiniteLocked(stack)) {
+                continue;
+            }
+            if (!canSafelyClearStaleMatrixBinding(stack, data)) {
+                continue;
+            }
+            ECOStorageCellMetadata.clearDomainBinding(stack);
+            drive.onCellMetadataChanged();
+            changed = true;
+        }
+        if (changed) {
+            hostDomainMountRefreshPending = true;
+            markStorageStatsDirty();
+            requestProviderUpdates();
+            markForUpdate();
+            setChanged();
+        }
+        return changed;
+    }
+
+    private boolean canSafelyClearStaleMatrixBinding(ItemStack stack, ECOStorageSavedData data) {
+        UUID stackDomain = ECOStorageCellMetadata.getHostDomainId(stack);
+        if (stackDomain != null && !data.isDomainEmpty(stackDomain)) {
+            return false;
+        }
+        if (ECOStorageCellMetadata.getSummaryStoredTypes(stack) > 0L
+                || ECOStorageCellMetadata.getSummaryStoredCount(stack) > 0L
+                || ECOStorageCellMetadata.getSummaryUsedBytes(stack) > 0L) {
+            return false;
+        }
+        return ECOStorageCellMetadata.readLegacyStacks(stack).isEmpty();
     }
 
     public boolean isStorageInterfaceOutputMode() {
@@ -1270,7 +1666,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         sourceStorage.getAvailableStacks(available);
         long exported = 0L;
         int keysVisited = 0;
-        for (Object2LongMap.Entry<AEKey> entry : available) {
+        for (Reference2LongMap.Entry<AEKey> entry : available) {
             if (keysVisited >= maxKeys) {
                 break;
             }
@@ -1393,6 +1789,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
         migrationSteps.clear();
         domainKeyTypes.clear();
         hostMode = ECOStorageHostMode.FORMED_NORMAL;
+        hostDomainMountRefreshPending = true;
         resetStorageInterfaceToStorageMode();
         markStorageStatsDirty();
         requestProviderUpdates();
@@ -1551,6 +1948,13 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
      */
     public void markStorageStatsDirty() {
         storageStatsDirty = true;
+        markStorageUiStateChanged();
+    }
+
+    private void markStorageUiStateChanged() {
+        storageUiRevision++;
+        cachedStorageUiState = null;
+        cachedStorageUiRevision = -1L;
     }
 
     // 鈹€鈹€ IPriorityHost implementation 鈹€鈹€
@@ -1804,6 +2208,7 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
             infiniteStorageComponent.deserializeNBT(tag.getCompound(NBT_INFINITE_STORAGE_COMPONENT));
         }
         hostMode = ECOStorageHostMode.byName(tag.getString(NBT_HOST_MODE));
+        hostDomainMountRefreshPending = true;
         hostDomainId =
                 tag.contains(NBT_HOST_DOMAIN_ID, Tag.TAG_STRING) ? readUuid(tag.getString(NBT_HOST_DOMAIN_ID)) : null;
         memberDiskIds.clear();
@@ -1981,10 +2386,37 @@ public class ECOStorageSystemBlockEntity extends AbstractStorageBlockEntity<ECOS
 
     private record DomainTypeInfo(ResourceLocation typeId, int bytesPerType) {}
 
+    private record NormalDomainStats(AEKeyType keyType, long usedTypes, long usedBytes) {}
+
     private static long saturatedAdd(long left, long right) {
         if (left == Long.MAX_VALUE || right == Long.MAX_VALUE || right > 0L && left > Long.MAX_VALUE - right) {
             return Long.MAX_VALUE;
         }
         return left + right;
+    }
+
+    private static long saturatedSubtract(long left, long right) {
+        if (left == Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        if (right == Long.MAX_VALUE || right >= left) {
+            return 0L;
+        }
+        return left - right;
+    }
+
+    private static long boundedShare(long total, long part, long whole) {
+        if (total == Long.MAX_VALUE) {
+            return Long.MAX_VALUE;
+        }
+        if (total <= 0L || part <= 0L || whole <= 0L) {
+            return 0L;
+        }
+        if (part >= whole) {
+            return total;
+        }
+        BigInteger value =
+                BigInteger.valueOf(total).multiply(BigInteger.valueOf(part)).divide(BigInteger.valueOf(whole));
+        return ECOStorageSavedData.saturate(value);
     }
 }

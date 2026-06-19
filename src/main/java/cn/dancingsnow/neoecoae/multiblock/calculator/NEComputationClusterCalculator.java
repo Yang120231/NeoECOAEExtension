@@ -65,6 +65,9 @@ public class NEComputationClusterCalculator extends NEClusterCalculator<NEComput
         if (controller == null) {
             return false;
         }
+        if (hasAdditionalController(level, min, max, controllerPos)) {
+            return false;
+        }
         IECOTier tier = controller.getTier();
         BlockState controllerState = controller.getBlockState();
         IOrientationStrategy strategy = OrientationStrategies.horizontalFacing();

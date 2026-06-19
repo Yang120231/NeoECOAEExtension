@@ -8,6 +8,7 @@ import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.blocks.crafting.ECOCraftingParallelCore;
 import cn.dancingsnow.neoecoae.blocks.entity.NEBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingSystemBlockEntity;
+import cn.dancingsnow.neoecoae.compat.gtocore.GTOMECraftingHatches;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NECraftingCluster;
 import cn.dancingsnow.neoecoae.util.MultiBlockUtil;
@@ -26,6 +27,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingCluster> {
+    private BlockPos inputHatchPos = null;
+    private BlockPos outputHatchPos = null;
+
     public NECraftingClusterCalculator(NEBlockEntity<NECraftingCluster, ?> t) {
         super(t);
     }
@@ -40,6 +44,29 @@ public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingC
         return new NECraftingCluster(min, max);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public void updateBlockEntities(NECraftingCluster cluster, ServerLevel level, BlockPos min, BlockPos max) {
+        cluster.setMirrored(isMirroredStructure());
+        for (BlockPos blockPos : BlockPos.betweenClosed(min, max)) {
+            BlockEntity rawBlockEntity = level.getBlockEntity(blockPos);
+            if (!isValidBlockEntity(rawBlockEntity)) {
+                if (blockPos.equals(inputHatchPos) || blockPos.equals(outputHatchPos)) {
+                    continue;
+                }
+                this.disconnect();
+                return;
+            }
+            NEBlockEntity<NECraftingCluster, ?> blockEntity = (NEBlockEntity<NECraftingCluster, ?>) rawBlockEntity;
+            cluster.addBlockEntity(blockEntity);
+        }
+        if (inputHatchPos != null && outputHatchPos != null) {
+            cluster.setFluidHatchPositions(inputHatchPos, outputHatchPos);
+        }
+        cluster.getBlockEntities().forEachRemaining(it -> it.updateCluster(cluster));
+        cluster.updateFormed(true);
+    }
+
     @Override
     public boolean verifyInternalStructure(ServerLevel level, BlockPos min, BlockPos max) {
         if (verifyInternalStructure(level, min, max, false)) {
@@ -52,6 +79,8 @@ public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingC
     }
 
     private boolean verifyInternalStructure(ServerLevel level, BlockPos min, BlockPos max, boolean mirrored) {
+        inputHatchPos = null;
+        outputHatchPos = null;
         ECOCraftingSystemBlockEntity controller = null;
         BlockPos controllerPos = null;
         for (BlockPos pos : MultiBlockUtil.allPossibleController(min, max)) {
@@ -62,6 +91,9 @@ public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingC
             }
         }
         if (controller == null) {
+            return false;
+        }
+        if (hasAdditionalController(level, min, max, controllerPos)) {
             return false;
         }
         IECOTier tier = controller.getTier();
@@ -176,12 +208,18 @@ public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingC
         if (!validateBlock(level, interfacePos, BlockState::is, NEBlocks.CRAFTING_INTERFACE.get())) {
             return false;
         }
-        if (!validateBlock(level, interfacePos.relative(top), BlockState::is, NEBlocks.INPUT_HATCH.get())) {
+        BlockPos inputPos = interfacePos.relative(top);
+        if (!validateBlock(level, inputPos, GTOMECraftingHatches::isFluidInputHatch)
+                || !GTOMECraftingHatches.hasValidInputPort(level, inputPos)) {
             return false;
         }
-        if (!validateBlock(level, interfacePos.relative(down), BlockState::is, NEBlocks.OUTPUT_HATCH.get())) {
+        BlockPos outputPos = interfacePos.relative(down);
+        if (!validateBlock(level, outputPos, GTOMECraftingHatches::isFluidOutputHatch)
+                || !GTOMECraftingHatches.hasValidOutputPort(level, outputPos)) {
             return false;
         }
+        inputHatchPos = inputPos;
+        outputHatchPos = outputPos;
         return true;
     }
 

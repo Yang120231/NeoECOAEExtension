@@ -44,4 +44,30 @@ public final class NELDLibValueText {
         }
         return line;
     }
+
+    public static void drawValue(
+            GuiGraphics graphics,
+            Font font,
+            String prefix,
+            String valueText,
+            long used,
+            long max,
+            String suffix,
+            int x,
+            int y) {
+        int cursor = NELDLibClientStyle.drawSegment(graphics, font, prefix, x, y, NELDLibStyle.DARK_TEXT_MUTED);
+        cursor += NELDLibClientStyle.drawSegment(
+                graphics, font, valueText, x + cursor, y, NELDLibStyle.usedValueColor(used, max));
+        if (!suffix.isEmpty()) {
+            NELDLibClientStyle.drawSegment(graphics, font, " " + suffix, x + cursor, y, NELDLibStyle.DARK_TEXT_MUTED);
+        }
+    }
+
+    public static void drawTypeCount(GuiGraphics graphics, Font font, String valueText, String suffix, int x, int y) {
+        int cursor = NELDLibClientStyle.drawSegment(
+                graphics, font, valueText, x, y, 0xFF000000 | NELDLibText.TYPE_COUNT_COLOR);
+        if (!suffix.isEmpty()) {
+            NELDLibClientStyle.drawSegment(graphics, font, " " + suffix, x + cursor, y, NELDLibStyle.DARK_TEXT_MUTED);
+        }
+    }
 }

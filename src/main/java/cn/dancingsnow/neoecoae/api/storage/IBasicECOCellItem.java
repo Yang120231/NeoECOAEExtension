@@ -11,6 +11,18 @@ public interface IBasicECOCellItem extends ICellWorkbenchItem {
 
     AEKeyType getKeyType();
 
+    default boolean acceptsKey(AEKey what) {
+        return getKeyType().contains(what);
+    }
+
+    default int getAmountPerByte(AEKey what) {
+        return getKeyType().getAmountPerByte();
+    }
+
+    default boolean isUniversalStorage() {
+        return false;
+    }
+
     long getBytes();
 
     default long getIdleDrainBytes() {

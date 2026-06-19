@@ -29,7 +29,7 @@ import java.util.Set;
 import org.jetbrains.annotations.Nullable;
 
 public final class NeoECOCraftingServiceBridge {
-    private static final Comparator<NEComputationCluster> FAST_FIRST = Comparator.comparingInt(
+    private static final Comparator<NEComputationCluster> FAST_FIRST = Comparator.<NEComputationCluster>comparingInt(
                     NEComputationCluster::getCPUAccelerators)
             .reversed()
             .thenComparingLong(NEComputationCluster::getAvailableStorage);
