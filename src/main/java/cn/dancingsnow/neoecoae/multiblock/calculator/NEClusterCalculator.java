@@ -207,6 +207,16 @@ public abstract class NEClusterCalculator<C extends NECluster<C>> extends MBCalc
                 casingType.get().builtInRegistryHolder());
     }
 
+    protected static boolean containsUnexpectedBlockEntity(
+            Level level, BlockPos min, BlockPos max, BlockPos expectedPos, Class<? extends BlockEntity> blockEntityType) {
+        for (BlockPos blockPos : BlockPos.betweenClosed(min, max)) {
+            if (!blockPos.equals(expectedPos) && blockEntityType.isInstance(level.getBlockEntity(blockPos))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected static boolean ensureSameSurface(List<BlockPos> list) {
         int x = list.get(0).getX();
         int y = list.get(0).getY();

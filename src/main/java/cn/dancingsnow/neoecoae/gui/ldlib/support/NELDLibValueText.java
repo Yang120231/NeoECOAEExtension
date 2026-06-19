@@ -44,4 +44,13 @@ public final class NELDLibValueText {
         }
         return line;
     }
+
+    public static void drawUsedOnly(
+            GuiGraphics graphics, Font font, String usedText, long used, String suffix, int x, int y) {
+        int cursor = NELDLibClientStyle.drawSegment(
+                graphics, font, usedText, x, y, NELDLibStyle.usedValueColor(used, Long.MAX_VALUE));
+        if (!suffix.isEmpty()) {
+            NELDLibClientStyle.drawSegment(graphics, font, " " + suffix, x + cursor, y, NELDLibStyle.DARK_TEXT_MUTED);
+        }
+    }
 }

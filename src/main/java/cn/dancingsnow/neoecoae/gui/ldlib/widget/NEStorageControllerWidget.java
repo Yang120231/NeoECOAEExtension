@@ -431,14 +431,11 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     private int drawStorageTypeBlock(GuiGraphics g, Metric metric, int x, int y, int lineStep) {
         drawPlainLine(g, metric.label(), x, y, metric.accentColor());
         y += lineStep;
-        NELDLibValueText.drawUsedTotal(
+        NELDLibValueText.drawUsedOnly(
                 g,
                 font(),
-                "",
                 metric.usedTypesText(),
-                metric.totalTypesText(),
                 metric.usedTypes(),
-                metric.totalTypes(),
                 Component.translatable("gui.neoecoae.common.types").getString(),
                 x,
                 y);

@@ -176,7 +176,7 @@ final class NEStorageMetricsModel {
         }
 
         boolean infiniteCapacity() {
-            return infiniteBytes;
+            return infiniteBytes && max == Long.MAX_VALUE;
         }
     }
 }

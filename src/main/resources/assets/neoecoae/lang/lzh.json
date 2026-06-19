@@ -133,6 +133,7 @@
   "gui.neoecoae.storage.energy_status": "能量存储：%sAE / %sAE (%d%%)",
   "item.neoecoae.aluminum_alloy_axe": "Aluminum Alloy Axe",
   "gui.neoecoae.storage.tooltip.type_used": "%s storage used %s",
+  "gui.neoecoae.storage.tooltip.used_types": "Types: %s",
   "gui.neoecoae.storage.matrix_locked_infinite": "This storage matrix cannot be removed while infinite mode is active.",
   "item.neoecoae.aluminum_alloy_dust": "Aluminum Alloy Dust",
   "item.neoecoae.aluminum_alloy_hoe": "Aluminum Alloy Hoe",

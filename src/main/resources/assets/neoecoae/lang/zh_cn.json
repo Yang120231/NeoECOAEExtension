@@ -228,6 +228,7 @@
   "gui.neoecoae.storage.tooltip.type_used": "%s存储已使用 %s",
   "gui.neoecoae.storage.matrix_locked_infinite": "无限模式启用时无法取出该存储矩阵。",
   "gui.neoecoae.storage.tooltip.used_total": "已用：%s / %s",
+  "gui.neoecoae.storage.tooltip.used_types": "类型：%s",
   "gui.neoecoae.storage.matrix_card.title": "%s 存储矩阵",
   "gui.neoecoae.storage.matrix_card.types": "%s / %s 类型已使用",
   "gui.neoecoae.storage.matrix_card.bytes": "%s / %s 字节已使用",

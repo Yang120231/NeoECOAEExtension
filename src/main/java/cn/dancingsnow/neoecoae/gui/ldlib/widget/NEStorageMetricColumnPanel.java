@@ -37,6 +37,7 @@ final class NEStorageMetricColumnPanel {
 
     private static final String TOOLTIP_TYPE_USED = "gui.neoecoae.storage.tooltip.type_used";
     private static final String TOOLTIP_USED_TOTAL = "gui.neoecoae.storage.tooltip.used_total";
+    private static final String TOOLTIP_USED_TYPES = "gui.neoecoae.storage.tooltip.used_types";
 
     private final Supplier<Font> fontSupplier;
     private final IntUnaryOperator absX;
@@ -155,9 +156,8 @@ final class NEStorageMetricColumnPanel {
                                     metric.usedText(),
                                     metric.maxText()),
                             Component.translatable(
-                                    "gui.neoecoae.machine.types_value",
-                                    metric.usedTypesText(),
-                                    metric.totalTypesText())),
+                                    TOOLTIP_USED_TYPES,
+                                    metric.usedTypesText())),
                     Optional.empty(),
                     mouseX,
                     mouseY);

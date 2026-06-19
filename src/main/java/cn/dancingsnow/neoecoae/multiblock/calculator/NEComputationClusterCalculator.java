@@ -65,6 +65,9 @@ public class NEComputationClusterCalculator extends NEClusterCalculator<NEComput
         if (controller == null) {
             return false;
         }
+        if (containsUnexpectedBlockEntity(level, min, max, controllerPos, ECOComputationSystemBlockEntity.class)) {
+            return false;
+        }
         IECOTier tier = controller.getTier();
         BlockState controllerState = controller.getBlockState();
         IOrientationStrategy strategy = OrientationStrategies.horizontalFacing();
@@ -89,6 +92,12 @@ public class NEComputationClusterCalculator extends NEClusterCalculator<NEComput
             return false;
         }
         if (!validateCasing(level, controllerPos.relative(back).relative(right), top, down)) {
+            return false;
+        }
+        if (!validateBlock(level, controllerPos.relative(top), BlockState::is, NEBlocks.COMPUTATION_CASING.get())) {
+            return false;
+        }
+        if (!validateBlock(level, controllerPos.relative(down), BlockState::is, NEBlocks.COMPUTATION_CASING.get())) {
             return false;
         }
         BlockPos interfacePos = controllerPos.relative(back).relative(left);

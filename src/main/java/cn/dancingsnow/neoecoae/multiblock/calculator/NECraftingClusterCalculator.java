@@ -64,6 +64,9 @@ public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingC
         if (controller == null) {
             return false;
         }
+        if (containsUnexpectedBlockEntity(level, min, max, controllerPos, ECOCraftingSystemBlockEntity.class)) {
+            return false;
+        }
         IECOTier tier = controller.getTier();
         BlockState controllerState = controller.getBlockState();
         IOrientationStrategy strategy = OrientationStrategies.horizontalFacing();
@@ -88,6 +91,12 @@ public class NECraftingClusterCalculator extends NEClusterCalculator<NECraftingC
             return false;
         }
         if (!validateCasing(level, controllerPos.relative(back).relative(right), top, down)) {
+            return false;
+        }
+        if (!validateBlock(level, controllerPos.relative(top), BlockState::is, NEBlocks.CRAFTING_CASING.get())) {
+            return false;
+        }
+        if (!validateBlock(level, controllerPos.relative(down), BlockState::is, NEBlocks.CRAFTING_CASING.get())) {
             return false;
         }
         BlockPos interfacePos = controllerPos.relative(back).relative(left);
