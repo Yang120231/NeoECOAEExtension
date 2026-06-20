@@ -5,6 +5,7 @@ import appeng.core.localization.GuiText;
 import appeng.menu.MenuOpener;
 import appeng.menu.implementations.PriorityMenu;
 import appeng.menu.locator.MenuLocators;
+import cn.dancingsnow.neoecoae.api.ECOStorageTypeLimits;
 import cn.dancingsnow.neoecoae.blocks.entity.storage.ECOStorageSystemBlockEntity;
 import cn.dancingsnow.neoecoae.client.gui.ldlib.NELDLibClientStyle;
 import cn.dancingsnow.neoecoae.gui.ldlib.state.NEStorageUiState;
@@ -71,6 +72,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     private final NEStorageMatrixPanel matrixPanel;
     private final NEStorageMetricColumnPanel metricColumnPanel;
     private final boolean showInfiniteStorage;
+    private final boolean showTypeTotals;
 
     private double animatedEnergyPct;
     private final Map<String, Double> animatedTypePct = new HashMap<>();
@@ -96,6 +98,7 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
         this.player = player;
         this.playerInventory = player.getInventory();
         this.showInfiniteStorage = storage.canUseInfiniteStorageComponents();
+        this.showTypeTotals = ECOStorageTypeLimits.hasFiniteLimit(storage.getTier().getTier());
         this.matrixPanel = new NEStorageMatrixPanel(
                 this::font,
                 this::absX,
@@ -431,14 +434,23 @@ public class NEStorageControllerWidget extends NELDLibSyncedStateWidget<NEStorag
     private int drawStorageTypeBlock(GuiGraphics g, Metric metric, int x, int y, int lineStep) {
         drawPlainLine(g, metric.label(), x, y, metric.accentColor());
         y += lineStep;
-        NELDLibValueText.drawUsedOnly(
-                g,
-                font(),
-                metric.usedTypesText(),
-                metric.usedTypes(),
-                Component.translatable("gui.neoecoae.common.types").getString(),
-                x,
-                y);
+        String typeSuffix = Component.translatable("gui.neoecoae.common.types").getString();
+        if (showTypeTotals) {
+            NELDLibValueText.drawUsedTotal(
+                    g,
+                    font(),
+                    "",
+                    metric.usedTypesText(),
+                    metric.totalTypesText(),
+                    metric.usedTypes(),
+                    metric.totalTypes(),
+                    typeSuffix,
+                    x,
+                    y);
+        } else {
+            NELDLibValueText.drawUsedOnly(
+                    g, font(), metric.usedTypesText(), metric.usedTypes(), typeSuffix, x, y);
+        }
         y += lineStep;
         drawByteUsedTotalLine(g, metric, x, y);
         return y + lineStep;

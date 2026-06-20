@@ -200,6 +200,7 @@ public class NECraftingControllerWidget extends NELDLibSyncedStateWidget<NECraft
                             WIRELESS_ENERGY_SLOT_Y,
                             true,
                             true)
+                    .setDrawHoverTips(false)
                     .setBackgroundTexture(IGuiTexture.EMPTY));
         }
         addPlayerInventorySlots();

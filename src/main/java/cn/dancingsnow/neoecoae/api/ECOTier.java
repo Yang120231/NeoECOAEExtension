@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api;
 
+import appeng.api.stacks.AEKeyType;
 import cn.dancingsnow.neoecoae.NeoECOAE;
 import lombok.Getter;
 import net.minecraft.resources.ResourceLocation;
@@ -99,6 +100,11 @@ public enum ECOTier implements IECOTier {
     @Override
     public long getCPUTotalBytes() {
         return cpuTotalBytes;
+    }
+
+    @Override
+    public int getStorageTotalTypes(AEKeyType keyType) {
+        return ECOStorageTypeLimits.forTier(tier);
     }
 
     @Override

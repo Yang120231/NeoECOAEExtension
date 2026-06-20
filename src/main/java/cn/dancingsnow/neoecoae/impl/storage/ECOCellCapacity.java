@@ -53,7 +53,7 @@ record ECOCellCapacity(
     long remainingItemTypes() {
         long basedOnStorage = freeBytes() / bytesPerType;
         long basedOnTotal = totalItemTypes - storedItemTypes;
-        return Math.min(basedOnStorage, basedOnTotal);
+        return Math.max(0L, Math.min(basedOnStorage, basedOnTotal));
     }
 
     boolean canHoldNewItem() {

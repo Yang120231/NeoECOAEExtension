@@ -186,7 +186,7 @@ final class NEStorageMatrixPanel {
                                     Component.translatable("gui.neoecoae.common.types")
                                                     .getString() + ": ",
                                     NELDLibText.typeCount(matrix.usedTypes(), matrix.infiniteMember()),
-                                    NELDLibText.typeCount(matrix.totalTypes(), matrix.infiniteMember()),
+                                    NELDLibText.typeCount(matrix.totalTypes()),
                                     matrix.usedTypes(),
                                     matrix.totalTypes(),
                                     ""),

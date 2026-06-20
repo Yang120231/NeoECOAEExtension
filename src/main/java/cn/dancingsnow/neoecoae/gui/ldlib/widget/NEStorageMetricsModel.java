@@ -78,7 +78,7 @@ final class NEStorageMetricsModel {
     }
 
     private static String displayOrTypeCount(String display, long value, boolean displayAsInfinite) {
-        if (value == Long.MAX_VALUE && displayAsInfinite) {
+        if (value == Long.MAX_VALUE) {
             return NELDLibText.INFINITE;
         }
         return display.isBlank() ? NELDLibText.typeCount(value, displayAsInfinite) : display;

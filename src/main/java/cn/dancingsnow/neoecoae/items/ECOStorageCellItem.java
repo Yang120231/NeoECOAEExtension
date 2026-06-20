@@ -94,7 +94,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
 
     @Override
     public int getTotalTypes() {
-        return Integer.MAX_VALUE;
+        return totalTypes;
     }
 
     @Override
@@ -127,7 +127,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
         }
         lines.add(Tooltips.bytesUsed(handler.getUsedBytes(), handler.getTotalBytes()));
         lines.add(Component.literal("Types: " + NELDLibText.typeCount(handler.getStoredItemTypes(), false) + " / "
-                        + NELDLibText.typeCount(handler.getTotalItemTypes(), false))
+                        + NELDLibText.typeCount(handler.getTotalItemTypes()))
                 .withStyle(ChatFormatting.GRAY));
     }
 

@@ -202,13 +202,13 @@ public class ECOStorageCell implements IECOStorageCell {
     }
 
     public long getTotalItemTypes() {
-        return Long.MAX_VALUE;
+        return maxItemTypes == Integer.MAX_VALUE ? Long.MAX_VALUE : maxItemTypes;
     }
 
     public long getRemainingItemTypes() {
         var basedOnStorage = this.getFreeBytes() / this.getBytesPerType();
         var baseOnTotal = this.getTotalItemTypes() - this.getStoredItemTypes();
-        return Math.min(basedOnStorage, baseOnTotal);
+        return Math.max(0L, Math.min(basedOnStorage, baseOnTotal));
     }
 
     private boolean canHoldNewItem() {
@@ -294,6 +294,12 @@ public class ECOStorageCell implements IECOStorageCell {
         }
 
         if (this.cellType.isBlackListed(cellStack, what)) {
+            return 0;
+        }
+
+        boolean alreadyStored = getStoredAmount(what).signum() > 0;
+        if (ECOStorageInsertPolicy.blocksInsert(
+                alreadyStored, getStoredItemTypes(), getTotalItemTypes())) {
             return 0;
         }
 
