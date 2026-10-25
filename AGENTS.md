@@ -1,6 +1,8 @@
 # 1.20.1 移植工作约定
 
 - 本目录是独立新工程；Mod 参考源码位于 `E:\Minecraft Project`。读取参考源码前先更新远端；缺失仓库从官方 GitHub 获取。
+- `1.20.1-GTO` 分支专用于 GregTech Odyssey 版本适配，基于本工程的 `1.20.1` 分支继续开发。
+- GTO 参考源码统一使用 `https://github.com/GregTech-Odyssey/GTOCore-Main`，本地目录为 `E:\Minecraft Project\GTOCore`；旧 GTOCore 仓库及其文档不再作为适配依据。兼容性判断同时核对目标实例实际安装的 JAR，不能以跳过关键 Mixin 或禁用核心功能代替适配。
 - 主体输入固定为 `porting/source-lock.json` 的 main 提交。更新远端不代表自动改变已批准的移植基线。
 - 旧 1.20.1 实现仅允许用于结构终端及其必要契约；不得以整个旧工程替代 main 的业务、算法或持久化实现。
 - 附属范围为 AdvancedAE、ExtendedAE、ExtendedAE Plus、AE2LT 及各自必要前置。大集成仅常规、AAE、EAE、AE2LT 四类，Plus 其他联动保留。保留结构终端物品，删除旧配置与预览 UI，打开后仅显示“请使用对应主机 UI 内的搭建按钮。”；按 2026-10-23 用户的新要求，合成、存储、计算主机恢复自动搭建子窗口，固定四行：长度文字、长度输入、长度调整、镜像开关与开始搭建，右上角返回。
