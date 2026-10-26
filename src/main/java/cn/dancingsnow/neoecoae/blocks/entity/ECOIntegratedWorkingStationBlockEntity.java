@@ -679,8 +679,8 @@ public class ECOIntegratedWorkingStationBlockEntity extends AENetworkPowerBlockE
 
     public ModularUI createUI(BlockUIMenuType.BlockUIHolder holder) {
         return IntegratedWorkstationUI.create(new IntegratedWorkstationUI.Config(
-            getInputTank(), getOutputTank(), (IItemHandlerModifiable) getInternalInventory().toItemHandler(),
-            (IItemHandlerModifiable) upgrades.toItemHandler(), () -> (int) ((long) processingTime * MAX_PROCESSING_STEPS / Math.max(1, getMaxProcessingTime())), MAX_PROCESSING_STEPS,
+            getInputTank(), getOutputTank(), new cn.dancingsnow.neoecoae.compat.gto.ECOGtoItemHandler(getInternalInventory()),
+            new cn.dancingsnow.neoecoae.compat.gto.ECOGtoItemHandler(upgrades), () -> (int) ((long) processingTime * MAX_PROCESSING_STEPS / Math.max(1, getMaxProcessingTime())), MAX_PROCESSING_STEPS,
             this::clearFluid, this::clearFluidOut, () -> shouldAutoExport,
             enabled -> {
                 shouldAutoExport = enabled;

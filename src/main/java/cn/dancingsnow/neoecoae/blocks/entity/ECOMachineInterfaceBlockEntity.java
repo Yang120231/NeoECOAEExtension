@@ -111,7 +111,7 @@ public class ECOMachineInterfaceBlockEntity<C extends NECluster<C>> extends NEBl
         this, FUZZY_PLANNING_SLOT_COUNT, 1
     );
     private final IItemHandlerModifiable fuzzyPlanningItemHandler =
-        (IItemHandlerModifiable) fuzzyPlanningInventory.toItemHandler();
+        new cn.dancingsnow.neoecoae.compat.gto.ECOGtoItemHandler(fuzzyPlanningInventory);
     // Menu-only counters: LDLib UI bindings provide their S2C values.
     private long transferredLastTick;
     private int patternTransferInserted;

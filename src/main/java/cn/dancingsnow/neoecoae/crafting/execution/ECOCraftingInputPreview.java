@@ -8,7 +8,6 @@ import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.crafting.inv.ICraftingInventory;
 import appeng.crafting.inv.ListCraftingInventory;
-import appeng.crafting.execution.InputTemplate;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
 import com.google.common.collect.MapMaker;
 import net.minecraft.world.level.Level;
@@ -63,7 +62,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
         this.templateCache = templateCache;
     }
 
-    Iterable<InputTemplate> inputTemplates(IPatternDetails.IInput input, Level level) {
+    Iterable<GenericStack> inputTemplates(IPatternDetails.IInput input, Level level) {
         if (templateCache == null) {
             return appeng.crafting.execution.CraftingCpuHelper.getValidItemTemplates(this, input, level);
         }
@@ -74,11 +73,11 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
         return templateCache != null;
     }
 
-    long extractTemplates(InputTemplate template, long multiplier) {
-        long available = availableAfterReservations(template.key());
+    long extractTemplates(GenericStack template, long multiplier) {
+        long available = availableAfterReservations(template.what());
         long crafts = Math.min(multiplier, available / template.amount());
         if (crafts <= 0L) return 0L;
-        removed.addTo(template.key(), Math.multiplyExact(crafts, template.amount()));
+        removed.addTo(template.what(), Math.multiplyExact(crafts, template.amount()));
         return crafts;
     }
 
@@ -185,7 +184,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
             }
             for (var candidate : candidates) {
                 if (crafts == multiplier) break;
-                long take = extractTemplates(new InputTemplate(candidate, primary.amount()), multiplier - crafts);
+                long take = extractTemplates(new GenericStack(candidate, primary.amount()), multiplier - crafts);
                 if (take > 0) {
                     extractedInputs.add(candidate, Math.multiplyExact(take, primary.amount()));
                     crafts += take;

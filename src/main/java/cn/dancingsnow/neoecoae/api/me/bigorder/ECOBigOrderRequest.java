@@ -47,7 +47,7 @@ public record ECOBigOrderRequest(AEKey goal, BigInteger requested, boolean force
     public ICraftingPlan carrier() {
         return new appeng.crafting.CraftingPlan(
             new GenericStack(goal, requested.min(BigInteger.valueOf(Long.MAX_VALUE)).longValueExact()),
-            0, false, false, new KeyCounter(), new KeyCounter(), new KeyCounter(), Map.of());
+            0, false, false, new KeyCounter(), new KeyCounter(), new KeyCounter(), new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>());
     }
 
     public <T> T submit(java.util.function.Function<ICraftingPlan, T> submitter) {

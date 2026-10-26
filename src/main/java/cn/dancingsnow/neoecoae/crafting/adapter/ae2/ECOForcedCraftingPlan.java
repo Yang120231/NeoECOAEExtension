@@ -33,5 +33,5 @@ public final class ECOForcedCraftingPlan implements ICraftingPlan {
         return copy;
     }
     @Override public KeyCounter missingItems() { return new KeyCounter(); }
-    @Override public Map<IPatternDetails, Long> patternTimes() { return delegate.patternTimes(); }
+    @Override public it.unimi.dsi.fastutil.objects.Object2LongMap<IPatternDetails> patternTimes() { return delegate.patternTimes(); }
 }

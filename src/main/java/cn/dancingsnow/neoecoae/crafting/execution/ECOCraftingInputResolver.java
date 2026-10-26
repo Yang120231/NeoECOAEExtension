@@ -71,16 +71,16 @@ final class ECOCraftingInputResolver {
                 ? CraftingCpuHelper.getValidItemTemplates(sourceInventory, input, level)
                 : preview.inputTemplates(input, level);
             for (var template : templates) {
-                if (preview != null && preview.needsTemplateValidation() && !input.isValid(template.key(), level)) {
+                if (preview != null && preview.needsTemplateValidation() && !input.isValid(template.what(), level)) {
                     continue;
                 }
                 long extracted = preview == null
                     ? CraftingCpuHelper.extractTemplates(sourceInventory, template, remainingMultiplier)
                     : preview.extractTemplates(template, remainingMultiplier);
                 if (extracted <= 0L) continue;
-                extractedInputs.add(template.key(), extracted * template.amount());
+                extractedInputs.add(template.what(), extracted * template.amount());
 
-                var remainder = remainderCache.get(input, template.key());
+                var remainder = remainderCache.get(input, template.what());
                 if (remainder != null) {
                     expectedContainerItems.add(remainder, extracted);
                 }

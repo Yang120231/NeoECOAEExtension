@@ -541,7 +541,7 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
         this.dispatcher = new ECOCraftingPatternBusDispatcher(this);
         this.publisher = new ECOCraftingPatternBusPublisher(this);
         this.inventory.setFilter(new AEEncodedPatternFilter());
-        this.itemHandler = (IItemHandlerModifiable) effectiveInventory.toItemHandler();
+        this.itemHandler = new cn.dancingsnow.neoecoae.compat.gto.ECOGtoItemHandler(effectiveInventory);
         this.getMainNode().addService(ICraftingProvider.class, this)
             .addService(IECOPatternStorage.class, this);
     }

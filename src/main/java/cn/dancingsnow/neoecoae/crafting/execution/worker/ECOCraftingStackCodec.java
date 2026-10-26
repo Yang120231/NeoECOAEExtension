@@ -24,7 +24,7 @@ public final class ECOCraftingStackCodec {
 
     public static List<GenericStack> toGenericStacks(KeyCounter counter, boolean allowFluid) {
         List<GenericStack> stacks = new ArrayList<>();
-        for (Object2LongMap.Entry<AEKey> entry : counter) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : counter) {
             if (entry.getLongValue() <= 0) continue;
             if (!(entry.getKey() instanceof AEItemKey)
                 && !(allowFluid && entry.getKey() instanceof AEFluidKey)) return List.of();

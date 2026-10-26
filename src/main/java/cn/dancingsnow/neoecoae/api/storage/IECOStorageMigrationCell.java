@@ -35,7 +35,7 @@ public interface IECOStorageMigrationCell extends IECOStorageCell {
     /** Flushes contents before the controller saves the source seal or destination receipt to its chunk. */
     default void persistMigrationContents(ServerLevel level) { persist(); }
 
-    default Iterator<Object2LongMap.Entry<AEKey>> migrationEntries() {
+    default Iterator<? extends java.util.Map.Entry<AEKey, Long>> migrationEntries() {
         KeyCounter contents = new KeyCounter();
         getMigrationStacks(contents);
         return contents.iterator();

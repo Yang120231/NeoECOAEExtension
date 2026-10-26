@@ -50,7 +50,7 @@ public final class ECOFastPathKey {
             for (KeyCounter counter : craftingContainer) {
                 List<EntrySignature> entries = new ArrayList<>();
                 if (counter != null) {
-                    for (Object2LongMap.Entry<AEKey> entry : counter) {
+                    for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : counter) {
                         if (entry.getLongValue() > 0) {
                             entries.add(new EntrySignature(entry.getKey(), entry.getLongValue()));
                         }

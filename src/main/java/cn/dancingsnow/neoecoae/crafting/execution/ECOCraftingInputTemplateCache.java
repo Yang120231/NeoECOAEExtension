@@ -2,7 +2,7 @@ package cn.dancingsnow.neoecoae.crafting.execution;
 
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
-import appeng.crafting.execution.InputTemplate;
+import appeng.api.stacks.GenericStack;
 import appeng.crafting.inv.ICraftingInventory;
 import appeng.crafting.inv.ListCraftingInventory;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
@@ -17,13 +17,13 @@ import java.util.Set;
 final class ECOCraftingInputTemplateCache {
     private static final int MAX_INPUTS = 256;
     private static final int MAX_TEMPLATES = 4096;
-    private final Map<IPatternDetails.IInput, List<InputTemplate>> entries = new Reference2ObjectOpenHashMap<>();
+    private final Map<IPatternDetails.IInput, List<GenericStack>> entries = new Reference2ObjectOpenHashMap<>();
     private final Set<AEKey> knownKeys = new ObjectOpenHashSet<>();
     private ICraftingInventory source;
     private long reloadGeneration = Long.MIN_VALUE;
     private int templateCount;
 
-    List<InputTemplate> get(ICraftingInventory inventory, IPatternDetails.IInput input) {
+    List<GenericStack> get(ICraftingInventory inventory, IPatternDetails.IInput input) {
         long generation = AE2PatternIntrospection.reloadGeneration();
         if (source != inventory || reloadGeneration != generation) {
             clear();
@@ -33,10 +33,10 @@ final class ECOCraftingInputTemplateCache {
         var cached = entries.get(input);
         if (cached != null) return cached;
 
-        var templates = new ArrayList<InputTemplate>();
+        var templates = new ArrayList<GenericStack>();
         for (var stack : input.getPossibleInputs()) {
             for (var key : inventory.findFuzzyTemplates(stack.what())) {
-                templates.add(new InputTemplate(key, stack.amount()));
+                templates.add(new GenericStack(key, stack.amount()));
             }
         }
         var result = templates;
@@ -47,7 +47,7 @@ final class ECOCraftingInputTemplateCache {
                 templateCount = 0;
             }
             entries.put(input, result);
-            for (var template : result) knownKeys.add(template.key());
+            for (var template : result) knownKeys.add(template.what());
             templateCount += result.size();
         }
         return result;

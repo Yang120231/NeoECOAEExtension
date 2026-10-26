@@ -133,7 +133,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         neoecoae$cycleItems = cycles;
     }
 
-    @Inject(method = {"broadcastChanges()V", "m_38946_()V"}, at = @At("TAIL"))
+    @Inject(method = "broadcastChanges()V", remap = true, at = @At("TAIL"))
     private void neoecoae$sendDiagnostics(CallbackInfo ci) {
         var menu = (CraftConfirmMenu) (Object) this;
         if (!(menu.getPlayer() instanceof ServerPlayer player) || player.containerMenu != menu) return;
@@ -167,7 +167,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         neoecoae$selectedCpuEco = selectedCpu instanceof cn.dancingsnow.neoecoae.crafting.execution.ECOCraftingCPU;
     }
 
-    @Inject(method = {"broadcastChanges()V", "m_38946_()V"}, at = @At("HEAD"))
+    @Inject(method = "broadcastChanges()V", remap = true, at = @At("HEAD"))
     private void neoecoae$syncBigOrderCpu(CallbackInfo ci) {
         if (((CraftConfirmMenu) (Object) this).isClientSide()) return;
         neoecoae$bigOrderCpu = neoecoae$resolveBigOrderCpu() != null;
@@ -428,8 +428,8 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     }
 
     @Inject(
-        method = {"broadcastChanges()V", "m_38946_()V"},
-        at = @At(
+        method = "broadcastChanges()V", remap = true,
+        at = @At(remap = false,
             value = "INVOKE",
             target = "Lappeng/menu/me/crafting/CraftingPlanSummary;fromJob("
                 + "Lappeng/api/networking/IGrid;"
@@ -646,8 +646,8 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     }
 
     @WrapOperation(
-        method = {"broadcastChanges()V", "m_38946_()V"},
-        at = @At(
+        method = "broadcastChanges()V", remap = true,
+        at = @At(remap = false,
             value = "INVOKE",
             target = "Lappeng/menu/me/crafting/CraftingPlanSummary;fromJob("
                 + "Lappeng/api/networking/IGrid;"
@@ -700,7 +700,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         return summary;
     }
 
-    @Inject(method = {"broadcastChanges()V", "m_38946_()V"}, at = @At("TAIL"))
+    @Inject(method = "broadcastChanges()V", remap = true, at = @At("TAIL"))
     private void logDisabledStartButton(CallbackInfo ci) {
         var menu = (CraftConfirmMenu) (Object) this;
         if (menu.isClientSide() || result == null
@@ -836,33 +836,6 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
             Operation<ICraftingSubmitResult> original) {
         return neoecoae$submitConfirmedPlan(service, submittedPlan, target, source,
             () -> original.call(service, submittedPlan, requestingMachine, target, prioritizePower, source));
-    }
-
-    @Group(name = "neoecoae$confirmedSubmission", min = 1, max = 1)
-    @WrapOperation(
-        method = "startJob(Z)V",
-        at = @At(
-            value = "INVOKE",
-            target = "Lappeng/api/networking/crafting/ICraftingService;submitJob("
-                + "Lappeng/api/networking/crafting/ICraftingPlan;"
-                + "Lappeng/api/networking/crafting/ICraftingRequester;"
-                + "Lappeng/api/networking/crafting/ICraftingCPU;"
-                + "ZLappeng/api/networking/security/IActionSource;Z"
-                + ")Lappeng/api/networking/crafting/ICraftingSubmitResult;"
-        ),
-        require = 0
-    )
-    private ICraftingSubmitResult submitConfirmedFollowingCyclePlan(
-            ICraftingService service,
-            ICraftingPlan submittedPlan,
-            @Nullable ICraftingRequester requestingMachine,
-            @Nullable ICraftingCPU target,
-            boolean prioritizePower,
-            IActionSource source,
-            boolean isFollowing,
-            Operation<ICraftingSubmitResult> original) {
-        return neoecoae$submitConfirmedPlan(service, submittedPlan, target, source,
-            () -> original.call(service, submittedPlan, requestingMachine, target, prioritizePower, source, isFollowing));
     }
 
     @Unique

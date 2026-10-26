@@ -30,7 +30,7 @@ public final class ECOExactCraftingPlan implements ICraftingPlan {
             throw new IllegalArgumentException("Incomplete exact plan");
         storage = result.theoreticalBytes();
         fuzzyPlanningItemIds = java.util.Set.copyOf(result.fuzzyPlanningItemIds());
-        var counts = new LinkedHashMap<IPatternDetails, Long>();
+        var counts = new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<IPatternDetails>();
         var exact = new LinkedHashMap<IPatternDetails, BigInteger>();
         result.exactPatternTimes().forEach((pattern, amount) -> {
             if (amount.signum() > 0) {
@@ -109,5 +109,5 @@ public final class ECOExactCraftingPlan implements ICraftingPlan {
     @Override public KeyCounter usedItems() { return projection.usedItems(); }
     @Override public KeyCounter emittedItems() { return projection.emittedItems(); }
     @Override public KeyCounter missingItems() { return projection.missingItems(); }
-    @Override public Map<IPatternDetails, Long> patternTimes() { return projection.patternTimes(); }
+    @Override public it.unimi.dsi.fastutil.objects.Object2LongMap<IPatternDetails> patternTimes() { return projection.patternTimes(); }
 }

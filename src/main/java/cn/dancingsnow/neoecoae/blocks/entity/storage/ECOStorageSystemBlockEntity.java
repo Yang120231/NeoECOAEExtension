@@ -126,7 +126,7 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     private final ECOInfiniteStorageModeController infiniteModeController =
             new ECOInfiniteStorageModeController(this);
     private final IItemHandlerModifiable infiniteComponentItemHandler =
-            infiniteRestore.componentItemHandler((IItemHandlerModifiable) infiniteComponentInventory.toItemHandler());
+            infiniteRestore.componentItemHandler(new cn.dancingsnow.neoecoae.compat.gto.ECOGtoItemHandler(infiniteComponentInventory));
 
     @DescSynced
     private int selectedEcoMegaBulkCell;

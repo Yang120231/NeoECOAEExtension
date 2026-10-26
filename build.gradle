@@ -7,7 +7,9 @@ plugins {
 group = mod_group_id
 version = mod_version
 base.archivesName = mod_id
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+// GTO's AE2 dependency uses Java 21 bytecode; retain Java 17 source/output compatibility.
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+tasks.withType(JavaCompile).configureEach { options.release = 17 }
 java.withSourcesJar()
 
 def runtimeProfiles = [
@@ -33,6 +35,10 @@ if (!runtimeProfiles.containsKey(portingProfile)) {
     throw new GradleException("Unknown portingProfile '${portingProfile}'; choose ${runtimeProfiles.keySet()}")
 }
 def dependencyLock = new groovy.json.JsonSlurper().parse(file('porting/dependencies.lock.json'))
+// The GTO branch compiles against the exact fork installed in the acceptance instance.
+def gtoDependencyLock = new groovy.json.JsonSlurper().parse(file('docs/compat/gto-dependencies.json'))
+dependencyLock.artifacts.removeAll { it.mod_id == 'ae2' }
+dependencyLock.artifacts.add(gtoDependencyLock.ae2)
 def releaseJars = dependencyLock.artifacts.collectEntries { artifact ->
     def artifactFile = file("libs/pinned/${artifact.filename}")
     if (!artifactFile.isFile()) {
@@ -315,6 +321,29 @@ tasks.named('test', Test) {
             systemProperty "neoecoae.${name}", providers.gradleProperty(name).get()
         }
     }
+}
+
+// GTO ABI regression tests are independent of legacy tests that instantiate classes removed by the fork.
+sourceSets {
+    gtoCompatibilityTest {
+        java.srcDir 'src/gtoTest/java'
+        java.srcDir 'src/test/java'
+        java.include 'cn/dancingsnow/neoecoae/compat/gto/**'
+        java.include 'cn/dancingsnow/neoecoae/util/InventoryTestBootstrap.java'
+        java.include 'cn/dancingsnow/neoecoae/util/LargeWorkstationTestKeys.java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += files(layout.buildDirectory.file("moddev/artifacts/client-extra-${minecraft_version}-${forge_version}.jar"))
+    }
+}
+configurations.gtoCompatibilityTestImplementation.extendsFrom configurations.testImplementation
+configurations.gtoCompatibilityTestRuntimeOnly.extendsFrom configurations.testRuntimeOnly
+tasks.register('gtoCompatibilityTest', Test) {
+    description = 'Checks GTO callback accounting, recursive storage listing and inventory bridges.'
+    testClassesDirs = sourceSets.gtoCompatibilityTest.output.classesDirs
+    classpath = sourceSets.gtoCompatibilityTest.runtimeClasspath
+    useJUnitPlatform()
+    maxHeapSize = '2G'
 }
 
 tasks.named('processResources', ProcessResources) {

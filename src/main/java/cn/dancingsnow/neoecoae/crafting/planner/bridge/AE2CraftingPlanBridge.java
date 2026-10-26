@@ -18,7 +18,7 @@ public final class AE2CraftingPlanBridge {
 
     public CraftingPlan unsupported(AEKey goal, long amount) {
         return new CraftingPlan(new GenericStack(goal, amount), 0, true, false,
-            new KeyCounter(), new KeyCounter(), new KeyCounter(), Map.of());
+            new KeyCounter(), new KeyCounter(), new KeyCounter(), new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>());
     }
 
     /** Partial structural plans are explanatory only and can never be submitted to an AE2 CPU. */

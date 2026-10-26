@@ -165,7 +165,7 @@ public final class ECODurabilityBatchModel implements ECOReusableStateModel {
         int entryLimit
     ) {
         List<ToolStock> result = new ArrayList<>();
-        for (Object2LongMap.Entry<AEKey> entry : inventory.list) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : inventory.list) {
             if (!(entry.getKey() instanceof AEItemKey key) || entry.getLongValue() <= 0L) continue;
             ItemStack stack = key.toStack(1);
             if (stack.isEmpty() || stack.getMaxDamage() != transition.maxDamage()

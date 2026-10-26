@@ -255,7 +255,7 @@ public class ECOComputationThreadingCoreBlockEntity extends cn.dancingsnow.neoec
     }
 
     private static void addOwnedDrops(KeyCounter owned, List<ItemStack> drops, Level level, BlockPos pos) {
-        for (Object2LongMap.Entry<AEKey> entry : owned) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : owned) {
             if (entry.getKey() instanceof AEItemKey itemKey) {
                 long amount = entry.getLongValue();
                 while (amount > 0L) {

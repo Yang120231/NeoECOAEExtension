@@ -97,7 +97,7 @@ final class ECOStorageInfiniteRestore {
         KeyCounter pending = new KeyCounter();
         engine.getRestoreStacks(pending);
         IActionSource source = IActionSource.ofMachine(host);
-        for (Object2LongMap.Entry<AEKey> entry : pending) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : pending) {
             AEKey key = entry.getKey();
             if (!targetIds.containsAll(engine.restoreTargetIds(key))) {
                 return RestorePlan.blocked("an original restore target is missing; return its sealed matrix to resume");

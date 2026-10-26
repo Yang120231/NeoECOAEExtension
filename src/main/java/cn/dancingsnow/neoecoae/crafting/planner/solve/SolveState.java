@@ -65,7 +65,14 @@ public final class SolveState {
         return demand;
     }
     /** AE2-facing view retained for existing consumers. */
-    public Map<IPatternDetails, Long> patternTimes() { return exactLongMap(patternTimes, "pattern times"); }
+    public it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<IPatternDetails> patternTimes() {
+        var result = new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<IPatternDetails>(patternTimes.size());
+        patternTimes.forEach((pattern, amount) -> {
+            if (!amount.fitsLong()) throw new ArithmeticException("pattern times exceeds AE2 long range: " + amount);
+            result.put(pattern, amount.longValueExact());
+        });
+        return result;
+    }
     /** AE2-facing view retained for existing consumers. */
     public Map<AEKey, Long> demands() { return exactLongMap(demand, "demand"); }
     /** AE2-facing view retained for existing consumers. */

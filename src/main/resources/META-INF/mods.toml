@@ -10,6 +10,13 @@ authors="${mod_authors}"
 description='''An Applied Energistics 2 addon providing ECO crafting, storage and computation systems, integrated workstations, and exact large-quantity handling.'''
 
 [[dependencies.neoecoae]]
+modId="gtocore"
+mandatory=true
+versionRange="[26.10.9,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.neoecoae]]
 modId="gtceu"
 mandatory=false
 versionRange="*"
@@ -47,8 +54,8 @@ side="BOTH"
 [[dependencies.neoecoae]]
 modId="ae2"
 mandatory=true
-# 15.4.11 is recommended; TooltipsByteUnitsMixin backports the byte table fix for 15.4.10.
-versionRange="[15.4.10,16)"
+# GTO branch: the native crafting and inventory contracts require the GTO AE2 fork.
+versionRange="[15.2610.31,16)"
 ordering="AFTER"
 side="BOTH"
     [dependencies.neoecoae.mc-publish]

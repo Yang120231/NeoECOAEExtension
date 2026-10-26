@@ -95,7 +95,7 @@ public final class MegaBulkMarkingService {
             grid.getStorageService().getInventory().getAvailableStacks(available);
         }
         List<Candidate> candidates = new ArrayList<>();
-        for (Object2LongMap.Entry<AEKey> entry : available) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : available) {
             // Unbounded sources may still be marked so the player can see/use the chain. They
             // are filtered only from physical migration below; explicit decompression inserts
             // into the bulk cell continue to work normally.
@@ -234,7 +234,7 @@ public final class MegaBulkMarkingService {
 
                 KeyCounter available = new KeyCounter();
                 sourceStorage.getAvailableStacks(available);
-                for (Object2LongMap.Entry<AEKey> entry : available) {
+                for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : available) {
                     if (entry.getLongValue() <= 0L || unboundedKeys.contains(entry.getKey())
                         || !(entry.getKey() instanceof AEItemKey itemKey)) {
                         continue;

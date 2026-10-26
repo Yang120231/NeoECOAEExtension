@@ -9,11 +9,12 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = Icon.class, remap = false)
-public abstract class WorkstationInterfaceIconMixin {
-    @Inject(method = "getBlitter", at = @At("HEAD"), cancellable = true)
-    private void neoecoae$workstationArtwork(CallbackInfoReturnable<Blitter> callback) {
+public abstract class WorkstationInterfaceIconMixin implements gto_ae.hooks.gui.IIcon {
+    @Override
+    public Blitter getBlitter() {
         if (WorkstationInterfaceArtwork.active()) {
-            callback.setReturnValue(WorkstationInterfaceArtwork.icon((Icon) (Object) this));
+            return WorkstationInterfaceArtwork.icon((Icon) (Object) this);
         }
+        return gto_ae.hooks.gui.IIcon.super.getBlitter();
     }
 }

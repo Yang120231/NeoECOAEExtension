@@ -29,7 +29,7 @@ public class ECOFeStorageCellItem extends ECOStorageCellItem {
             return;
         }
         KeyCounter availableStacks = handler.getAvailableStacks();
-        for (Object2LongMap.Entry<AEKey> entry : availableStacks) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : availableStacks) {
             if (entry.getKey() instanceof FluxKey fluxKey) {
                 lines.add(Component.translatable("appflux.cell.storage", Tooltips.ofNumber(entry.getLongValue()), fluxKey.getEnergyType().translate()));
             }

@@ -130,7 +130,7 @@ public final class ECOMegaDecompressionService implements IGridService, IGridSer
     }
 
     @Override
-    public void onServerEndTick() {
+    public void onServerEndTick(net.minecraft.server.MinecraftServer server) {
         boolean hadPatterns = !patterns.isEmpty();
         patterns.clear();
 

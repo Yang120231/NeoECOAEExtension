@@ -304,7 +304,7 @@ public final class ECOFastPathStacks {
         // Decorate-sort-undecorate: keySortId concatenates strings, so computing it once per entry instead of
         // once per comparison removes O(n log n) throwaway strings from every dispatch.
         List<SortableStack> sortable = new ArrayList<>();
-        for (Object2LongMap.Entry<AEKey> entry : counter) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : counter) {
             if (entry.getLongValue() > 0) {
                 sortable.add(new SortableStack(
                     keySortId(entry.getKey()),

@@ -796,7 +796,7 @@ public class PatternCatalog implements IECOPatternStorageService, IGridServicePr
     }
 
     @Override
-    public void onServerEndTick() {
+    public void onServerEndTick(net.minecraft.server.MinecraftServer server) {
         externalPatternTick++;
         if (!externalPatternClaimTicks.isEmpty()) {
             List<UUID> expired = new ArrayList<>();

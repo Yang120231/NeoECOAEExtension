@@ -209,7 +209,7 @@ public class ECOCraftingCPU extends cn.dancingsnow.neoecoae.api.me.ECOCraftingCP
             new KeyCounter(),
             new KeyCounter(),
             new KeyCounter(),
-            Map.of()
+            new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>()
         );
     }
 

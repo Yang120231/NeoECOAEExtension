@@ -118,7 +118,7 @@ final class ECOCraftingThreadOutputDiagnostics {
         if (pending == null) return new Lane(position, reason, tick, 0, 0L, true);
         int keys = 0;
         long amount = 0L;
-        for (Object2LongMap.Entry<AEKey> entry : pending) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : pending) {
             if (entry.getLongValue() <= 0L) continue;
             keys = keys == Integer.MAX_VALUE ? keys : keys + 1;
             amount = NEMath.saturatingAdd(amount, entry.getLongValue());

@@ -83,7 +83,9 @@ public final class ECOInfiniteStorageTransfer {
                 if (!cursor.entries.hasNext()) break;
                 var entry = cursor.entries.next();
                 cursor.key = entry.getKey();
-                cursor.amount = entry.getLongValue();
+                cursor.amount = entry instanceof it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> reference
+                    ? reference.getLongValue()
+                    : ((it.unimi.dsi.fastutil.objects.Object2LongMap.Entry<AEKey>) entry).getLongValue();
             }
             if (cursor.amount > 0) {
                 UUID legacy = legacyReceipt.apply(cursor.key, cursor.amount);
@@ -124,11 +126,11 @@ public final class ECOInfiniteStorageTransfer {
     private static final class Cursor {
         private final Object source;
         private final IECOStorageMigrationCell cell;
-        private final Iterator<Object2LongMap.Entry<AEKey>> entries;
+        private final Iterator<? extends java.util.Map.Entry<AEKey, Long>> entries;
         private AEKey key;
         private long amount;
 
-        private Cursor(Object source, IECOStorageMigrationCell cell, Iterator<Object2LongMap.Entry<AEKey>> entries) {
+        private Cursor(Object source, IECOStorageMigrationCell cell, Iterator<? extends java.util.Map.Entry<AEKey, Long>> entries) {
             this.source = source;
             this.cell = cell;
             this.entries = entries;

@@ -318,7 +318,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         long currentAmount = simulatedContents.get(what);
         long storedTypes = 0L;
         long storedItemCount = 0L;
-        for (Object2LongMap.Entry<AEKey> entry : simulatedContents) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : simulatedContents) {
             if (entry.getLongValue() > 0L) {
                 storedTypes = NEMath.saturatingAdd(storedTypes, 1L);
                 storedItemCount = NEMath.saturatingAdd(storedItemCount, entry.getLongValue());
@@ -384,7 +384,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         }
         long storedTypes = 0L;
         long storedItemCount = 0L;
-        for (Object2LongMap.Entry<AEKey> entry : simulatedContents) {
+        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : simulatedContents) {
             if (entry.getLongValue() > 0L) {
                 storedTypes = NEMath.saturatingAdd(storedTypes, 1L);
                 storedItemCount = NEMath.saturatingAdd(storedItemCount, entry.getLongValue());
