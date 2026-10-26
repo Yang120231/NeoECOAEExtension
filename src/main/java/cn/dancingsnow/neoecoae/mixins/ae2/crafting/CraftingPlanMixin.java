@@ -8,7 +8,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(value = CraftingPlan.class, remap = false)
-public class CraftingPlanMixin implements ECOCraftingPlanDiagnostics {
+public class CraftingPlanMixin implements ECOCraftingPlanDiagnostics, cn.dancingsnow.neoecoae.compat.gto.ECOGtoPlanOrigin {
+    @Unique private volatile boolean neoecoae$nativeGtoPlan;
+    @Override public boolean neoecoae$isNativeGtoPlan() { return neoecoae$nativeGtoPlan; }
+    @Override public void neoecoae$markNativeGtoPlan() { neoecoae$nativeGtoPlan = true; }
     @Unique private ECOPlanningResult neoecoae$planningResult;
     @Override @Nullable public ECOPlanningResult neoecoae$getPlanningResult() { return neoecoae$planningResult; }
     @Override public void neoecoae$setPlanningResult(@Nullable ECOPlanningResult result) { neoecoae$planningResult = result; }

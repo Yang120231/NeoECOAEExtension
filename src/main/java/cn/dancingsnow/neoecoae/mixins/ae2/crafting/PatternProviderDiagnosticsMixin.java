@@ -30,11 +30,26 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Observes existing calls only: no extra target probes, insertion, or changes to AE2's return value. */
-@Mixin(value = PatternProviderLogic.class, remap = false)
+@Mixin(value = PatternProviderLogic.class, remap = false, priority = 500)
 public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushDiagnostics, ECOProcessingTargetProvider {
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "@providerCallback",
+        at = @At("HEAD"), cancellable = true)
+    private void neoecoae$routeSpecializedProvider(IPatternDetails pattern,
+            @org.spongepowered.asm.mixin.injection.Coerce Object holder, java.util.function.Supplier<?> accepted,
+            CallbackInfoReturnable<Object> ci) {
+        Object self = this;
+        if (self instanceof cn.dancingsnow.neoecoae.blocks.entity.LargeWorkstationPatternProvider provider) {
+            ci.setReturnValue(cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush
+                .dispatchSpecialized(provider, pattern, holder, accepted));
+        }
+    }
+
     @Shadow @Final private PatternProviderLogicHost host;
     @Shadow @Final private List<GenericStack> sendList;
     @Shadow private Direction sendDirection;
+    @Shadow @Final private IManagedGridNode mainNode;
+    @Shadow @Final private List<IPatternDetails> patterns;
+    @Shadow public abstract LockCraftingMode getCraftingLockedReason();
 
     @Unique private final Set<Reason> neoecoae$rejectReasons = EnumSet.noneOf(Reason.class);
     @Unique private boolean neoecoae$observingPush;
@@ -72,9 +87,16 @@ public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushD
         neoecoae$targetSide = null;
         neoecoae$capturingTarget = true;
         neoecoae$observingPush = NEConfig.ecoDispatchWatchdogDebug;
-        if (neoecoae$observingPush) neoecoae$clearPushDiagnostics();
+        if (neoecoae$observingPush) {
+            neoecoae$clearPushDiagnostics();
+            if (!mainNode.isActive()) neoecoae$rejectReasons.add(Reason.NODE_INACTIVE);
+            if (!patterns.contains(pattern)) neoecoae$rejectReasons.add(Reason.PATTERN_MISSING);
+            if (!sendList.isEmpty()) neoecoae$rejectReasons.add(Reason.SEND_LIST_BUSY);
+            if (getCraftingLockedReason() != LockCraftingMode.NONE) neoecoae$rejectReasons.add(Reason.CRAFTING_LOCKED);
+        }
         try {
-            boolean accepted = original.call(pattern, inputs);
+            boolean accepted = cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush.push(
+                    (PatternProviderLogic) (Object) this, pattern, inputs);
             var be = host.getBlockEntity();
             if (accepted && neoecoae$targetSide != null && be.getLevel() != null) {
                 neoecoae$processingTarget = new Target(be.getLevel().dimension().location(),
@@ -91,77 +113,27 @@ public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushD
         }
     }
 
-    @WrapOperation(method = "pushPattern", at = @At(value = "INVOKE", target = "Ljava/util/List;isEmpty()Z"))
-    private boolean neoecoae$observeSendList(List<?> list, Operation<Boolean> original) {
-        boolean empty = original.call(list);
-        if (neoecoae$observingPush && list == sendList && !empty) neoecoae$rejectReasons.add(Reason.SEND_LIST_BUSY);
-        return empty;
-    }
-
-    @WrapOperation(method = "pushPattern", at = @At(value = "INVOKE", target =
-        "Lappeng/api/networking/IManagedGridNode;isActive()Z"))
-    private boolean neoecoae$observeActive(IManagedGridNode node, Operation<Boolean> original) {
-        boolean active = original.call(node);
-        if (neoecoae$observingPush && !active) neoecoae$rejectReasons.add(Reason.NODE_INACTIVE);
-        return active;
-    }
-
-    @WrapOperation(method = "pushPattern", at = @At(value = "INVOKE", target =
-        "Ljava/util/List;contains(Ljava/lang/Object;)Z"))
-    private boolean neoecoae$observePattern(List<?> patterns, Object pattern, Operation<Boolean> original) {
-        boolean present = original.call(patterns, pattern);
-        if (neoecoae$observingPush && !present) neoecoae$rejectReasons.add(Reason.PATTERN_MISSING);
-        return present;
-    }
-
-    @Inject(method = "getCraftingLockedReason", at = @At("RETURN"))
-    private void neoecoae$observeLock(CallbackInfoReturnable<LockCraftingMode> cir) {
-        if (neoecoae$observingPush && cir.getReturnValue() != LockCraftingMode.NONE) {
-            neoecoae$rejectReasons.add(Reason.CRAFTING_LOCKED);
+    // Observe GTO's merged helpers instead of calls removed from the vanilla pushPattern body.
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$findTarget", at = @At("RETURN"))
+    private void neoecoae$observeGtoTarget(Direction side, CallbackInfoReturnable<PatternProviderTarget> result) {
+        if (result.getReturnValue() != null) {
+            if (neoecoae$observingPush) neoecoae$foundTarget = true;
+            if (neoecoae$capturingTarget) neoecoae$targetSide = side;
         }
     }
 
-    @Inject(method = "findAdapter", at = @At("RETURN"))
-    private void neoecoae$observeTarget(Direction side, CallbackInfoReturnable<PatternProviderTarget> cir) {
-        if (neoecoae$observingPush && cir.getReturnValue() != null) neoecoae$foundTarget = true;
-        if (neoecoae$capturingTarget && cir.getReturnValue() != null) neoecoae$targetSide = side;
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushCraftingMachine", at = @At("HEAD"))
+    private void neoecoae$observeGtoMachine(CallbackInfoReturnable<Object> result,
+            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Direction side) {
+        if (neoecoae$observingPush) neoecoae$foundTarget = true;
+        if (neoecoae$capturingTarget) neoecoae$targetSide = side.getOpposite();
     }
 
     @Inject(method = "adapterAcceptsAll", at = @At("RETURN"))
     private void neoecoae$observeInputRejection(PatternProviderTarget target, KeyCounter[] inputs,
-            CallbackInfoReturnable<Boolean> cir) {
-        if (neoecoae$observingPush && !cir.getReturnValue()) {
+            CallbackInfoReturnable<Boolean> result) {
+        if (neoecoae$observingPush && !result.getReturnValue()) {
             neoecoae$rejectReasons.add(Reason.TARGET_REJECTED_INPUT);
         }
-    }
-
-    @WrapOperation(method = "pushPattern", at = @At(value = "INVOKE", target =
-        "Lappeng/api/implementations/blockentities/ICraftingMachine;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;Lnet/minecraft/core/Direction;)Z"))
-    private boolean neoecoae$observeMachine(ICraftingMachine machine, IPatternDetails pattern,
-            KeyCounter[] inputs, Direction side, Operation<Boolean> original) {
-        boolean accepted = original.call(machine, pattern, inputs, side);
-        if (neoecoae$capturingTarget && accepted) neoecoae$targetSide = side.getOpposite();
-        if (neoecoae$observingPush) {
-            neoecoae$foundTarget = true;
-            if (!accepted) neoecoae$rejectReasons.add(Reason.MACHINE_REJECTED);
-        }
-        return accepted;
-    }
-
-    @WrapOperation(method = "pushPattern", at = @At(value = "INVOKE", target =
-        "Lappeng/helpers/patternprovider/PatternProviderTarget;containsPatternInput(Ljava/util/Set;)Z"))
-    private boolean neoecoae$observeBlocking(PatternProviderTarget target, Set<AEKey> inputs,
-            Operation<Boolean> original) {
-        boolean blocked = original.call(target, inputs);
-        if (neoecoae$observingPush && blocked) neoecoae$rejectReasons.add(Reason.BLOCKING_MODE);
-        return blocked;
-    }
-
-    @WrapOperation(method = "pushPattern", at = @At(value = "INVOKE", target =
-        "Lappeng/api/crafting/IPatternDetails;supportsPushInputsToExternalInventory()Z"))
-    private boolean neoecoae$observeExternalSupport(IPatternDetails pattern, Operation<Boolean> original) {
-        boolean supported = original.call(pattern);
-        if (neoecoae$observingPush && !supported) neoecoae$rejectReasons.add(Reason.EXTERNAL_INPUT_UNSUPPORTED);
-        return supported;
     }
 }

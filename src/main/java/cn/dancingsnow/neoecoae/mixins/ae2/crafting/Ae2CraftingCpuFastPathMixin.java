@@ -1,110 +1,23 @@
 package cn.dancingsnow.neoecoae.mixins.ae2.crafting;
 
-import appeng.api.networking.energy.IEnergyService;
 import appeng.crafting.execution.CraftingCpuLogic;
-import appeng.crafting.execution.ExecutingCraftingJob;
-import appeng.crafting.inv.ListCraftingInventory;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
-import appeng.me.service.CraftingService;
-import cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuFastPath;
-import cn.dancingsnow.neoecoae.crafting.execution.worker.ECOCraftingJobLifecycle;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.level.Level;
-import org.spongepowered.asm.mixin.Final;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
+import cn.dancingsnow.neoecoae.compat.gto.ECOGtoCraftingCpuLogic;
+import org.spongepowered.asm.mixin.*;
+import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-// Addons overwrite executeCrafting above the default priority. Keep the INVOKE wrapper
-// above that overwrite so job ownership also reaches its retained pushPattern call.
-@Mixin(value = CraftingCpuLogic.class, remap = false, priority = 1200)
+/** Wrap the GTO CPU installed by its constructor injection, preserving GTO's execution engine. */
+@Mixin(value = CraftingCPUCluster.class, remap = false, priority = 500)
 public abstract class Ae2CraftingCpuFastPathMixin {
-    @Unique private static final org.slf4j.Logger NEOECOAE_BATCH_LOG = org.slf4j.LoggerFactory.getLogger("neoecoae");
-    @Shadow @Final private ListCraftingInventory inventory;
-    @Shadow @Final CraftingCPUCluster cluster;
-    @Shadow private ExecutingCraftingJob job;
-    @Unique private ECOExternalCpuFastPath neoecoae$fastPath;
+    @Shadow public CraftingCpuLogic craftingLogic;
 
-    @Unique private ECOExternalCpuFastPath neoecoae$fastPath() {
-        if (neoecoae$fastPath == null) neoecoae$fastPath = new ECOExternalCpuFastPath(cluster::markDirty);
-        return neoecoae$fastPath;
-    }
-
-    @Inject(method = "executeCrafting", at = @At("HEAD"), cancellable = true)
-    private void neoecoae$dispatch(int maxPatterns, CraftingService crafting, IEnergyService energy,
-            Level level, CallbackInfoReturnable<Integer> cir) {
-        // OmniSequence owns extraction/accounting and has an ECO provider adapter.
-        // Thunderbolt's outer batch loop falls back here for ECO providers, which
-        // deliberately do not implement its foreign batch-provider interface.
-        if (net.minecraftforge.fml.ModList.get().isLoaded("molecularmanipulator")) return;
-        if (job instanceof cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuJob paused && paused.neoecoae$suspended()) { cir.setReturnValue(0); return; }
-        try {
-            int consumed = neoecoae$fastPath().execute(this, job, inventory, maxPatterns, crafting, energy, level);
-            if (consumed > 0) cir.setReturnValue(consumed);
-        } catch (RuntimeException failure) {
-            if (job instanceof cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuJob access)
-                access.neoecoae$suspended(true);
-            cluster.markDirty();
-            NEOECOAE_BATCH_LOG.error("Suspended native CPU after batch dispatch failure", failure);
-            cir.setReturnValue(0);
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "init",
+        descriptor = "(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/BlockPos;Lorg/spongepowered/asm/mixin/injection/callback/CallbackInfo;)V",
+        at = @At("RETURN"))
+    private void neoecoae$installGtoBridge(CallbackInfo ci) {
+        if (craftingLogic != null && !(craftingLogic instanceof ECOGtoCraftingCpuLogic)) {
+            craftingLogic = new ECOGtoCraftingCpuLogic((CraftingCPUCluster) (Object) this, craftingLogic);
         }
-    }
-
-    // Cosmolite adds a boolean overload and calls it directly from its crafting service.
-    @Inject(method = "trySubmitJob*", at = @At("HEAD"), cancellable = true)
-    private void neoecoae$validatePlan(
-            CallbackInfoReturnable<appeng.api.networking.crafting.ICraftingSubmitResult> cir,
-            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true)
-            appeng.api.networking.crafting.ICraftingPlan plan) {
-        if (!cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuSupport.supportsPlan(plan))
-            cir.setReturnValue(appeng.crafting.execution.CraftingSubmitResult.NO_CPU_FOUND);
-    }
-
-    @Inject(method = "tickCraftingLogic", at = @At("HEAD"))
-    private void neoecoae$refundCredit(IEnergyService energy, CraftingService crafting, CallbackInfo ci) {
-        if (neoecoae$fastPath != null) neoecoae$fastPath.refundIdleCredit(energy);
-    }
-
-    @Inject(method = "finishJob", at = @At("HEAD"))
-    private void neoecoae$releaseWorkerOutput(boolean success, CallbackInfo ci) {
-        if (!(job instanceof cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuJob access)) return;
-        var craftingJobId = access.neoecoae$link().getCraftingID();
-        if (!success) {
-            ECOCraftingJobLifecycle.cancelAndRecover(cluster.getLevel(), craftingJobId);
-            return;
-        }
-        ECOCraftingJobLifecycle.finish(cluster.getLevel(), craftingJobId, true);
-        var grid = cluster.getGrid();
-        if (grid == null) return;
-        for (var worker : grid.getMachines(cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingWorkerBlockEntity.class))
-            worker.releaseCompletedJobOutputs(craftingJobId);
-    }
-
-    @com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation(method = "executeCrafting",
-            at = @At(value = "INVOKE", target = "Lappeng/api/networking/crafting/ICraftingProvider;pushPattern(Lappeng/api/crafting/IPatternDetails;[Lappeng/api/stacks/KeyCounter;)Z"))
-    private boolean neoecoae$pushWithJob(appeng.api.networking.crafting.ICraftingProvider provider,
-            appeng.api.crafting.IPatternDetails pattern, appeng.api.stacks.KeyCounter[] inputs,
-            com.llamalad7.mixinextras.injector.wrapoperation.Operation<Boolean> original) {
-        if (provider instanceof cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingPatternBusBlockEntity bus
-                && job instanceof cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuJob access)
-            return bus.pushPattern(pattern, inputs, access.neoecoae$link().getCraftingID());
-        return original.call(provider, pattern, inputs);
-    }
-
-    @Inject(method = "readFromNBT", at = @At("TAIL"))
-    private void neoecoae$read(CompoundTag tag, CallbackInfo ci) {
-        neoecoae$fastPath().read(tag.getCompound("neoecoaeFastPath"));
-    }
-
-    @Inject(method = "writeToNBT", at = @At("TAIL"))
-    private void neoecoae$write(CompoundTag tag, CallbackInfo ci) {
-        if (neoecoae$fastPath == null) return;
-        var ledger = new CompoundTag();
-        neoecoae$fastPath.write(ledger);
-        tag.put("neoecoaeFastPath", ledger);
     }
 }

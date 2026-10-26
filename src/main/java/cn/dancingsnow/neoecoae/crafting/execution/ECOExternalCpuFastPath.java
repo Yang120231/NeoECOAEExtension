@@ -55,8 +55,8 @@ public final class ECOExternalCpuFastPath {
         var iterator = access.neoecoae$tasks().entrySet().iterator();
         while (iterator.hasNext()) {
             var task = iterator.next();
-            var progress = (ECOExternalCpuJob.Task) task.getValue();
-            long limit = progress.neoecoae$value();
+            var progress = task.getValue();
+            long limit = access.neoecoae$taskValue(progress);
             if (limit < 2) continue;
             var preview = new ListCraftingInventory(ignored -> {});
             preview.list.addAll(inventory.list);
@@ -87,7 +87,7 @@ public final class ECOExternalCpuFastPath {
                     continue;
                 }
                 try {
-                    progress.neoecoae$value(progress.neoecoae$value() - batch.craftCount());
+                    access.neoecoae$taskValue(progress, access.neoecoae$taskValue(progress) - batch.craftCount());
                     for (var output : batch.outputs()) {
                         access.neoecoae$waitingFor().insert(output.what(), output.amount(), Actionable.MODULATE);
                     }
@@ -95,7 +95,7 @@ public final class ECOExternalCpuFastPath {
                         access.neoecoae$waitingFor().insert(remainder.what(), remainder.amount(), Actionable.MODULATE);
                         access.neoecoae$addRemainderItems(remainder.amount(), remainder.what().getType());
                     }
-                    if (progress.neoecoae$value() <= 0) iterator.remove();
+                    if (access.neoecoae$taskValue(progress) <= 0) iterator.remove();
                     markDirty.run();
                     return 1;
                 } catch (RuntimeException failure) {

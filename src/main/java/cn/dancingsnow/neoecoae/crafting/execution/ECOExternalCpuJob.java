@@ -16,6 +16,8 @@ public interface ECOExternalCpuJob {
     boolean neoecoae$suspended();
     void neoecoae$suspended(boolean value);
     void neoecoae$addRemainderItems(long amount, AEKeyType type);
+    default long neoecoae$taskValue(Object task) { return ((Task) task).neoecoae$value(); }
+    default void neoecoae$taskValue(Object task, long value) { ((Task) task).neoecoae$value(value); }
     interface Task {
         long neoecoae$value();
         void neoecoae$value(long value);

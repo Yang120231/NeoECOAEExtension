@@ -117,6 +117,8 @@ public final class ECOPlanningResultRegistry {
     }
 
     public static @Nullable ECOPlanningResult find(ICraftingPlan plan) {
+        if (plan instanceof cn.dancingsnow.neoecoae.compat.gto.ECOGtoPlanOrigin origin
+                && origin.neoecoae$isNativeGtoPlan()) return null;
         Signature signature = PlanIdentity.of(plan);
         if (signature == null) return null;
         synchronized (RESULTS) {
@@ -129,6 +131,8 @@ public final class ECOPlanningResultRegistry {
     /** Exact-object provenance, retained even when a diagnostic plan is not eligible for execution metadata. */
     public static @Nullable ECOPlanningResult findExact(@Nullable ICraftingPlan plan) {
         if (plan == null) return null;
+        if (plan instanceof cn.dancingsnow.neoecoae.compat.gto.ECOGtoPlanOrigin origin
+                && origin.neoecoae$isNativeGtoPlan()) return null;
         synchronized (RESULTS) {
             removeExpired(System.nanoTime());
             ExactEntry entry = EXACT_RESULTS.get(plan);

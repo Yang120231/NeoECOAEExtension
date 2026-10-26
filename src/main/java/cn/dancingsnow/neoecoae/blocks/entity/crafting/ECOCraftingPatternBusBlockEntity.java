@@ -118,7 +118,8 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
 
     @Override
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder) {
-        return pushPattern(patternDetails, inputHolder, null);
+        return pushPattern(patternDetails, inputHolder,
+                cn.dancingsnow.neoecoae.compat.gto.ECOGtoCraftingCpuLogic.currentJob());
     }
 
     @Override
