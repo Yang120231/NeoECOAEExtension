@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   publish:
-    if: startsWith(github.event.release.tag_name, '20.')
+    if: startsWith(github.event.release.tag_name, '20.') && contains(github.event.release.tag_name, '-gto.') && github.event.release.prerelease
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -22,7 +22,12 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
-      - name: Setup JDK 17
+      - name: Setup JDK 21 toolchain
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Setup JDK 17 for Gradle
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -53,17 +58,22 @@ jobs:
               output.write(f'version={version}\nnotes={notes.as_posix()}\n')
           PY
       - name: Restore Build Dependencies
-        run: python3 tools/compat/bootstrap.py
+        run: python3 tools/compat/bootstrap.py --gto
       - name: Build with Gradle
         env:
-          # ModDevGradle must compile the Java 17 Minecraft artifacts on CI too.
+          # Gradle runs on Java 17; GTO dependencies require the Java 21 toolchain.
           CI: 'false'
         run: >-
-          bash ./gradlew build
+          bash ./gradlew jar sourcesJar gtoCompatibilityTest
           --no-daemon --no-parallel --max-workers=2 --console=plain
           '-Dorg.gradle.jvmargs=-Xmx4G -Dfile.encoding=UTF-8'
       - name: Verify Release Jar
         run: python3 tools/compat/check_artifacts.py --release-only
+      - name: Hash Release Jars
+        working-directory: build/libs
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: sha256sum "neoecoae-$RELEASE_VERSION.jar" "neoecoae-$RELEASE_VERSION-sources.jar" > SHA256SUMS.txt
       - name: Upload a Build Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -71,6 +81,7 @@ jobs:
           path: |
             build/libs/neoecoae-${{ steps.release.outputs.version }}.jar
             build/libs/neoecoae-${{ steps.release.outputs.version }}-sources.jar
+            build/libs/SHA256SUMS.txt
           if-no-files-found: error
       - name: Upload Verification Reports
         uses: actions/upload-artifact@v4
@@ -80,6 +91,8 @@ jobs:
           path: |
             build/reports/tests/test/
             build/test-results/test/
+            build/reports/tests/gtoCompatibilityTest/
+            build/test-results/gtoCompatibilityTest/
             build/compat-build-evidence/
           if-no-files-found: ignore
       - name: Upload pre-release jar to GitHub Release
@@ -91,7 +104,8 @@ jobs:
         run: >-
           gh release upload "$RELEASE_TAG"
           "build/libs/neoecoae-$RELEASE_VERSION.jar"
-          "build/libs/neoecoae-$RELEASE_VERSION-sources.jar" --clobber
+          "build/libs/neoecoae-$RELEASE_VERSION-sources.jar"
+          "build/libs/SHA256SUMS.txt" --clobber
       - name: Publish Mod
         if: '!github.event.release.prerelease'
         uses: Kir-Antipov/mc-publish@v3.3.1

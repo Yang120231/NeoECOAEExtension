@@ -329,6 +329,8 @@ sourceSets {
         java.srcDir 'src/gtoTest/java'
         java.srcDir 'src/test/java'
         java.include 'cn/dancingsnow/neoecoae/compat/gto/**'
+        java.include 'cn/dancingsnow/neoecoae/compat/ae2/ECORemoteMachineUISideTest.java'
+        java.include 'cn/dancingsnow/neoecoae/network/ECONetworkVersionTest.java'
         java.include 'cn/dancingsnow/neoecoae/util/InventoryTestBootstrap.java'
         java.include 'cn/dancingsnow/neoecoae/util/LargeWorkstationTestKeys.java'
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath

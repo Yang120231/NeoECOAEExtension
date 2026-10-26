@@ -10,7 +10,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def restore(root=ROOT):
+def restore(root=ROOT, gto=False):
     lock = json.loads((root / "tools/compat/build-dependencies.json").read_text())
     generated = root / "porting/dependencies.lock.json"
     if generated.exists() and json.loads(generated.read_text()) != lock:
@@ -42,6 +42,9 @@ def restore(root=ROOT):
     for row in lock["artifacts"]:
         if "embedded" in row:
             obtain(row)
+    if gto:
+        gto_lock = json.loads((root / "docs/compat/gto-dependencies.json").read_text())
+        obtain(gto_lock["ae2"])
     porting = root / "porting"
     porting.mkdir(exist_ok=True)
     generated.write_text(json.dumps(lock, indent=2) + "\n")
@@ -55,5 +58,7 @@ def restore(root=ROOT):
 
 
 if __name__ == "__main__":
-    argparse.ArgumentParser(description=__doc__).parse_args()
-    restore()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--gto', action='store_true', help='Also restore the hash-pinned GTO AE2 fork')
+    args = parser.parse_args()
+    restore(gto=args.gto)
