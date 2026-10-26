@@ -69,6 +69,9 @@ public final class GTRecipeProfiles {
         if (profile == Profile.GTL && !loaded.test("gtlcore")) {
             throw new IllegalStateException("NeoECOAE GTL recipe profile requires both gtceu and gtlcore.");
         }
+        if (loaded.test("gtocore")) {
+            return List.of(profile.name().toLowerCase(Locale.ROOT), "gt_gto");
+        }
         return List.of(profile.name().toLowerCase(Locale.ROOT),
             "gt_" + schema.get().name().toLowerCase(Locale.ROOT));
     }

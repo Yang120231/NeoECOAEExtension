@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / "scripts/gt-recipe-plan.json"
 OUTPUT = ROOT / "src/main/resources/recipe_profiles"
-PACKS = ("gtm", "gtl", "gt_legacy", "gt_modern")
+PACKS = ("gtm", "gtl", "gt_legacy", "gt_modern", "gt_gto")
 
 
 def read_json(path: Path):
@@ -171,6 +171,13 @@ def compile_packs() -> dict[str, dict[str, dict]]:
             path = recipe_path(f"neoecoae:compat/gt/{directory}/{row['key'].lower()}_{result_name}")
             for schema in ("legacy", "modern"):
                 packs[f"gt_{schema}"][path] = gt_recipe(row, schema == "modern")
+    # GTO's GTM fork registers immutable definitions with native builders instead of recipe JSON serializers.
+    native = []
+    for section, directory in (("gt_bootstrap_recipes", "bootstrap"), ("ore_processing_recipes", "ore_processing")):
+        for row in plan[section]:
+            result_name = row["item_output"]["item"].split(":", 1)[1]
+            native.append({"id": f"neoecoae:compat/gt/{directory}/{row['key'].lower()}_{result_name}", **row})
+    packs["gt_gto"]["native_recipes.json"] = {"recipes": native}
     return packs
 
 

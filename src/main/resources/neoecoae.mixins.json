@@ -37,10 +37,13 @@
     "ldlib.AsyncThreadDataMixin",
     "minecraft.LightningBoltMixin",
     "minecraft.RecipeManagerAccessor",
+    "minecraft.GTORecipeManagerMixin",
+    "minecraft.GTORecipePacketMixin",
     "ae2.menu.CraftingStatusSuspensionMixin",
     "ae2.storage.DigitalSingularityEnergyServiceMixin"
   ],
   "client": [
+    "client.emi.GTOEmiPluginsMixin",
     "client.jei.RecipeLayoutMixin",
     "client.jei.RecipeLayoutBuilderMixin",
     "client.ldlib.UIFactoryMixin",
