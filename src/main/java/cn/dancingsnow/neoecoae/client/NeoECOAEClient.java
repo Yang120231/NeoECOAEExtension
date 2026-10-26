@@ -42,12 +42,15 @@ import cn.dancingsnow.neoecoae.network.ECONetwork;
 @EventBusSubscriber(modid =  NeoECOAE.MOD_ID, value = Dist.CLIENT)
 public class NeoECOAEClient {
     public static void initialize(IEventBus modBus) {
-        if (!net.minecraftforge.fml.loading.FMLEnvironment.production && Boolean.getBoolean("neoecoae.clientSmoke")) {
+        if ((!net.minecraftforge.fml.loading.FMLEnvironment.production && Boolean.getBoolean("neoecoae.clientSmoke"))
+                || Boolean.getBoolean("neoecoae.gtoAcceptance")) {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(
                 cn.dancingsnow.neoecoae.client.diagnostics.ClientStartupProbe::tick);
-            modBus.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST, false,
-                net.minecraftforge.client.event.ModelEvent.ModifyBakingResult.class,
-                cn.dancingsnow.neoecoae.client.diagnostics.GtlModelWrapperClientProbe::wrap);
+            if (!net.minecraftforge.fml.loading.FMLEnvironment.production) {
+                modBus.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST, false,
+                    net.minecraftforge.client.event.ModelEvent.ModifyBakingResult.class,
+                    cn.dancingsnow.neoecoae.client.diagnostics.GtlModelWrapperClientProbe::wrap);
+            }
         }
         NEExtraModels.register();
         modBus.addListener(NeoECOAEClient::onClientSetup);

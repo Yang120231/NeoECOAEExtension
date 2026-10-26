@@ -71,6 +71,22 @@ public final class ClientStartupProbe {
             LOG.info("CLIENT_SMOKE addons={}", java.util.List.of("advanced_ae", "expatternprovider", "extendedae_plus", "ae2lt")
                 .stream().filter(net.minecraftforge.fml.ModList.get()::isLoaded).toList());
             if (server != null) server.execute(() -> {
+                if (Boolean.getBoolean("neoecoae.gtoAcceptance")) {
+                    var recipes = server.getRecipeManager();
+                    long own = recipes.getRecipeIds().filter(cn.dancingsnow.neoecoae.compat.gto.ECOGtoRecipes::owns).count();
+                    long small = recipes.getRecipes().stream().filter(cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe.class::isInstance).count();
+                    var large = cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipes.getAll(server.overworld());
+                    LOG.info("GTO_ACCEPTANCE server recipes: eco={}, integrated={}, large={}, nativeGT={}",
+                        own, small, large.size(), cn.dancingsnow.neoecoae.compat.gto.ECOGtoNativeRecipes.registeredCount());
+                    if (own == 0 || small == 0 || large.isEmpty()) throw new IllegalStateException("GTO ECO recipe catalogue is empty");
+                    cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush.verifyContract();
+                    var cpu = new appeng.me.cluster.implementations.CraftingCPUCluster(
+                        net.minecraft.core.BlockPos.ZERO, net.minecraft.core.BlockPos.ZERO);
+                    if (!(cpu.craftingLogic instanceof cn.dancingsnow.neoecoae.compat.gto.ECOGtoCraftingCpuLogic)) {
+                        throw new IllegalStateException("GTO CPU bridge did not attach");
+                    }
+                    LOG.info("GTO_ACCEPTANCE provider callback and native CPU ledger contracts verified");
+                }
                 for (String recipe : java.util.List.of("reaction_chamber/energized_fluix_crystal", "reaction_chamber/energized_crystal",
                         "circuit_cutter/superconducting_processor_print", "compat/ae2lt/eco_lightning_cell_16m",
                         "compat/ae2lt/eco_lightning_cell_64m", "compat/ae2lt/eco_lightning_cell_256m")) {
@@ -78,8 +94,16 @@ public final class ClientStartupProbe {
                     LOG.info("CLIENT_SMOKE recipe {} loaded={}", id, server.getRecipeManager().byKey(id).isPresent());
                 }
             });
+            if (Boolean.getBoolean("neoecoae.gtoAcceptance")) {
+                long own = client.level.getRecipeManager().getRecipeIds()
+                    .filter(cn.dancingsnow.neoecoae.compat.gto.ECOGtoRecipes::owns).count();
+                LOG.info("GTO_ACCEPTANCE client recipes: eco={}", own);
+            }
             Screenshot.grab(client.gameDirectory, "neoecoae-startup-world.png", client.getMainRenderTarget(),
                 message -> LOG.info("CLIENT_SMOKE screenshot: {}", message.getString()));
+        }
+        if (captured && Boolean.getBoolean("neoecoae.gtoAcceptance")) {
+            GTOCompatibilityClientProbe.tick(client);
         }
         if (captured && Boolean.getBoolean("neoecoae.clientSmokeEnergy")) {
             ManagedEnergyClientProbe.tick(client);
