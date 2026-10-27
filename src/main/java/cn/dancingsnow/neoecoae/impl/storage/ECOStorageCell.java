@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 public class ECOStorageCell implements IECOStorageMigrationCell,
         cn.dancingsnow.neoecoae.api.storage.ECOBigIntegerStorage,
-        cn.dancingsnow.neoecoae.crafting.display.terminal.ExactAmountSource {
+        cn.dancingsnow.neoecoae.crafting.display.terminal.ExactAmountSource, StorageListingVersion {
     private static final BigInteger MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
     private static final Logger LOGGER = LoggerFactory.getLogger(NeoECOAE.MOD_ID);
 
@@ -69,6 +69,29 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     public boolean storageWritable() { return storageAccess.writable(); }
     @Override public boolean isInfiniteStorageEligible() { return storageWritable(); }
     public long contentRevision() { return storageData().contentRevision(); }
+
+    @Override
+    public long neoecoae$listingVersion() {
+        // Subclasses whose listing depends on other state must opt in by overriding this.
+        return getClass() == ECOStorageCell.class ? contentListingVersion() : UNKNOWN;
+    }
+
+    /**
+     * GTO's StorageService re-lists a mount only when this non-negative value changes; -1 means unknown and
+     * is re-listed every refresh.
+     */
+    @Override
+    public long getChangeVersion() {
+        long version = neoecoae$listingVersion();
+        return version < 0 ? -1L : version;
+    }
+
+    /** For listings that are exactly {@link #getCellItems()} while the cell may be read. */
+    protected final long contentListingVersion() {
+        if (cn.dancingsnow.neoecoae.impl.storage.infinite.ECOInfiniteStorageMember.isSealed(cellStack)
+                || !storageData().canRead() || !storageAccess.claimed() && storageAccess.session() != null) return -1L;
+        return storageData().amounts().contentRevision();
+    }
     public long getStoredItemCount() {
         return storageAccess.session() == null && ECOCellReference.id(cellStack) != null
             ? NEItemData.read(cellStack).getCompound(ECOCellReference.TAG).getLong("amount")
