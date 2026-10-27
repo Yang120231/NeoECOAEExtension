@@ -47,6 +47,12 @@ public final class ECOGtoCraftingCpuLogic extends CraftingCpuLogic {
 
     public static UUID currentJob() { return ACTIVE_JOB.get(); }
 
+    public static CraftingCpuLogic unwrap(CraftingCpuLogic logic) {
+        return logic instanceof ECOGtoCraftingCpuLogic wrapper ? wrapper.nativeLogic() : logic;
+    }
+
+    public CraftingCpuLogic nativeLogic() { return delegate; }
+
     public ECOGtoCraftingCpuLogic(CraftingCPUCluster cluster, CraftingCpuLogic delegate) {
         super(cluster);
         this.delegate = delegate;

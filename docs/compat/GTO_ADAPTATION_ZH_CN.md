@@ -78,3 +78,38 @@ GTO 的 RecipeManager 在 HEAD 接管加载和同步，缓存命中时也会提�
 完整旧单测套件尚未迁移：直接创建已被 GTO 删除的原版 CraftingCalculation、
 ExecutingCraftingJob 等类的测试仍有编译错误。14 项专题通过不代表完整套件通过。
 本轮加工验证不等于全部大型订单、CPU 持久化、所有可选附属和独立专服均已验收。
+
+## Dev25 合成确认注入兼容（2026-10-27）
+
+核对 `0.6.0.25` 实例实际安装的 `appliedenergistics2-forge-1.20.1-15.2610.40.jar`，
+SHA-256 为 `b0d97544e618d73ec0c8d8e54df36351bf7f98f7e1984c6455d81658b6320b5c`。
+GTO AE2 参考源码已更新到 `974a922`，GTOCore-Main 更新到 `2cd0d07`；
+编译依赖仍固定在 `.31`，main 业务移植基线保持 `porting/source-lock.json` 的提交。
+
+`.31` 在 `startJob()` 中调用 `ICraftingService.submitJob`；`.40` 将该调用移入
+`startJob(boolean)`，无参入口仅转调布尔重载。旧的裸方法名选择器只选择首个重载，
+导致 `CraftConfirmMenuMixin` 的 `neoecoae$confirmedSubmission` 必需注入组命中 0 次。
+提交包装器改为 `startJob*`，继续保留 `min = 1, max = 1`，确保实际提交恰好包装一次，
+并完整保留 ECO 计划归属、循环执行上下文及原生提交参数。
+
+新增回归检查实际编译依赖、委托重载布局及可选的实例 AE2 JAR，均使用 Mixin 自身的方法选择器。
+外部 JAR 通过环境变量 `NEOECOAE_GTO_AE2_JAR` 指定，并计入 Gradle 测试输入。
+修复前，重载布局和实例 `.40` 两项检查均复现命中 0 次；修复后，
+`gtoCompatibilityTest` 共 23 项全部通过（无跳过），`jar` / `reobfJar` 成功。
+
+此次未启动 Dev25 客户端、进入世界或执行真实合成确认交互；这项修复不代表完整 Dev25 兼容验收。
+
+## Dev25 合成 CPU 界面桥接（2026-10-27）
+
+实例 GTO Core 26.10.18 的合成 CPU 界面在读取暂停状态、设置暂停状态、同步派发结果和查询
+待处理位置时，均将 CPU 逻辑直接转换为 GTO 原生实现。NeoECOAE 的 CPU 包装器不属于该类型，
+打开合成状态界面时因此触发 ClassCastException。
+
+针对这四处字段读取返回原生委托，保持原有 GTO 暂停、结果同步和位置查询逻辑，未关闭相关功能。
+注入要求恰好命中四处；实例 JAR 的字节码回归检查以及委托和合并后方法名检查均已通过。
+隔离工作树使用实例 AE2 15.2610.40 与 GTO Core 26.10.18 进行 26 项 GTO 专项测试，全部通过；
+jar 和 reobfJar 完成。隔离包与先前实例 JAR 比对，变化仅涉及本次 CPU 桥接及其 Mixin 配置。
+
+修复包 SHA-256：DEB3345649CD00E9C273E68D30305517280DF26B3D1F813C017245E9EBAADF9C。
+已安装到 0.6.0.25 实例的 mods，原 JAR 重命名为 .jar.disabled 备份。
+本次未启动游戏、进入存档或实际操作暂停按钮和合成状态界面，运行时验收仍需进行。

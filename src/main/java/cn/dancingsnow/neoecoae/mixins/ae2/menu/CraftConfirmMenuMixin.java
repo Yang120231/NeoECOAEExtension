@@ -811,10 +811,11 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
      * Bind only the synchronous submission represented by this confirmation menu to its complete ECO plan,
      * execution schedule and independent cycle expectation. The latter remains true when schedule propagation
      * fails, allowing the executor to stop instead of silently treating a solved cycle as a vanilla DAG.
+     * GTO .40 moves submitJob into startJob(boolean); select all overloads while requiring exactly one call.
      */
     @Group(name = "neoecoae$confirmedSubmission", min = 1, max = 1)
     @WrapOperation(
-        method = "startJob",
+        method = "startJob*",
         at = @At(
             value = "INVOKE",
             target = "Lappeng/api/networking/crafting/ICraftingService;submitJob("

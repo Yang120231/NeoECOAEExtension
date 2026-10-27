@@ -12,6 +12,7 @@ public final class CraftingMenuPlanningMixinPlugin implements IMixinConfigPlugin
     @Override public void onLoad(String mixinPackage) {
         InjectionInfo.register(CraftingPlanningInjectionInfo.class);
         InjectionInfo.register(GtoPatternObservationInjectionInfo.class);
+        InjectionInfo.register(GtoCpuLogicInjectionInfo.class);
     }
     @Override public String getRefMapperConfig() { return null; }
     @Override public boolean shouldApplyMixin(String target, String mixin) { return true; }

@@ -1,0 +1,20 @@
+package cn.dancingsnow.neoecoae.mixins.ae2.menu;
+
+import appeng.crafting.execution.CraftingCpuLogic;
+import appeng.me.cluster.implementations.CraftingCPUCluster;
+import appeng.menu.me.crafting.CraftingCPUMenu;
+import cn.dancingsnow.neoecoae.compat.gto.ECOGtoCraftingCpuLogic;
+import cn.dancingsnow.neoecoae.platform.mixin.RouteGtoCpuLogic;
+import org.objectweb.asm.Opcodes;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+
+@Mixin(value = CraftingCPUMenu.class, remap = false, priority = 500)
+public abstract class GtoCraftingCpuMenuMixin {
+    @RouteGtoCpuLogic(at = @At(value = "FIELD", opcode = Opcodes.GETFIELD,
+        target = "Lappeng/me/cluster/implementations/CraftingCPUCluster;craftingLogic:Lappeng/crafting/execution/CraftingCpuLogic;"),
+        require = 4, allow = 4)
+    private CraftingCpuLogic neoecoae$gtoNativeCpu(CraftingCPUCluster cluster) {
+        return ECOGtoCraftingCpuLogic.unwrap(cluster.craftingLogic);
+    }
+}

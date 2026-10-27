@@ -342,6 +342,12 @@ configurations.gtoCompatibilityTestImplementation.extendsFrom configurations.tes
 configurations.gtoCompatibilityTestRuntimeOnly.extendsFrom configurations.testRuntimeOnly
 tasks.register('gtoCompatibilityTest', Test) {
     description = 'Checks GTO callback accounting, recursive storage listing and inventory bridges.'
+    def installedAe2Jar = providers.environmentVariable('NEOECOAE_GTO_AE2_JAR').getOrElse('')
+    inputs.property('installedAe2Jar', installedAe2Jar)
+    if (!installedAe2Jar.isBlank()) inputs.file(installedAe2Jar)
+    def installedGtoCoreJar = providers.environmentVariable('NEOECOAE_GTO_CORE_JAR').getOrElse('')
+    inputs.property('installedGtoCoreJar', installedGtoCoreJar)
+    if (!installedGtoCoreJar.isBlank()) inputs.file(installedGtoCoreJar)
     testClassesDirs = sourceSets.gtoCompatibilityTest.output.classesDirs
     classpath = sourceSets.gtoCompatibilityTest.runtimeClasspath
     useJUnitPlatform()
