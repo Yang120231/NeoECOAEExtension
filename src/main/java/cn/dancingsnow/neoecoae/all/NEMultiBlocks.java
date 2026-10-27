@@ -28,6 +28,14 @@ import java.util.List;
 public class NEMultiBlocks {
     public static final List<MultiBlockDefinition> DEFINITIONS = new ArrayList<>();
 
+    public static List<MultiBlockDefinition> visibleDefinitions() {
+        return DEFINITIONS.stream().filter(definition ->
+            !cn.dancingsnow.neoecoae.compat.gto.ECOGtoWorkstations.active()
+                || !cn.dancingsnow.neoecoae.compat.gto.ECOGtoWorkstations.retiredItem(
+                    net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(definition.getOwner().value())))
+            .toList();
+    }
+
     public static final MultiBlockDefinition LARGE_INTEGRATED_WORKING_STATION = createLargeIntegratedWorkingStation();
 
     public static final MultiBlockDefinition STORAGE_SYSTEM_L4 = storageSystem(

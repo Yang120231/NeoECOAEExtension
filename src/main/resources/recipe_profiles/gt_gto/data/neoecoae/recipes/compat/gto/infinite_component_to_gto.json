@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "neoecoae:eco_infinite_cell_component"
+    }
+  ],
+  "result": {
+    "item": "gtocore:infinite_cell_component",
+    "count": 1
+  }
+}

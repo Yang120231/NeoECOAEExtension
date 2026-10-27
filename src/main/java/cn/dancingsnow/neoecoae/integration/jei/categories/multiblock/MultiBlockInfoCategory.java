@@ -61,12 +61,12 @@ public class MultiBlockInfoCategory extends ModularUIRecipeCategory<MultiBlockIn
     public static void registerRecipes(IRecipeRegistration registration) {
         registration.addRecipes(
             NeoECOAEJeiPlugin.MULTIBLOCK_TYPE,
-            NEMultiBlocks.DEFINITIONS.stream().map(MultiBlockInfoWrapper::new).toList()
+            NEMultiBlocks.visibleDefinitions().stream().map(MultiBlockInfoWrapper::new).toList()
         );
     }
 
     public static void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
-        NEMultiBlocks.DEFINITIONS.stream().map(it -> it.getOwner().value())
+        NEMultiBlocks.visibleDefinitions().stream().map(it -> it.getOwner().value())
             .forEach(it -> registration.addRecipeCatalyst(it, NeoECOAEJeiPlugin.MULTIBLOCK_TYPE));
     }
 }

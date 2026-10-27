@@ -4,6 +4,7 @@ import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEBlocks;
 import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
+import cn.dancingsnow.neoecoae.compat.gto.ECOGtoWorkstations;
 import cn.dancingsnow.neoecoae.integration.emi.recipe.CoolingEmiRecipe;
 import cn.dancingsnow.neoecoae.integration.emi.recipe.IntegrationWorkingStationEmiRecipe;
 import cn.dancingsnow.neoecoae.integration.emi.recipe.MultiblockEmiRecipe;
@@ -43,6 +44,9 @@ public class NeoECOAEEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
+        if (ECOGtoWorkstations.active()) {
+            registry.removeEmiStacks(stack -> ECOGtoWorkstations.retiredItem(stack.getId()));
+        }
         // ECO's planner/report and graph screens draw AE keys directly on a canvas rather than in
         // vanilla slots. Expose those custom hit regions so EMI's recipe and usage actions work there.
         registry.addStackProvider(ECOCraftConfirmScreen.class,
@@ -62,25 +66,27 @@ public class NeoECOAEEmiPlugin implements EmiPlugin {
         registry.addWorkstation(MULTIBLOCK, EmiStack.of(NEBlocks.COMPUTATION_SYSTEM_L6));
         registry.addWorkstation(MULTIBLOCK, EmiStack.of(NEBlocks.COMPUTATION_SYSTEM_L9));
 
-        for (MultiBlockDefinition definition : NEMultiBlocks.DEFINITIONS) {
+        for (MultiBlockDefinition definition : NEMultiBlocks.visibleDefinitions()) {
             registry.addRecipe(new MultiblockEmiRecipe(definition));
         }
 
-        // integrated working station
-        registry.addCategory(INTEGRATED_WORKING_STATION);
-        registry.addWorkstation(INTEGRATED_WORKING_STATION, EmiStack.of(NEBlocks.INTEGRATED_WORKING_STATION));
-        for (IntegratedWorkingStationRecipe holder : registry.getRecipeManager().getAllRecipesFor(NERecipeTypes.INTEGRATED_WORKING_STATION.get())) {
-            registry.addRecipe(new IntegrationWorkingStationEmiRecipe(holder));
-        }
+        if (!ECOGtoWorkstations.active()) {
+            // integrated working station
+            registry.addCategory(INTEGRATED_WORKING_STATION);
+            registry.addWorkstation(INTEGRATED_WORKING_STATION, EmiStack.of(NEBlocks.INTEGRATED_WORKING_STATION));
+            for (IntegratedWorkingStationRecipe holder : registry.getRecipeManager().getAllRecipesFor(NERecipeTypes.INTEGRATED_WORKING_STATION.get())) {
+                registry.addRecipe(new IntegrationWorkingStationEmiRecipe(holder));
+            }
 
-        // large integrated working station
-        registry.addCategory(LARGE_WORKING_STATION);
-        registry.addWorkstation(LARGE_WORKING_STATION, EmiStack.of(NEBlocks.INTEGRATED_WORKING_STATION));
-        registry.addWorkstation(LARGE_WORKING_STATION, EmiStack.of(NEBlocks.LARGE_INTEGRATED_WORKING_STATION_INTERFACE));
-        var level = Minecraft.getInstance().level;
-        if (level != null) {
-            for (var recipe : LargeWorkstationRecipes.getAll(registry.getRecipeManager(), level.registryAccess())) {
-                registry.addRecipe(new IntegrationWorkingStationEmiRecipe(recipe));
+            // large integrated working station
+            registry.addCategory(LARGE_WORKING_STATION);
+            registry.addWorkstation(LARGE_WORKING_STATION, EmiStack.of(NEBlocks.INTEGRATED_WORKING_STATION));
+            registry.addWorkstation(LARGE_WORKING_STATION, EmiStack.of(NEBlocks.LARGE_INTEGRATED_WORKING_STATION_INTERFACE));
+            var level = Minecraft.getInstance().level;
+            if (level != null) {
+                for (var recipe : LargeWorkstationRecipes.getAll(registry.getRecipeManager(), level.registryAccess())) {
+                    registry.addRecipe(new IntegrationWorkingStationEmiRecipe(recipe));
+                }
             }
         }
 

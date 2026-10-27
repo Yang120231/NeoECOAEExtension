@@ -14,6 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN = ROOT / "scripts/gt-recipe-plan.json"
+GTO_PLAN = ROOT / "scripts/gto-workstation-plan.json"
 OUTPUT = ROOT / "src/main/resources/recipe_profiles"
 PACKS = ("gtm", "gtl", "gt_legacy", "gt_modern", "gt_gto")
 
@@ -177,7 +178,50 @@ def compile_packs() -> dict[str, dict[str, dict]]:
         for row in plan[section]:
             result_name = row["item_output"]["item"].split(":", 1)[1]
             native.append({"id": f"neoecoae:compat/gt/{directory}/{row['key'].lower()}_{result_name}", **row})
-    packs["gt_gto"]["native_recipes.json"] = {"recipes": native}
+    gto = packs["gt_gto"]
+    progression = read_json(GTO_PLAN)["recipes"]
+    assert len(progression) == 26
+    retired_types = {"neoecoae:integrated_working_station", "neoecoae:large_integrated_working_station"}
+
+    def retired_item(item: str) -> bool:
+        return item.startswith("neoecoae:integrated_working_station") or item.startswith(
+            "neoecoae:large_integrated_working_station_")
+
+    # Replace the entire workstation catalogue, including conditional addon resources. Do not
+    # introduce Omni/MEGA recipes or dependencies into GTO. Other GT profiles remain unchanged.
+    for recipe_id, original in originals.items():
+        result = original.get("result", {})
+        output = original.get("itemOutput", {})
+        if (original.get("type") in retired_types
+                or retired_item(result.get("item", "")) or retired_item(output.get("item", ""))):
+            gto[recipe_path(recipe_id)] = {"type": "forge:conditional", "recipes": []}
+    for row in plan["module_recipes"]:
+        card = row["item_output"]["item"].split("integrated_working_station_module_", 1)[1]
+        gto[recipe_path(f"neoecoae:integrated_working_station/module_{card}")] = {
+            "type": "forge:conditional", "recipes": []}
+    covered = {row["replaces"] for row in progression}
+    expected = {recipe_id for recipe_id, original in originals.items()
+                if original.get("type") == "neoecoae:integrated_working_station"
+                and not retired_item(original.get("itemOutput", {}).get("item", ""))
+                and not recipe_id.startswith("neoecoae:compat/megacells/")
+                and "omni_cell" not in recipe_id and "spent_nuclear_waste_cell" not in recipe_id}
+    assert covered == expected, f"GTO progression coverage changed: {covered ^ expected}"
+    replacement_ids = {row["id"] for row in progression}
+    native = [row for row in native if row["id"] not in replacement_ids
+              and not retired_item(row["item_output"]["item"])]
+    native.extend({key: value for key, value in row.items() if key != "replaces"} for row in progression)
+    assert len({row["id"] for row in native}) == len(native), "Duplicate GTO native recipe IDs"
+    gto["native_recipes.json"] = {"recipes": native}
+    gto["data/neoecoae/tags/items/infinite_cell_components.json"] = {
+        "replace": False,
+        "values": ["neoecoae:eco_infinite_cell_component", "gtocore:infinite_cell_component"],
+    }
+    for source, target in (("gtocore:infinite_cell_component", "neoecoae:eco_infinite_cell_component"),
+                           ("neoecoae:eco_infinite_cell_component", "gtocore:infinite_cell_component")):
+        name = "to_eco" if target.startswith("neoecoae:") else "to_gto"
+        gto[recipe_path(f"neoecoae:compat/gto/infinite_component_{name}")] = {
+            "type": "minecraft:crafting_shapeless",
+            "ingredients": [{"item": source}], "result": {"item": target, "count": 1}}
     return packs
 
 
@@ -200,6 +244,8 @@ def main() -> int:
                 if not path.is_file() or path.read_text(encoding="utf-8") != text:
                     failures.append(f"Out of date: {name}/{relative}")
             else:
+                if path.is_file() and path.read_text(encoding="utf-8") == text:
+                    continue
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text, encoding="utf-8", newline="\n")
         print(f"{name}: {len(files) - 1} resources")

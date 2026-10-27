@@ -44,6 +44,7 @@ public final class ECOGtoRecipes {
         input.forEach((id, json) -> {
             try {
                 var object = GsonHelper.convertToJsonObject(json, "top element");
+                if (ECOGtoWorkstations.retiredRecipe(object)) return;
                 if (!CraftingHelper.processConditions(object, "conditions", context)) return;
                 var recipe = RecipeManager.fromJson(id, object, context);
                 if (recipe != null) result.put(id, recipe);
