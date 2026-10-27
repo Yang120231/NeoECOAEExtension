@@ -24,8 +24,39 @@ import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.points.BeforeFieldAccess;
+import org.spongepowered.asm.util.Annotations;
 
 class GtoCraftingCpuMenuCompatibilityTest {
+    @Test
+    void bridgePassesMixinFieldInjectionPriorityCheckForInstalledGto() throws Exception {
+        String path = System.getenv("NEOECOAE_GTO_CORE_JAR");
+        assumeTrue(path != null && !path.isBlank(), "Set NEOECOAE_GTO_CORE_JAR to the installed GTO Core JAR");
+        var bridge = new ClassNode();
+        try (var input = GtoCraftingCpuMenuMixin.class.getResourceAsStream("GtoCraftingCpuMenuMixin.class")) {
+            assertNotNull(input);
+            new ClassReader(input).accept(bridge, ClassReader.SKIP_CODE);
+        }
+        var upstream = new ClassNode();
+        try (var jar = new JarFile(Path.of(path).toFile());
+                var input = jar.getInputStream(jar.getJarEntry("com/gtocore/mixin/ae2/menu/CraftingCPUMenuMixin.class"))) {
+            new ClassReader(input).accept(upstream, ClassReader.SKIP_CODE);
+        }
+        int defaultPriority = (Integer) Mixin.class.getDeclaredMethod("priority").getDefaultValue();
+        var bridgeMixin = Annotations.getInvisible(bridge, Mixin.class);
+        var upstreamMixin = Annotations.getInvisible(upstream, Mixin.class);
+        assertNotNull(bridgeMixin);
+        assertNotNull(upstreamMixin);
+        int bridgePriority = Annotations.getValue(bridgeMixin, "priority", defaultPriority);
+        int upstreamPriority = Annotations.getValue(upstreamMixin, "priority", defaultPriority);
+        // Exercise Mixin's actual FIELD priority gate, which bytecode target counting alone does not cover.
+        // Skip the constructor's launcher-service lookup; checkPriority itself remains Mixin's real method.
+        var fieldPoint = mock(BeforeFieldAccess.class, org.mockito.Mockito.CALLS_REAL_METHODS);
+        assertTrue(fieldPoint.checkPriority(upstreamPriority, bridgePriority),
+            () -> "FIELD injection priority " + bridgePriority + " cannot target GTO methods merged at " + upstreamPriority);
+    }
+
     @Test
     void unwrapPreservesTheNativeCpuAndOtherLogic() {
         var delegate = mock(CraftingCpuLogic.class);

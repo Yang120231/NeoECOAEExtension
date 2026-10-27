@@ -9,7 +9,9 @@ import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(value = CraftingCPUMenu.class, remap = false, priority = 500)
+// All mixin methods are merged before injection preparation. This bridge must outrank
+// GTO's priority-1000 mixin to inject into the four methods that it adds to the menu.
+@Mixin(value = CraftingCPUMenu.class, remap = false, priority = 1100)
 public abstract class GtoCraftingCpuMenuMixin {
     @RouteGtoCpuLogic(at = @At(value = "FIELD", opcode = Opcodes.GETFIELD,
         target = "Lappeng/me/cluster/implementations/CraftingCPUCluster;craftingLogic:Lappeng/crafting/execution/CraftingCpuLogic;"),
