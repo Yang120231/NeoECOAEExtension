@@ -1,26 +1,32 @@
 package cn.dancingsnow.neoecoae.impl.storage.persistence;
 
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyLongMap;
+import appeng.api.stacks.AEKeyObjectMap;
 import cn.dancingsnow.neoecoae.impl.storage.infinite.HugeAmount;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
-import it.unimi.dsi.fastutil.objects.Object2LongMaps;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
+import it.unimi.dsi.fastutil.objects.Reference2LongMaps;
 import java.math.BigInteger;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-/** Server-thread quantity table shared by finite cells and infinite domains. */
+/**
+ * Server-thread quantity table shared by finite cells and infinite domains.
+ *
+ * <p>GTO's AE2 interns every AEKey (its own KeyCounter is reference-keyed), so these tables use the fork's identity
+ * maps, which probe with the key's precomputed hash instead of hashCode/equals. Stock AE2 keys are not interned;
+ * the other branches keep equality-keyed maps.
+ */
 public class StorageAmounts {
-    private final Object2LongOpenHashMap<AEKey> amounts = new Object2LongOpenHashMap<>();
-    private final Object2LongMap<AEKey> view = Object2LongMaps.unmodifiable(amounts);
-    private final Object2ObjectOpenHashMap<AEKey, OverflowAmount> overflow = new Object2ObjectOpenHashMap<>();
+    private final AEKeyLongMap<AEKey> amounts = new AEKeyLongMap<>();
+    private final Reference2LongMap<AEKey> view = Reference2LongMaps.unmodifiable(amounts);
+    private final AEKeyObjectMap<AEKey, OverflowAmount> overflow = new AEKeyObjectMap<>();
     private final StorageTotal total = new StorageTotal();
     private long contentRevision;
     private long structureRevision;
 
     public long visible(AEKey key) { return amounts.getLong(key); }
-    public Object2LongMap<AEKey> visibleAmounts() { return view; }
+    public Reference2LongMap<AEKey> visibleAmounts() { return view; }
     public int size() { return amounts.size(); }
     public long totalVisible() { return total.visible(); }
     public BigInteger totalExact() { return total.snapshot().toBigInteger(); }
@@ -90,11 +96,11 @@ public class StorageAmounts {
     public boolean isEmpty() { return amounts.isEmpty(); }
     public boolean hasOverflow() { return !overflow.isEmpty(); }
     public void forEach(BiConsumer<AEKey, HugeAmount> action) {
-        var iterator = amounts.object2LongEntrySet().fastIterator();
+        var iterator = amounts.reference2LongEntrySet().fastIterator();
         while (iterator.hasNext()) { var entry = iterator.next(); action.accept(entry.getKey(), get(entry.getKey())); }
     }
     public void visitExact(BiConsumer<AEKey, BigInteger> action) {
-        var iterator = amounts.object2LongEntrySet().fastIterator();
+        var iterator = amounts.reference2LongEntrySet().fastIterator();
         while (iterator.hasNext()) {
             var entry = iterator.next();
             OverflowAmount big = entry.getLongValue() == Long.MAX_VALUE ? overflow.get(entry.getKey()) : null;
@@ -102,7 +108,7 @@ public class StorageAmounts {
         }
     }
     public void visitVisible(java.util.function.ObjLongConsumer<AEKey> action) {
-        var iterator = amounts.object2LongEntrySet().fastIterator();
+        var iterator = amounts.reference2LongEntrySet().fastIterator();
         while (iterator.hasNext()) { var entry = iterator.next(); action.accept(entry.getKey(), entry.getLongValue()); }
     }
 

@@ -28,8 +28,7 @@ import cn.dancingsnow.neoecoae.api.storage.IBasicECOCellItem;
 import cn.dancingsnow.neoecoae.api.storage.IECOStorageMigrationCell;
 import cn.dancingsnow.neoecoae.items.ECOStorageCellItem;
 import cn.dancingsnow.neoecoae.crafting.amount.NEMath;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
-import it.unimi.dsi.fastutil.objects.Object2LongMaps;
+import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import lombok.Getter;
 import net.minecraft.network.chat.Component;
@@ -214,7 +213,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         return true;
     }
 
-    protected Object2LongMap<AEKey> getCellItems() { return storageData().amounts().visibleAmounts(); }
+    protected Reference2LongMap<AEKey> getCellItems() { return storageData().amounts().visibleAmounts(); }
 
     @Override
     public double getIdleDrain() {
@@ -487,15 +486,22 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     @Override
     public void getMigrationStacks(KeyCounter out) {
-        for (var entry : Object2LongMaps.fastIterable(this.getCellItems())) {
-            long existing = out.get(entry.getKey()), value = entry.getLongValue();
-            out.set(entry.getKey(), existing <= 0 ? value : NEMath.saturatingAdd(existing, value));
+        // The table's own fast iterator: the read-only view cannot hand one out and would allocate an entry per key.
+        var amounts = storageData().amounts();
+        if (out.isEmpty()) {
+            // Keys are unique within the table, so a fresh counter needs one write per key and no merge.
+            amounts.visitVisible(out::set);
+            return;
         }
+        amounts.visitVisible((key, value) -> {
+            long existing = out.get(key);
+            out.set(key, existing <= 0 ? value : NEMath.saturatingAdd(existing, value));
+        });
     }
 
     @Override
-    public java.util.Iterator<Object2LongMap.Entry<AEKey>> migrationEntries() {
-        return getCellItems().object2LongEntrySet().iterator();
+    public java.util.Iterator<? extends java.util.Map.Entry<AEKey, Long>> migrationEntries() {
+        return getCellItems().reference2LongEntrySet().iterator();
     }
 
     @Override

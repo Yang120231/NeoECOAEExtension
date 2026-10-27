@@ -126,7 +126,7 @@ public final class ECOCellSavedData extends StorageSavedData {
     /** A bounded preview; serializing a tooltip never walks the entire disk. */
     public ListTag preview() {
         ListTag result = new ListTag();
-        var iterator = amounts.visibleAmounts().object2LongEntrySet().iterator();
+        var iterator = amounts.visibleAmounts().reference2LongEntrySet().iterator();
         while (iterator.hasNext() && result.size() < 5) {
             var entry = iterator.next();
             result.add(GenericStack.writeTag(new GenericStack(entry.getKey(), entry.getLongValue())));

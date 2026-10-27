@@ -43,7 +43,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
             Map<AEKey, Set<UUID>> compatibility) {
         if (data.hasMigrationReceipt(transaction)) return true;
         if (!data.canMigrate()) return false;
-        for (var entry : it.unimi.dsi.fastutil.objects.Object2LongMaps.fastIterable(contents.visibleAmounts())) {
+        for (var entry : contents.visibleAmounts().reference2LongEntrySet()) {
             if (entry.getKey() == null || entry.getLongValue() <= 0 || !data.canWrite(entry.getKey())) return false;
         }
         contents.forEach((key, amount) -> {
