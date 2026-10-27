@@ -95,7 +95,7 @@ class ECOGtoInfiniteComponentsTest {
         var nativeRows = read(root.resolve("native_recipes.json")).getAsJsonArray("recipes");
         var copy = nativeRows.asList().stream().map(value -> value.getAsJsonObject())
                 .filter(value -> value.has("copy_from")).findFirst().orElseThrow();
-        assertEquals("gtceu:infinite_cell_component", copy.get("copy_from").getAsString());
+        assertEquals("gtceu:assembly_line/infinite_cell_component", copy.get("copy_from").getAsString());
         assertEquals("neoecoae:eco_infinite_cell_component", copy.getAsJsonObject("item_output").get("item").getAsString());
         for (String direction : List.of("eco", "gto")) {
             var conversion = read(root.resolve("data/neoecoae/recipes/compat/gto/infinite_component_to_" + direction + ".json"));

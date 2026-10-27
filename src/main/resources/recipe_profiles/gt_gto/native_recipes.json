@@ -886,7 +886,7 @@
     },
     {
       "id": "neoecoae:compat/gto/eco_infinite_cell_component",
-      "copy_from": "gtceu:infinite_cell_component",
+      "copy_from": "gtceu:assembly_line/infinite_cell_component",
       "item_output": {
         "item": "neoecoae:eco_infinite_cell_component",
         "count": 1

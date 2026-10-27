@@ -4,6 +4,8 @@ import cn.dancingsnow.neoecoae.config.RecipeProfileConfig;
 import com.google.gson.*;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
@@ -14,8 +16,14 @@ import net.minecraftforge.fluids.FluidStack;
 /** Registers the approved GT progression recipes through GTO's native immutable definition builder. */
 public final class ECOGtoNativeRecipes {
     private static int registered;
+    private static volatile Map<ResourceLocation, Object> registeredDefinitions = Map.of();
     private ECOGtoNativeRecipes() {}
     public static int registeredCount() { return registered; }
+    public static Map<ResourceLocation, Object> registeredDefinitions() { return registeredDefinitions; }
+
+    static ResourceLocation registeredId(ResourceLocation builderId, ResourceLocation typeId) {
+        return builderId.withPrefix(typeId.getPath() + "/");
+    }
 
     public static void register() {
         if (RecipeProfileConfig.profile() == RecipeProfileConfig.Profile.STANDALONE) return;
@@ -43,26 +51,36 @@ public final class ECOGtoNativeRecipes {
             var definitions = (java.util.Map<?, ?>) Class.forName("com.gregtechceu.gtceu.api.recipe.GTRecipeDefinition")
                     .getField("RECIPES").get(null);
             int count = 0;
+            var published = new LinkedHashMap<ResourceLocation, Object>();
             for (var value : rows) {
                 var row = value.getAsJsonObject();
                 var recipeId = new ResourceLocation(row.get("id").getAsString());
-                if (definitions.containsKey(recipeId)) {
+                Object source = null;
+                Object type;
+                if (row.has("copy_from")) {
+                    var sourceId = new ResourceLocation(row.get("copy_from").getAsString());
+                    source = definitions.get(sourceId);
+                    if (source == null) throw new IllegalStateException("Missing GTO source recipe " + sourceId);
+                    type = source.getClass().getField("recipeType").get(source);
+                } else {
+                    type = getType.invoke(types, new ResourceLocation(row.get("recipe_type").getAsString()));
+                    if (type == null) throw new IllegalStateException("Missing GTO recipe type " + row.get("recipe_type"));
+                }
+                var typeId = (ResourceLocation) typeClass.getField("registryName").get(type);
+                var finalId = registeredId(recipeId, typeId);
+                if (definitions.containsKey(finalId)) {
+                    published.put(finalId, definitions.get(finalId));
                     count++;
                     continue;
                 }
-                if (row.has("copy_from")) {
-                    var sourceId = new ResourceLocation(row.get("copy_from").getAsString());
-                    Object source = definitions.get(sourceId);
-                    if (source == null) throw new IllegalStateException("Missing GTO source recipe " + sourceId);
+                if (source != null) {
                     var output = row.getAsJsonObject("item_output");
                     Object builder = ECOGtoRecipeCopies.withOutput(source, recipeId, builderClass);
                     itemOutput.invoke(builder, item(output), output.get("count").getAsInt());
-                    save.invoke(builder);
+                    published.put(finalId, save.invoke(builder));
                     count++;
                     continue;
                 }
-                Object type = getType.invoke(types, new ResourceLocation(row.get("recipe_type").getAsString()));
-                if (type == null) throw new IllegalStateException("Missing GTO recipe type " + row.get("recipe_type"));
                 Object builder = create.invoke(type, recipeId);
                 for (var raw : row.getAsJsonArray("item_inputs")) {
                     var ingredient = raw.getAsJsonObject();
@@ -94,10 +112,11 @@ public final class ECOGtoNativeRecipes {
                         cleanroom.invoke(builder, 1);
                     }
                 }
-                save.invoke(builder);
+                published.put(finalId, save.invoke(builder));
                 count++;
             }
             registered = count;
+            registeredDefinitions = Map.copyOf(published);
             org.slf4j.LoggerFactory.getLogger("neoecoae").info("Registered {} GTO native GT progression recipes", count);
         } catch (ReflectiveOperationException | java.io.IOException failure) {
             throw new IllegalStateException("Cannot register GTO native progression recipes", failure);

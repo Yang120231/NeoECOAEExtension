@@ -44,6 +44,7 @@ public class NeoECOAEEmiPlugin implements EmiPlugin {
 
     @Override
     public void register(EmiRegistry registry) {
+        ECOGtoEmiRecipes.register(registry);
         if (ECOGtoWorkstations.active()) {
             registry.removeEmiStacks(stack -> ECOGtoWorkstations.retiredItem(stack.getId()));
         }

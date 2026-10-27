@@ -32,6 +32,7 @@ import cn.dancingsnow.neoecoae.impl.storage.ECOCreativeCell;
 import cn.dancingsnow.neoecoae.network.ECONetwork;
 import cn.dancingsnow.neoecoae.menu.LargeIntegratedWorkingStationPatternProviderMenu;
 import cn.dancingsnow.neoecoae.registration.NERegistrate;
+import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.factory.BlockUIMenuType;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import lombok.Getter;
 import net.minecraft.network.chat.Component;
@@ -98,6 +99,7 @@ public class NeoECOAE {
             cn.dancingsnow.neoecoae.config.RecipeProfileConfig.SPEC, "neoecoae-recipes-common.toml");
 
         modBus.addListener(NeoECOAE::registerCapabilities);
+        modBus.addListener(BlockUIMenuType::onCommonSetup);
         modBus.addListener(NeoECOAE::initUpgrades);
         modBus.addListener(NeoECOAE::initStorageCells);
         modBus.addListener(NeoECOAE::newRegistry);

@@ -8,6 +8,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 
 public final class BlockUIMenuType {
     public interface BlockUI {
@@ -29,10 +30,19 @@ public final class BlockUIMenuType {
     }
     private static final UIFactory<BlockUIHolder> FACTORY=new UIFactory<>(ResourceLocation.fromNamespaceAndPath("neoecoae","block_ui")){
         @Override protected com.lowdragmc.lowdraglib.gui.modular.ModularUI createUITemplate(BlockUIHolder holder,Player player){return holder.isInvalid()?null:holder.createUI(player);}
-        @Override protected BlockUIHolder readHolderFromSyncData(FriendlyByteBuf buffer){return new BlockUIHolder(net.minecraft.client.Minecraft.getInstance().player,buffer.readBlockPos());}
+        @Override protected BlockUIHolder readHolderFromSyncData(FriendlyByteBuf buffer){return ClientHolderReader.read(buffer);}
         @Override protected void writeHolderToSyncData(FriendlyByteBuf buffer,BlockUIHolder holder){buffer.writeBlockPos(holder.pos);}
     };
-    static{UIFactory.register(FACTORY);}
     private BlockUIMenuType(){}
+    public static void onCommonSetup(FMLCommonSetupEvent event) {
+        // Register on both physical sides before joining a world. Queue the shared map mutation
+        // after parallel mod setup, rather than relying on an integrated server's first UI open.
+        event.enqueueWork(() -> UIFactory.register(FACTORY));
+    }
+    private static final class ClientHolderReader {
+        private static BlockUIHolder read(FriendlyByteBuf buffer) {
+            return new BlockUIHolder(net.minecraft.client.Minecraft.getInstance().player, buffer.readBlockPos());
+        }
+    }
     public static boolean openUI(ServerPlayer player,BlockPos pos){return FACTORY.openUI(new BlockUIHolder(player,pos),player);}
 }
