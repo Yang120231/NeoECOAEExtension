@@ -46,7 +46,6 @@
     "ae2.storage.DigitalSingularityEnergyServiceMixin"
   ],
   "client": [
-    "client.emi.GTOEmiPluginsMixin",
     "client.jei.RecipeLayoutMixin",
     "client.jei.RecipeLayoutBuilderMixin",
     "client.ldlib.UIFactoryMixin",

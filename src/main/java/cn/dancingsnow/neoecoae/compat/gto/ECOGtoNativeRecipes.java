@@ -36,6 +36,8 @@ public final class ECOGtoNativeRecipes {
             Object types = registries.getField("RECIPE_TYPES").get(null);
             var getType = types.getClass().getMethod("get", Comparable.class);
             var typeClass = Class.forName("com.gregtechceu.gtceu.api.recipe.GTRecipeType");
+            var definitionClass = Class.forName("com.gregtechceu.gtceu.api.recipe.GTRecipeDefinition");
+            var categoryClass = Class.forName("com.gregtechceu.gtceu.api.recipe.category.GTRecipeCategory");
             var builderClass = Class.forName("com.gregtechceu.gtceu.api.recipe.GTRecipeBuilder");
             var create = typeClass.getMethod("recipeBuilder", ResourceLocation.class);
             var itemInput = builderClass.getMethod("inputItems", Item.class, int.class);
@@ -68,8 +70,14 @@ public final class ECOGtoNativeRecipes {
                 }
                 var typeId = (ResourceLocation) typeClass.getField("registryName").get(type);
                 var finalId = registeredId(recipeId, typeId);
+                @SuppressWarnings("unchecked")
+                var categoryMap = (Map<Object, java.util.Set<Object>>) typeClass.getMethod("getCategoryMap").invoke(type);
+                ECOGtoRecipeCategories.prepare(categoryMap);
                 if (definitions.containsKey(finalId)) {
-                    published.put(finalId, definitions.get(finalId));
+                    Object existing = definitions.get(finalId);
+                    Object category = definitionClass.getField("recipeCategory").get(existing);
+                    typeClass.getMethod("addToCategoryMap", categoryClass, definitionClass).invoke(type, category, existing);
+                    published.put(finalId, existing);
                     count++;
                     continue;
                 }
