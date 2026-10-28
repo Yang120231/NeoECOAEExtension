@@ -16,7 +16,7 @@ import cn.dancingsnow.neoecoae.blocks.entity.ECOIntegratedWorkingStationBlockEnt
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationInterfaceBlockEntity;
 import cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush;
-import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiPlugin;
+import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiCategories;
 import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import dev.emi.emi.api.EmiApi;
 import net.minecraft.client.Minecraft;
@@ -64,8 +64,8 @@ public final class GTOCompatibilityClientProbe {
                     client.options.pauseOnLostFocus = false;
                     client.setScreen(null);
                     var manager = EmiApi.getRecipeManager();
-                    int small = manager.getRecipes(NeoECOAEEmiPlugin.INTEGRATED_WORKING_STATION).size();
-                    int large = manager.getRecipes(NeoECOAEEmiPlugin.LARGE_WORKING_STATION).size();
+                    int small = manager.getRecipes(NeoECOAEEmiCategories.INTEGRATED_WORKING_STATION).size();
+                    int large = manager.getRecipes(NeoECOAEEmiCategories.LARGE_WORKING_STATION).size();
                     if (small == 0 || large == 0) {
                         if (ticks < 1200) return;
                         throw new IllegalStateException("EMI workstation categories empty: " + small + "/" + large);
@@ -73,14 +73,14 @@ public final class GTOCompatibilityClientProbe {
                     LOG.info("GTO_ACCEPTANCE EMI catalogue: integrated={}, large={}", small, large);
                     originalSmallCount = small;
                     originalLargeCount = large;
-                    EmiApi.displayRecipeCategory(NeoECOAEEmiPlugin.INTEGRATED_WORKING_STATION);
+                    EmiApi.displayRecipeCategory(NeoECOAEEmiCategories.INTEGRATED_WORKING_STATION);
                     advance();
                 }
                 case 1 -> {
                     if (ticks < 30) return;
                     require(client.screen != null && client.screen.getClass().getName().contains("RecipeScreen"), "EMI recipe screen missing");
                     screenshot(client, "neoecoae-gto-emi-integrated.png");
-                    EmiApi.displayRecipeCategory(NeoECOAEEmiPlugin.LARGE_WORKING_STATION);
+                    EmiApi.displayRecipeCategory(NeoECOAEEmiCategories.LARGE_WORKING_STATION);
                     advance();
                 }
                 case 2 -> {
@@ -135,8 +135,8 @@ public final class GTOCompatibilityClientProbe {
                 case 6 -> {
                     if (!done || ticks < 100) return;
                     if (client.level.getRecipeManager().byKey(RELOAD_RECIPE).isEmpty()
-                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiPlugin.INTEGRATED_WORKING_STATION).size() != originalSmallCount + 1
-                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiPlugin.LARGE_WORKING_STATION).size() != originalLargeCount + 1) {
+                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiCategories.INTEGRATED_WORKING_STATION).size() != originalSmallCount + 1
+                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiCategories.LARGE_WORKING_STATION).size() != originalLargeCount + 1) {
                         if (ticks < 1600) return;
                         throw new IllegalStateException("Warm reload did not update client and EMI ECO catalogues");
                     }
@@ -148,8 +148,8 @@ public final class GTOCompatibilityClientProbe {
                 case 7 -> {
                     if (!done || ticks < 100) return;
                     if (client.level.getRecipeManager().byKey(RELOAD_RECIPE).isPresent()
-                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiPlugin.INTEGRATED_WORKING_STATION).size() != originalSmallCount
-                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiPlugin.LARGE_WORKING_STATION).size() != originalLargeCount) {
+                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiCategories.INTEGRATED_WORKING_STATION).size() != originalSmallCount
+                            || EmiApi.getRecipeManager().getRecipes(NeoECOAEEmiCategories.LARGE_WORKING_STATION).size() != originalLargeCount) {
                         if (ticks < 1600) return;
                         throw new IllegalStateException("Disabled datapack left stale ECO client/EMI recipes");
                     }

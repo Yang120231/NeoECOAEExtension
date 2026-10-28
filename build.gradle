@@ -36,7 +36,7 @@ if (!runtimeProfiles.containsKey(portingProfile)) {
 }
 def dependencyLock = new groovy.json.JsonSlurper().parse(file('porting/dependencies.lock.json'))
 // The GTO branch compiles against the exact fork installed in the acceptance instance.
-def gtoDependencyLock = new groovy.json.JsonSlurper().parse(file('docs/compat/gto-dependencies.json'))
+def gtoDependencyLock = new groovy.json.JsonSlurper().parse(file('porting/gto-dependencies.json'))
 dependencyLock.artifacts.removeAll { it.mod_id == 'ae2' }
 dependencyLock.artifacts.add(gtoDependencyLock.ae2)
 def releaseJars = dependencyLock.artifacts.collectEntries { artifact ->

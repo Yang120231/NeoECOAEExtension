@@ -17,6 +17,24 @@ PLAN = ROOT / "scripts/gt-recipe-plan.json"
 GTO_PLAN = ROOT / "scripts/gto-workstation-plan.json"
 OUTPUT = ROOT / "src/main/resources/recipe_profiles"
 PACKS = ("gtm", "gtl", "gt_legacy", "gt_modern", "gt_gto")
+WORKSTATION_TYPES = {"neoecoae:integrated_working_station", "neoecoae:large_integrated_working_station"}
+# GTO pack config: GTM euToFeRatio 16 FE per EU, AE2 ForgeEnergy 0.5 AE per FE, so 1 EU = 8 AE.
+GTO_AE_PER_EU = 8
+WORKSTATION_MAX_INPUTS = 9
+LARGE_WORKSTATION_MAX_INPUTS = 12
+# Rows whose outputs build the integrated workstation itself; GTO uses ECO's standalone chain for them.
+GTO_STANDALONE_BOOTSTRAP_KEYS = {"B01", "B03", "B09", "B10", "B11", "O01", "O02"}
+GTO_CHARGED_BUDDING = (("flawless", "flawless"), ("flawed", "flawed"), ("chipped", "chipped"), ("damaged", "chipped"))
+GTO_STANDALONE_BOOTSTRAP_RECIPES = (
+    "neoecoae:integrated_working_station",
+    "neoecoae:aluminum_alloy_casing",
+    "neoecoae:aluminum_alloy_dust",
+    "neoecoae:aluminum_alloy_ingot_from_dusts_aluminum_alloy_smelting",
+    "neoecoae:aluminum_alloy_ingot_from_dusts_aluminum_alloy_blasting",
+    "neoecoae:transform/crystal_ingot",
+    "neoecoae:transform/energized_fluix_crystal",
+    "neoecoae:transform/energized_superconductive_ingot",
+)
 
 
 def read_json(path: Path):
@@ -49,6 +67,27 @@ def workstation(row: dict, profile: str) -> dict:
         "processingTicks": row["ticks"],
     }
     assert 0 < len(result["inputItems"]) <= 9
+    for source, target in (("item_output", "itemOutput"), ("fluid_output", "fluidOutput"),
+                           ("input_fluid", "inputFluid")):
+        if source in row:
+            result[target] = copy.deepcopy(row[source])
+    return result
+
+
+def gto_workstation(row: dict) -> dict:
+    """Same materials as the GT plan; energy follows the GT duration at the pack's EU to AE rate."""
+    inputs = copy.deepcopy(row["item_inputs"])
+    large = len(inputs) > WORKSTATION_MAX_INPUTS
+    assert 0 < len(inputs) <= LARGE_WORKSTATION_MAX_INPUTS, row["id"]
+    energy = row["eu_per_tick"] * row["ticks"] * GTO_AE_PER_EU
+    assert 0 < energy < 2 ** 31, row["id"]
+    result = {
+        "type": "neoecoae:large_integrated_working_station" if large else "neoecoae:integrated_working_station",
+        "conditions": [{"type": "forge:mod_loaded", "modid": "gtceu"}],
+        "inputItems": inputs,
+        "energy": energy,
+        "processingTicks": row["ticks"],
+    }
     for source, target in (("item_output", "itemOutput"), ("fluid_output", "fluidOutput"),
                            ("input_fluid", "inputFluid")):
         if source in row:
@@ -172,50 +211,73 @@ def compile_packs() -> dict[str, dict[str, dict]]:
             path = recipe_path(f"neoecoae:compat/gt/{directory}/{row['key'].lower()}_{result_name}")
             for schema in ("legacy", "modern"):
                 packs[f"gt_{schema}"][path] = gt_recipe(row, schema == "modern")
-    # GTO's GTM fork registers immutable definitions with native builders instead of recipe JSON serializers.
-    native = []
-    for section, directory in (("gt_bootstrap_recipes", "bootstrap"), ("ore_processing_recipes", "ore_processing")):
-        for row in plan[section]:
-            result_name = row["item_output"]["item"].split(":", 1)[1]
-            native.append({"id": f"neoecoae:compat/gt/{directory}/{row['key'].lower()}_{result_name}", **row})
+    # GTO seals its GT recipe stage and refuses addon mixins into GT classes, so GTO keeps ECO's own
+    # workstations: the approved GTO materials are processed by the integrated workstations instead.
     gto = packs["gt_gto"]
     progression = read_json(GTO_PLAN)["recipes"]
     assert len(progression) == 26
-    retired_types = {"neoecoae:integrated_working_station", "neoecoae:large_integrated_working_station"}
-
-    def retired_item(item: str) -> bool:
-        return item.startswith("neoecoae:integrated_working_station") or item.startswith(
-            "neoecoae:large_integrated_working_station_")
-
-    # Replace the entire workstation catalogue, including conditional addon resources. Do not
-    # introduce Omni/MEGA recipes or dependencies into GTO. Other GT profiles remain unchanged.
-    for recipe_id, original in originals.items():
-        result = original.get("result", {})
-        output = original.get("itemOutput", {})
-        if (original.get("type") in retired_types
-                or retired_item(result.get("item", "")) or retired_item(output.get("item", ""))):
-            gto[recipe_path(recipe_id)] = {"type": "forge:conditional", "recipes": []}
-    for row in plan["module_recipes"]:
-        card = row["item_output"]["item"].split("integrated_working_station_module_", 1)[1]
-        gto[recipe_path(f"neoecoae:integrated_working_station/module_{card}")] = {
-            "type": "forge:conditional", "recipes": []}
-    covered = {row["replaces"] for row in progression}
-    expected = {recipe_id for recipe_id, original in originals.items()
-                if original.get("type") == "neoecoae:integrated_working_station"
-                and not retired_item(original.get("itemOutput", {}).get("item", ""))
-                and not recipe_id.startswith("neoecoae:compat/megacells/")
-                and "omni_cell" not in recipe_id and "spent_nuclear_waste_cell" not in recipe_id}
-    assert covered == expected, f"GTO progression coverage changed: {covered ^ expected}"
     replacement_ids = {row["id"] for row in progression}
-    native = [row for row in native if row["id"] not in replacement_ids
-              and not retired_item(row["item_output"]["item"])]
-    native.extend({key: value for key, value in row.items() if key != "replaces"} for row in progression)
-    assert len({row["id"] for row in native}) == len(native), "Duplicate GTO native recipe IDs"
-    gto["native_recipes.json"] = {"recipes": native}
-    gto["data/neoecoae/tags/items/infinite_cell_components.json"] = {
-        "replace": False,
-        "values": ["neoecoae:eco_infinite_cell_component", "gtocore:infinite_cell_component"],
-    }
+    rows = []
+    for section, directory in (("gt_bootstrap_recipes", "bootstrap"), ("ore_processing_recipes", "ore_processing")):
+        for row in plan[section]:
+            if row["key"] in GTO_STANDALONE_BOOTSTRAP_KEYS:
+                continue
+            result_name = row["item_output"]["item"].split(":", 1)[1]
+            row_id = f"neoecoae:compat/gt/{directory}/{row['key'].lower()}_{result_name}"
+            if row_id not in replacement_ids:
+                rows.append({"id": row_id, **row})
+    for row in progression:
+        if "copy_from" in row:
+            # The infinite component is obtained from GTO's own assembly line and exchanged 1:1.
+            gto[recipe_path(row["replaces"])] = {"type": "forge:conditional", "recipes": []}
+        else:
+            rows.append(row)
+    # Omni and MEGA routes are not part of GTO; keep their workstation resources disabled.
+    for recipe_id, original in originals.items():
+        if original.get("type") in WORKSTATION_TYPES and any(
+                marker in recipe_id for marker in ("omni_cell", "spent_nuclear_waste_cell", "compat/megacells/")):
+            gto[recipe_path(recipe_id)] = {"type": "forge:conditional", "recipes": []}
+    # A row takes over the existing workstation recipe for its output, e.g. B16 keeps the empty module
+    # makeable in a regular workstation before any large workstation exists.
+    by_output = {}
+    for recipe_id, original in originals.items():
+        if original.get("type") in WORKSTATION_TYPES:
+            by_output.setdefault(original.get("itemOutput", {}).get("item"), []).append(recipe_id)
+    for row in rows:
+        output = row.get("item_output", {}).get("item")
+        target = row.get("replaces") or (by_output.get(output) or [row["id"]])[0]
+        gto[recipe_path(target)] = gto_workstation(row)
+    # The workstation itself and its prerequisites keep ECO's standalone recipes so the chain can start.
+    for recipe_id in GTO_STANDALONE_BOOTSTRAP_RECIPES:
+        restored = rebind(originals[recipe_id], plan["local_input_rebindings"])
+        if restored != originals[recipe_id]:
+            restored["conditions"] = dependencies({}, "gtm")
+        gto[recipe_path(recipe_id)] = restored
+    # GTO loads only this pack (same-position packs are ordered by ID, so a separate gtm pack would win),
+    # so it carries the whole GTM profile beneath the GTO replacements.
+    for path, data in packs["gtm"].items():
+        if path.startswith("data/"):
+            gto.setdefault(path, copy.deepcopy(data))
+    effective = {path: data for path, data in gto.items() if path.startswith("data/")}
+    for path, original in ((recipe_path(k), v) for k, v in originals.items()):
+        effective.setdefault(path, original)
+    routes = {}
+    for path, data in effective.items():
+        if data.get("type") in WORKSTATION_TYPES:
+            routes.setdefault(data.get("itemOutput", data.get("fluidOutput", {})).get("item")
+                              or data.get("fluidOutput", {}).get("fluid"), []).append(path)
+    for row in rows:
+        output = row.get("item_output", {}).get("item") or row["fluid_output"]["fluid"]
+        assert len(routes.get(output, [])) == 1, f"GTO workstation routes for {output}: {routes.get(output)}"
+    assert "neoecoae:eco_infinite_cell_component" not in routes, "The infinite component is exchange-only"
+    # Lightning cannot be summoned in GTO, so the AE2 charger stands in for the strike that starts
+    # energized crystal growth. Same mapping as LightningBoltMixin, including damaged -> chipped.
+    for source, target in GTO_CHARGED_BUDDING:
+        gto[recipe_path(f"neoecoae:compat/gto/charger/{source}_budding_quartz")] = {
+            "type": "ae2:charger", "conditions": [{"type": "forge:mod_loaded", "modid": "gtocore"}],
+            "ingredient": {"item": f"ae2:{source}_budding_quartz"},
+            "result": {"item": f"neoecoae:{target}_budding_energized_crystal"}}
+    # The ECO and GTO infinite components are only exchanged 1:1 on the crafting table.
     for source, target in (("gtocore:infinite_cell_component", "neoecoae:eco_infinite_cell_component"),
                            ("neoecoae:eco_infinite_cell_component", "gtocore:infinite_cell_component")):
         name = "to_eco" if target.startswith("neoecoae:") else "to_gto"

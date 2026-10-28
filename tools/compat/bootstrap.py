@@ -43,7 +43,7 @@ def restore(root=ROOT, gto=False):
         if "embedded" in row:
             obtain(row)
     if gto:
-        gto_lock = json.loads((root / "docs/compat/gto-dependencies.json").read_text())
+        gto_lock = json.loads((root / "porting/gto-dependencies.json").read_text())
         obtain(gto_lock["ae2"])
     porting = root / "porting"
     porting.mkdir(exist_ok=True)

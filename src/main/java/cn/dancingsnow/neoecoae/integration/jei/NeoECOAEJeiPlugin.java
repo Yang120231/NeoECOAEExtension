@@ -1,7 +1,6 @@
 package cn.dancingsnow.neoecoae.integration.jei;
 
 import cn.dancingsnow.neoecoae.NeoECOAE;
-import cn.dancingsnow.neoecoae.compat.gto.ECOGtoWorkstations;
 import cn.dancingsnow.neoecoae.integration.jei.categories.CoolingCategory;
 import cn.dancingsnow.neoecoae.integration.jei.categories.IntegrationWorkingStationCategory;
 import cn.dancingsnow.neoecoae.integration.jei.categories.multiblock.MultiBlockInfoCategory;
@@ -49,41 +48,31 @@ public class NeoECOAEJeiPlugin implements IModPlugin {
         IGuiHelper guiHelper = registration.getJeiHelpers().getGuiHelper();
         registration.addRecipeCategories(new CoolingCategory(guiHelper));
         registration.addRecipeCategories(new MultiBlockInfoCategory(guiHelper));
-        if (!ECOGtoWorkstations.active()) {
-            registration.addRecipeCategories(new IntegrationWorkingStationCategory(guiHelper));
-            registration.addRecipeCategories(new LargeWorkingStationCategory(guiHelper));
-        }
+        registration.addRecipeCategories(new IntegrationWorkingStationCategory(guiHelper));
+        registration.addRecipeCategories(new LargeWorkingStationCategory(guiHelper));
     }
 
     @Override
     public void registerRecipes(IRecipeRegistration registration) {
         CoolingCategory.registerRecipes(registration);
         MultiBlockInfoCategory.registerRecipes(registration);
-        if (!ECOGtoWorkstations.active()) {
-            IntegrationWorkingStationCategory.registerRecipes(registration);
-            var level = Minecraft.getInstance().level;
-            if (level != null) registration.addRecipes(LARGE_WORKING_STATION_TYPE, LargeWorkstationRecipes.getAll(level));
-        }
+        IntegrationWorkingStationCategory.registerRecipes(registration);
+        var level = Minecraft.getInstance().level;
+        if (level != null) registration.addRecipes(LARGE_WORKING_STATION_TYPE, LargeWorkstationRecipes.getAll(level));
     }
 
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
         CoolingCategory.registerRecipeCatalysts(registration);
         MultiBlockInfoCategory.registerRecipeCatalysts(registration);
-        if (!ECOGtoWorkstations.active()) {
-            IntegrationWorkingStationCategory.registerRecipeCatalysts(registration);
-            registration.addRecipeCatalysts(LARGE_WORKING_STATION_TYPE,
-                NEBlocks.INTEGRATED_WORKING_STATION, NEBlocks.LARGE_INTEGRATED_WORKING_STATION_INTERFACE);
-        }
+        IntegrationWorkingStationCategory.registerRecipeCatalysts(registration);
+        registration.addRecipeCatalysts(LARGE_WORKING_STATION_TYPE,
+            NEBlocks.INTEGRATED_WORKING_STATION, NEBlocks.LARGE_INTEGRATED_WORKING_STATION_INTERFACE);
     }
 
     @Override
     public void onRuntimeAvailable(IJeiRuntime runtime) {
         NeoECOAEJeiPlugin.runtime = runtime;
-        if (ECOGtoWorkstations.active()) {
-            runtime.getIngredientManager().removeIngredientsAtRuntime(
-                mezz.jei.api.constants.VanillaTypes.ITEM_STACK, ECOGtoWorkstations.retiredStacks());
-        }
     }
 
     public static IJeiRuntime runtime() { return runtime; }

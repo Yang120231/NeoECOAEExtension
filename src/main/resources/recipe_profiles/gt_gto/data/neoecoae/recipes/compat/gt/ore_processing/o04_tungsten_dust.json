@@ -1,0 +1,21 @@
+{
+  "type": "neoecoae:integrated_working_station",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ],
+  "inputItems": [
+    {
+      "item": "neoecoae:raw_tungsten_ore",
+      "count": 1
+    }
+  ],
+  "energy": 6144000,
+  "processingTicks": 400,
+  "itemOutput": {
+    "item": "gtceu:tungsten_dust",
+    "count": 1
+  }
+}

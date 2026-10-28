@@ -76,8 +76,7 @@ public final class ClientStartupProbe {
                     long own = recipes.getRecipeIds().filter(cn.dancingsnow.neoecoae.compat.gto.ECOGtoRecipes::owns).count();
                     long small = recipes.getRecipes().stream().filter(cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe.class::isInstance).count();
                     var large = cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipes.getAll(server.overworld());
-                    LOG.info("GTO_ACCEPTANCE server recipes: eco={}, integrated={}, large={}, nativeGT={}",
-                        own, small, large.size(), cn.dancingsnow.neoecoae.compat.gto.ECOGtoNativeRecipes.registeredCount());
+                    LOG.info("GTO_ACCEPTANCE server recipes: eco={}, integrated={}, large={}", own, small, large.size());
                     if (own == 0 || small == 0 || large.isEmpty()) throw new IllegalStateException("GTO ECO recipe catalogue is empty");
                     cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush.verifyContract();
                     var cpu = new appeng.me.cluster.implementations.CraftingCPUCluster(

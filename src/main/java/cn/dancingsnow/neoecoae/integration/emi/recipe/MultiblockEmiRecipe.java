@@ -2,7 +2,7 @@ package cn.dancingsnow.neoecoae.integration.emi.recipe;
 
 import cn.dancingsnow.neoecoae.platform.JdkCompat;
 
-import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiPlugin;
+import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiCategories;
 import cn.dancingsnow.neoecoae.integration.xei.multiblock.MultiBlockInfoWrapper;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockContext;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
@@ -48,7 +48,7 @@ public class MultiblockEmiRecipe extends ModularUIEMIRecipe {
 
     @Override
     public EmiRecipeCategory getCategory() {
-        return NeoECOAEEmiPlugin.MULTIBLOCK;
+        return NeoECOAEEmiCategories.MULTIBLOCK;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package cn.dancingsnow.neoecoae.integration.emi.recipe;
 
 import cn.dancingsnow.neoecoae.NeoECOAE;
+import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiCategories;
 import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiPlugin;
 import cn.dancingsnow.neoecoae.recipe.CoolingRecipe;
 import dev.emi.emi.api.recipe.BasicEmiRecipe;
@@ -13,7 +14,7 @@ public class CoolingEmiRecipe extends BasicEmiRecipe {
     private final CoolingRecipe recipe;
 
     public CoolingEmiRecipe(CoolingRecipe holder) {
-        super(NeoECOAEEmiPlugin.COOLING, holder.getId(), 100, 60);
+        super(NeoECOAEEmiCategories.COOLING, holder.getId(), 100, 60);
         this.recipe = holder;
 
         inputs.add(NeoECOAEEmiPlugin.of(recipe.input()));

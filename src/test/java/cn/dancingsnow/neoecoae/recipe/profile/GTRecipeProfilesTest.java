@@ -77,7 +77,7 @@ class GTRecipeProfilesTest {
             Schema.fromRegistryType("com.gregtechceu.gtceu.api.registry.GTRegistry$RL"));
         for (var profile : List.of(Profile.GTM, Profile.GTL)) {
             for (var schema : Schema.values()) {
-                var paths = GTRecipeProfiles.packPaths(profile, mod -> true, () -> schema);
+                var paths = GTRecipeProfiles.packPaths(profile, mod -> !mod.equals("gtocore"), () -> schema);
                 assertEquals(2, paths.size());
                 assertEquals(profile.name().toLowerCase(java.util.Locale.ROOT), paths.get(0));
                 assertEquals("gt_" + schema.name().toLowerCase(java.util.Locale.ROOT), paths.get(1));

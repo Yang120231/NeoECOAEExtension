@@ -1,0 +1,25 @@
+{
+  "type": "neoecoae:integrated_working_station",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ],
+  "inputItems": [
+    {
+      "item": "neoecoae:black_tungsten_alloy_dust",
+      "count": 1
+    }
+  ],
+  "energy": 6144000,
+  "processingTicks": 400,
+  "itemOutput": {
+    "item": "neoecoae:black_tungsten_alloy_ingot",
+    "count": 1
+  },
+  "inputFluid": {
+    "fluid": "gtceu:argon",
+    "amount": 100
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "type": "neoecoae:integrated_working_station",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ],
+  "inputItems": [
+    {
+      "tag": "forge:dusts/tungsten",
+      "count": 1
+    },
+    {
+      "tag": "forge:dusts/aluminum_alloy",
+      "count": 1
+    },
+    {
+      "tag": "forge:dusts/fluix",
+      "count": 2
+    }
+  ],
+  "energy": 768000,
+  "processingTicks": 200,
+  "itemOutput": {
+    "item": "neoecoae:black_tungsten_alloy_dust",
+    "count": 1
+  }
+}

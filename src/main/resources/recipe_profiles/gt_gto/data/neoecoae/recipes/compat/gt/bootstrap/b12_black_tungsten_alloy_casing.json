@@ -1,0 +1,37 @@
+{
+  "type": "neoecoae:integrated_working_station",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ],
+  "inputItems": [
+    {
+      "item": "neoecoae:black_tungsten_alloy_ingot",
+      "count": 4
+    },
+    {
+      "item": "gtceu:titanium_plate",
+      "count": 4
+    },
+    {
+      "item": "ae2:quartz_vibrant_glass",
+      "count": 4
+    },
+    {
+      "item": "neoecoae:crystal_ingot",
+      "count": 1
+    }
+  ],
+  "energy": 3072000,
+  "processingTicks": 200,
+  "itemOutput": {
+    "item": "neoecoae:black_tungsten_alloy_casing",
+    "count": 2
+  },
+  "inputFluid": {
+    "fluid": "gtceu:soldering_alloy",
+    "amount": 144
+  }
+}

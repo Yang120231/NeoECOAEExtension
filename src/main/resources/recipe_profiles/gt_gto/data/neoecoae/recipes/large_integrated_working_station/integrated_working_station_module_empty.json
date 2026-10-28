@@ -1,4 +1,37 @@
 {
-  "type": "forge:conditional",
-  "recipes": []
+  "type": "neoecoae:integrated_working_station",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ],
+  "inputItems": [
+    {
+      "item": "ae2:advanced_card",
+      "count": 1
+    },
+    {
+      "item": "gtceu:polyethylene_plate",
+      "count": 4
+    },
+    {
+      "item": "neoecoae:superconducting_processor",
+      "count": 2
+    },
+    {
+      "tag": "gtceu:circuits/hv",
+      "count": 2
+    }
+  ],
+  "energy": 384000,
+  "processingTicks": 100,
+  "itemOutput": {
+    "item": "neoecoae:integrated_working_station_module_empty",
+    "count": 4
+  },
+  "inputFluid": {
+    "fluid": "gtceu:soldering_alloy",
+    "amount": 144
+  }
 }

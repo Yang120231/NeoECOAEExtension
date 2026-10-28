@@ -7,81 +7,82 @@ import com.google.gson.JsonParser;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import net.minecraft.resources.ResourceLocation;
 import org.junit.jupiter.api.Test;
 
+/** GTO keeps ECO's workstations: the GTO material plan is processed by the integrated workstations. */
 class ECOGtoProgressionTest {
-    private static final Path PACK = Path.of("src/main/resources/recipe_profiles/gt_gto");
-
-    @org.junit.jupiter.api.BeforeAll static void bootstrap() {
-        cn.dancingsnow.neoecoae.util.InventoryTestBootstrap.initialize();
-    }
+    private static final Path PACK = Path.of("src/main/resources/recipe_profiles/gt_gto/data/neoecoae/recipes");
+    private static final long AE_PER_EU = 8;
 
     private static JsonObject read(Path path) throws Exception {
         return JsonParser.parseString(Files.readString(path)).getAsJsonObject();
     }
 
-    private static Map<String, JsonObject> nativeRecipes() throws Exception {
-        var result = new HashMap<String, JsonObject>();
-        for (var value : read(PACK.resolve("native_recipes.json")).getAsJsonArray("recipes")) {
-            var row = value.getAsJsonObject();
-            assertNull(result.put(row.get("id").getAsString(), row), "Native recipe IDs must be unique");
+    private static Path recipe(String id) {
+        return PACK.resolve(id.substring(id.indexOf(':') + 1) + ".json");
+    }
+
+    private static Map<Path, JsonObject> pack() throws Exception {
+        var result = new HashMap<Path, JsonObject>();
+        try (var files = Files.walk(PACK)) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) result.put(file, read(file));
         }
         return result;
     }
 
-    @Test void gtoOverridesRemoveEveryWorkstationRecipeAndItsMachineAndCards() throws Exception {
-        var recipes = new HashMap<String, JsonObject>();
-        for (String root : new String[] {"src/generated/resources", "src/main/resources",
-                "src/main/resources/recipe_profiles/gtm", "src/main/resources/recipe_profiles/gt_gto"}) {
-            Path base = Path.of(root, "data/neoecoae/recipes");
-            try (var files = Files.walk(base)) {
-                for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
-                    recipes.put(base.relativize(file).toString(), read(file));
-                }
-            }
-        }
-        assertFalse(recipes.isEmpty());
-        recipes.forEach((id, row) -> assertFalse(ECOGtoWorkstations.retiredRecipe(row), id));
-        // A surviving product recipe must not require a retired machine or its module either.
-        for (var row : nativeRecipes().values()) {
-            for (var value : row.has("item_inputs") ? row.getAsJsonArray("item_inputs") : new com.google.gson.JsonArray()) {
-                var input = value.getAsJsonObject();
-                if (input.has("item")) assertFalse(ECOGtoWorkstations.retiredItem(
-                    new ResourceLocation(input.get("item").getAsString())), row.toString());
-            }
-            if (row.has("item_output")) assertFalse(ECOGtoWorkstations.retiredItem(new ResourceLocation(
-                row.getAsJsonObject("item_output").get("item").getAsString())), row.toString());
-        }
+    private static boolean workstation(JsonObject recipe) {
+        String type = recipe.get("type").getAsString();
+        return type.equals("neoecoae:integrated_working_station") || type.equals("neoecoae:large_integrated_working_station");
     }
 
-    @Test void allTwentySixProductsHaveExactlyOneNativeRouteAndNoOmniOrMegaDependencies() throws Exception {
-        var recipes = nativeRecipes();
-        var products = new HashSet<String>();
-        var progression = read(Path.of("scripts/gto-workstation-plan.json")).getAsJsonArray("recipes");
-        assertEquals(26, progression.size());
-        for (var value : progression) {
-            var expected = value.getAsJsonObject();
-            var actual = recipes.get(expected.get("id").getAsString());
-            assertNotNull(actual);
-            String output = expected.has("item_output") ? expected.getAsJsonObject("item_output").get("item").getAsString()
-                : expected.getAsJsonObject("fluid_output").get("fluid").getAsString();
-            assertTrue(products.add(output), "Each migrated product has one route: " + output);
-            assertEquals(1, recipes.values().stream().filter(row ->
-                row.has("item_output") && row.getAsJsonObject("item_output").get("item").getAsString().equals(output)
-                    || row.has("fluid_output") && row.getAsJsonObject("fluid_output").get("fluid").getAsString().equals(output)).count());
+    @Test void everyPlannedProductIsOneWorkstationRecipeWithThePlannedMaterialsAndGtDuration() throws Exception {
+        var plan = read(Path.of("scripts/gto-workstation-plan.json")).getAsJsonArray("recipes");
+        assertEquals(26, plan.size());
+        int converted = 0;
+        for (var value : plan) {
+            var row = value.getAsJsonObject();
+            var actual = read(recipe(row.get("replaces").getAsString()));
+            if (row.has("copy_from")) {
+                assertEquals("forge:conditional", actual.get("type").getAsString(), "Exchange-only route: " + row);
+                assertTrue(actual.getAsJsonArray("recipes").isEmpty());
+                continue;
+            }
+            converted++;
+            var inputs = row.getAsJsonArray("item_inputs");
+            assertEquals(inputs.size() > 9 ? "neoecoae:large_integrated_working_station" : "neoecoae:integrated_working_station",
+                actual.get("type").getAsString(), row.get("id").getAsString());
+            assertEquals(inputs, actual.getAsJsonArray("inputItems"));
+            assertEquals(row.get("ticks").getAsInt(), actual.get("processingTicks").getAsInt());
+            assertEquals(row.get("eu_per_tick").getAsLong() * row.get("ticks").getAsLong() * AE_PER_EU,
+                actual.get("energy").getAsLong());
+            for (var field : List.of(List.of("input_fluid", "inputFluid"), List.of("item_output", "itemOutput"),
+                    List.of("fluid_output", "fluidOutput"))) {
+                assertEquals(row.get(field.get(0)), actual.get(field.get(1)), row.get("id").getAsString());
+            }
         }
-        for (var row : recipes.values()) {
-            assertFalse(row.toString().contains("ae2omnicells"));
-            assertFalse(row.toString().contains("megacells"));
-        }
+        assertEquals(25, converted);
     }
 
-    @Test void namedTiersUseTheApprovedVoltageAndMatchingGtCircuitsAndParts() throws Exception {
-        for (var row : nativeRecipes().values()) {
+    @Test void largeOnlyRecipesFitTheLargeWorkstationAndRegularOnesFitTheRegularOne() throws Exception {
+        boolean sawLarge = false;
+        for (var recipe : pack().values()) {
+            if (!workstation(recipe)) continue;
+            int inputs = recipe.getAsJsonArray("inputItems").size();
+            boolean large = recipe.get("type").getAsString().equals("neoecoae:large_integrated_working_station");
+            sawLarge |= large;
+            assertTrue(inputs > 0 && inputs <= (large ? 12 : 9), recipe.toString());
+            assertTrue(recipe.get("energy").getAsLong() > 0 && recipe.get("energy").getAsLong() <= Integer.MAX_VALUE);
+        }
+        assertTrue(sawLarge, "The over-sized network switch is large-workstation only");
+        assertEquals("neoecoae:large_integrated_working_station",
+            read(recipe("neoecoae:integrated_working_station/crafting_high_energy_network_switch")).get("type").getAsString());
+    }
+
+    @Test void namedTiersKeepTheApprovedVoltageAndMatchingGtCircuits() throws Exception {
+        for (var value : read(Path.of("scripts/gto-workstation-plan.json")).getAsJsonArray("recipes")) {
+            var row = value.getAsJsonObject();
             if (!row.has("item_output") || row.has("copy_from")) continue;
             String output = row.getAsJsonObject("item_output").get("item").getAsString();
             int level = output.endsWith("_l4") || output.endsWith("_16m") ? 4
@@ -89,44 +90,70 @@ class ECOGtoProgressionTest {
                 : output.endsWith("_l9") || output.endsWith("_256m") || output.endsWith("eco_infinite_item_cell") ? 9 : 0;
             if (level == 0) continue;
             String tier = switch (level) { case 4 -> "ev"; case 6 -> "iv"; default -> "luv"; };
-            assertEquals(switch (level) { case 4 -> 1920; case 6 -> 7680; default -> 30720; },
-                row.get("eu_per_tick").getAsInt(), output);
+            assertEquals(switch (level) { case 4 -> 1920; case 6 -> 7680; default -> 30720; }, row.get("eu_per_tick").getAsInt(), output);
             assertTrue(row.getAsJsonArray("item_inputs").asList().stream().anyMatch(input ->
                 input.getAsJsonObject().has("tag") && input.getAsJsonObject().get("tag").getAsString()
                     .equals("gtceu:circuits/" + tier)), output);
-            assertFalse(row.toString().matches(".*gtceu:(?:zpm|uv|uhv|uev)_.*"), output);
         }
     }
 
-    @Test void inputsFitActualGtoMachineSlotsAndCoolantIsAFluidOnlyOutput() throws Exception {
-        Map<String, Integer> slots = Map.of("gtceu:assembler", 9, "gtceu:assembly_line", 16,
-            "gtceu:circuit_assembler", 6, "gtceu:mixer", 6, "gtceu:autoclave", 2,
-            "gtceu:alloy_smelter", 2, "gtceu:electric_blast_furnace", 3, "gtceu:macerator", 1);
-        for (var row : nativeRecipes().values()) {
-            if (row.has("copy_from")) continue;
-            String type = row.get("recipe_type").getAsString();
-            assertTrue(row.getAsJsonArray("item_inputs").size() <= slots.get(type), row.toString());
-            assertTrue(row.get("eu_per_tick").getAsLong() > 0);
-            assertTrue(row.get("ticks").getAsInt() > 0);
+    @Test void theWorkstationItselfKeepsTheStandaloneBootstrapChain() throws Exception {
+        assertEquals("minecraft:crafting_shaped", read(recipe("neoecoae:integrated_working_station")).get("type").getAsString());
+        assertEquals("minecraft:crafting_shaped", read(recipe("neoecoae:aluminum_alloy_casing")).get("type").getAsString());
+        for (String id : List.of("neoecoae:aluminum_alloy_dust", "neoecoae:aluminum_alloy_ingot_from_dusts_aluminum_alloy_smelting",
+                "neoecoae:aluminum_alloy_ingot_from_dusts_aluminum_alloy_blasting", "neoecoae:transform/crystal_ingot",
+                "neoecoae:transform/energized_fluix_crystal", "neoecoae:transform/energized_superconductive_ingot")) {
+            assertNotEquals("forge:conditional", read(recipe(id)).get("type").getAsString(), id);
         }
-        var coolant = nativeRecipes().get("neoecoae:compat/gto/cryotheum_solution");
-        assertEquals("gtceu:mixer", coolant.get("recipe_type").getAsString());
-        assertFalse(coolant.has("item_output"));
-        assertEquals("neoecoae:cryotheum_solution", coolant.getAsJsonObject("fluid_output").get("fluid").getAsString());
-        assertEquals(1000, coolant.getAsJsonObject("fluid_output").get("amount").getAsInt());
+        // B16 keeps the empty module makeable before a large workstation exists.
+        assertEquals("neoecoae:integrated_working_station", read(recipe(
+            "neoecoae:large_integrated_working_station/integrated_working_station_module_empty")).get("type").getAsString());
     }
 
-    @Test void retiredIdentitiesAreScopedAndOldJsonIsRejectedBeforeOptionalIngredientsAreResolved() {
-        for (String path : Set.of("integrated_working_station", "large_integrated_working_station_casing",
-                "large_integrated_working_station_input_hatch", "large_integrated_working_station_output_hatch",
-                "large_integrated_working_station_interface", "integrated_working_station_module_empty",
-                "integrated_working_station_module_extendedae")) {
-            assertTrue(ECOGtoWorkstations.retiredItem(new ResourceLocation("neoecoae", path)));
-            assertFalse(ECOGtoWorkstations.retiredItem(new ResourceLocation("gtocore", path)));
+    @Test void workstationsModulesAndLargePartsAreNoLongerRemovedAndNoOmniOrMegaRouteIsAdded() throws Exception {
+        for (var entry : pack().entrySet()) {
+            var recipe = entry.getValue();
+            String path = PACK.relativize(entry.getKey()).toString().replace('\\', '/');
+            if (recipe.get("type").getAsString().equals("forge:conditional")) {
+                boolean omniOrMega = path.contains("omni_cell") || path.contains("spent_nuclear_waste_cell")
+                    || path.startsWith("compat/megacells/");
+                assertFalse(!omniOrMega && (path.contains("integrated_working_station") || path.startsWith("transform/")), path);
+                continue;
+            }
+            assertFalse(recipe.toString().contains("ae2omnicells"), path);
+            assertFalse(recipe.toString().contains("megacells"), path);
         }
-        assertFalse(ECOGtoWorkstations.retiredItem(new ResourceLocation("neoecoae:storage_system_l4")));
-        var old = JsonParser.parseString("{\"type\":\"neoecoae:integrated_working_station\","
-            + "\"inputItems\":[{\"item\":\"missing_addon:component\",\"count\":1}]}");
-        assertTrue(ECOGtoRecipes.decode(Map.of(new ResourceLocation("neoecoae:legacy"), old), null).isEmpty());
+        for (String id : List.of("neoecoae:integrated_working_station/module_extendedae", "neoecoae:large_integrated_working_station_casing",
+                "neoecoae:large_integrated_working_station_interface",
+                "neoecoae:large_integrated_working_station/integrated_working_station_module_extendedae")) {
+            // Either replaced in the GTO pack or left to the base mod's own recipe; never emptied.
+            Path file = Files.exists(recipe(id)) ? recipe(id)
+                : Path.of("src/main/resources/data/neoecoae/recipes", id.substring(id.indexOf(':') + 1) + ".json");
+            assertTrue(workstation(read(file)), id);
+        }
+    }
+
+    @Test void chargerReplacesLightningForTheFirstEnergizedCrystalWithTheSameBuddingMapping() throws Exception {
+        var mapping = Map.of("flawless", "flawless", "flawed", "flawed", "chipped", "chipped", "damaged", "chipped");
+        for (var entry : mapping.entrySet()) {
+            var charger = read(recipe("neoecoae:compat/gto/charger/" + entry.getKey() + "_budding_quartz"));
+            assertEquals("ae2:charger", charger.get("type").getAsString());
+            assertEquals("ae2:" + entry.getKey() + "_budding_quartz", charger.getAsJsonObject("ingredient").get("item").getAsString());
+            assertEquals("neoecoae:" + entry.getValue() + "_budding_energized_crystal",
+                charger.getAsJsonObject("result").get("item").getAsString());
+        }
+    }
+
+    @Test void gtoLoadsOneSelfContainedPackSoNoProfileOrderCanUndoIt() throws Exception {
+        assertEquals(List.of("gt_gto"), cn.dancingsnow.neoecoae.recipe.profile.GTRecipeProfiles.packPaths(
+            cn.dancingsnow.neoecoae.config.RecipeProfileConfig.Profile.AUTO, mod -> !mod.equals("gtlcore"),
+            () -> { throw new AssertionError("GTO does not use a GT machine JSON schema"); }));
+        // Everything the GTM profile ships is present beneath the GTO replacements.
+        Path gtm = Path.of("src/main/resources/recipe_profiles/gtm/data/neoecoae/recipes");
+        try (var files = Files.walk(gtm)) {
+            for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
+                assertTrue(Files.exists(PACK.resolve(gtm.relativize(file).toString())), file.toString());
+            }
+        }
     }
 }

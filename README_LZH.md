@@ -4,7 +4,7 @@
 
 Neo ECO AE Extension，Applied Energistics 2 之擴充模組也。為 ME 網絡設合成、儲存、運算三系統，皆可擴其構；又置整合工坊，以製進階組件。
 
-此 `1.20.1-GTO` 分支承 `1.20.1` 而來，專適 **GregTech Odyssey（GTO）** 之 AE2 與 GregTech 介面。今版 **`20.5.2-gto.1`**，所適者 **GTO `0.6.0-dev25`（Dev25）**，以預發佈版供之。凡用一般 AE2 整合包者，當取本倉庫 `1.20.1` 分支及其相應版本。
+此 `1.20.1-GTO` 分支承 `1.20.1` 而來，專適 **GregTech Odyssey（GTO）** 之 AE2 與 GregTech 介面。今版 **`20.5.3-gto.1`**，所適者 **GTO `0.6.0-dev25`（Dev25）**，以預發佈版供之。凡用一般 AE2 整合包者，當取本倉庫 `1.20.1` 分支及其相應版本。
 
 ## 諸般功用
 
@@ -40,7 +40,7 @@ GuideME、LDLib 皆必備，詳見 [Mod 中繼資料](src/main/resources/META-IN
 
 ## 安裝與用法
 
-1. 於本倉庫 GitHub Releases 取 **`20.5.2-gto.1`**，下載 `neoecoae-20.5.2-gto.1.jar`。
+1. 於本倉庫 GitHub Releases 取 **`20.5.3-gto.1`**，下載 `neoecoae-20.5.3-gto.1.jar`。
 2. 置此 JAR 於目標 GTO 實例之 `mods` 目錄，並去舊版 NeoECOAE JAR。`-sources.jar` 乃原始碼之包，不可作模組安裝。
 3. 聯機之時，用戶端與伺服器須裝同版；ECO 網絡握手，必兩端版本全同乃可。
 4. 以 Java 21 啟目標實例，於配方檢視器查材料與機器諸方。
@@ -79,10 +79,10 @@ Gradle 工具鏈須能尋得 JDK 21；若未自識，可設 `org.gradle.java.ins
 
 建置所得，皆在 `build/libs/`：
 
-- `neoecoae-20.5.2-gto.1.jar`：安裝之包。
-- `neoecoae-20.5.2-gto.1-sources.jar`：原始碼之包。
+- `neoecoae-20.5.3-gto.1.jar`：安裝之包。
+- `neoecoae-20.5.3-gto.1-sources.jar`：原始碼之包。
 
-編譯依賴今鎖於 GTO AE2 **`15.2610.31`**，見 [GTO 依賴鎖](docs/compat/gto-dependencies.json)；Dev25 實例所用 **`15.2610.40`**，乃執行時適配之目標，二者分記。`bootstrap.py --gto` 惟還原建置所需依賴，不代裝完整 GTO 整合包。
+編譯依賴今鎖於 GTO AE2 **`15.2610.31`**，見 [GTO 依賴鎖](porting/gto-dependencies.json)；Dev25 實例所用 **`15.2610.40`**，乃執行時適配之目標，二者分記。`bootstrap.py --gto` 惟還原建置所需依賴，不代裝完整 GTO 整合包。
 
 ## 目錄之制
 
@@ -104,11 +104,11 @@ docs/releases/              中英雙語發佈記
 tools/compat/               固定依賴還原與產物檢驗工具
 ```
 
-`libs/`、`build/`、`porting/` 皆本機生成或工作之所，不入 Git。乾淨取碼後，建置所需依賴資訊，由 `tools/compat/build-dependencies.json` 與 `docs/compat/gto-dependencies.json` 供之。
+`libs/`、`build/`、`porting/` 皆本機生成或工作之所；惟固定依賴鎖 `porting/gto-dependencies.json` 入 Git。乾淨取碼後，建置所需依賴資訊，由 `tools/compat/build-dependencies.json` 與此鎖供之。
 
 ## 驗證與報錯
 
-據 [`20.5.2-gto.1` 發佈記](docs/releases/20.5.2-gto.1.md)，修復後 **27 項 GTO 專題迴歸皆過，無所略**。完整 Dev25 實例已越舊啟動崩潰之處，四處合成 CPU 選單橋接皆已命中，用戶亦確認該實例修復如常。詳見 [GTO 適配與驗收記](docs/compat/GTO_ADAPTATION_ZH_CN.md)（簡體中文）。
+今次本機 `jar sourcesJar gtoCompatibilityTest`、JAR 與配方生成一致性之檢皆過：**專題測試五十四，通過五十一，略三，無敗**。所略者須實裝 AE2/GTOCore JAR；今次未重行完整客戶端與獨立專服之驗。詳見 [20.5.3-gto.1 發佈記](docs/releases/20.5.3-gto.1.md)。
 
 然完整舊測試套件、全部附屬組合、獨立專服，尚未盡驗。舊測試有仍用 GTO 已刪之原版 AE2 類別者，故上列建置令用獨立之 `gtoCompatibilityTest`；此項既過，未可遂謂完整 `test` 或 `build` 皆過。
 

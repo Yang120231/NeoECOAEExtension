@@ -56,7 +56,7 @@ public final class GTRecipeProfiles {
         });
     }
 
-    static List<String> packPaths(Profile profile, Predicate<String> loaded, Supplier<Schema> schema) {
+    public static List<String> packPaths(Profile profile, Predicate<String> loaded, Supplier<Schema> schema) {
         if (profile == Profile.AUTO) {
             if (!loaded.test("gtceu")) return List.of();
             profile = loaded.test("gtlcore") ? Profile.GTL : Profile.GTM;
@@ -70,7 +70,9 @@ public final class GTRecipeProfiles {
             throw new IllegalStateException("NeoECOAE GTL recipe profile requires both gtceu and gtlcore.");
         }
         if (loaded.test("gtocore")) {
-            return List.of(profile.name().toLowerCase(Locale.ROOT), "gt_gto");
+            // Self-contained: Minecraft orders same-position packs by ID, so a separate gtm pack would
+            // override gt_gto ("gt_gto" < "gtm") and silently undo every GTO replacement.
+            return List.of("gt_gto");
         }
         return List.of(profile.name().toLowerCase(Locale.ROOT),
             "gt_" + schema.get().name().toLowerCase(Locale.ROOT));

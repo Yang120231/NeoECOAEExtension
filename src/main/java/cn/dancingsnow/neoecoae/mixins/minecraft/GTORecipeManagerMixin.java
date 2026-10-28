@@ -1,6 +1,5 @@
 package cn.dancingsnow.neoecoae.mixins.minecraft;
 
-import cn.dancingsnow.neoecoae.compat.gto.ECOGtoNativeRecipes;
 import cn.dancingsnow.neoecoae.compat.gto.ECOGtoRecipes;
 import com.google.gson.JsonElement;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -28,7 +27,6 @@ public abstract class GTORecipeManagerMixin {
             ProfilerFiller profiler, Operation<Void> original) {
         var retained = ECOGtoRecipes.capture(resources);
         original.call(input, resources, profiler);
-        ECOGtoNativeRecipes.register();
         ECOGtoRecipes.replace((RecipeManager) (Object) this, ECOGtoRecipes.decode(retained, context), "datapack");
     }
 

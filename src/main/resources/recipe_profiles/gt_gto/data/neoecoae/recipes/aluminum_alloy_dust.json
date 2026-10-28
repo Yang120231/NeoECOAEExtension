@@ -1,0 +1,28 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "tag": "forge:dusts/iron"
+    },
+    {
+      "tag": "neoecoae:compat/gt/aluminium_dusts"
+    },
+    {
+      "tag": "forge:dusts/certus_quartz"
+    },
+    {
+      "tag": "forge:dusts/certus_quartz"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "item": "neoecoae:aluminum_alloy_dust"
+  },
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ]
+}

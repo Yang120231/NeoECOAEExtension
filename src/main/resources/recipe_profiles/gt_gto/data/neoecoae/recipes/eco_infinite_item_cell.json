@@ -1,4 +1,49 @@
 {
-  "type": "forge:conditional",
-  "recipes": []
+  "type": "neoecoae:integrated_working_station",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtceu"
+    }
+  ],
+  "inputItems": [
+    {
+      "count": 1,
+      "item": "minecraft:water_bucket"
+    },
+    {
+      "count": 1,
+      "item": "minecraft:lava_bucket"
+    },
+    {
+      "count": 1,
+      "item": "neoecoae:eco_cell_component_256m"
+    },
+    {
+      "count": 1,
+      "item": "neoecoae:crystal_matrix"
+    },
+    {
+      "tag": "gtceu:circuits/luv",
+      "count": 4
+    },
+    {
+      "item": "gtceu:luv_field_generator",
+      "count": 2
+    },
+    {
+      "item": "gtceu:tungsten_steel_plate",
+      "count": 8
+    }
+  ],
+  "energy": 294912000,
+  "processingTicks": 1200,
+  "itemOutput": {
+    "count": 1,
+    "item": "neoecoae:eco_infinite_item_cell"
+  },
+  "inputFluid": {
+    "fluid": "gtceu:soldering_alloy",
+    "amount": 2304
+  }
 }

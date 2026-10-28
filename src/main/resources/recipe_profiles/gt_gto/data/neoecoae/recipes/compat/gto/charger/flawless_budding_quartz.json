@@ -1,0 +1,15 @@
+{
+  "type": "ae2:charger",
+  "conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "gtocore"
+    }
+  ],
+  "ingredient": {
+    "item": "ae2:flawless_budding_quartz"
+  },
+  "result": {
+    "item": "neoecoae:flawless_budding_energized_crystal"
+  }
+}

@@ -4,7 +4,7 @@
 
 Neo ECO AE Extension 是 Applied Energistics 2 的擴充模組，為 ME 網絡提供可擴展的合成、儲存和運算系統，以及用於加工進階組件的整合工作站。
 
-本分支 `1.20.1-GTO` 以 `1.20.1` 分支為基礎，專門適配 **GregTech Odyssey（GTO）** 的 AE2 與 GregTech 介面。目前版本為 **`20.5.2-gto.1`**，面向 **GTO `0.6.0-dev25`（Dev25）**，以預發佈版提供。一般 AE2 模組整合包請使用本倉庫的 `1.20.1` 分支及其對應版本。
+本分支 `1.20.1-GTO` 以 `1.20.1` 分支為基礎，專門適配 **GregTech Odyssey（GTO）** 的 AE2 與 GregTech 介面。目前版本為 **`20.5.3-gto.1`**，面向 **GTO `0.6.0-dev25`（Dev25）**，以預發佈版提供。一般 AE2 模組整合包請使用本倉庫的 `1.20.1` 分支及其對應版本。
 
 ## 主要功能
 
@@ -40,7 +40,7 @@ GTO 專版適配了原生合成 CPU、樣板派發、合成確認、精確數量
 
 ## 安裝與使用
 
-1. 在本倉庫 GitHub Releases 中選擇 **`20.5.2-gto.1`**，下載 `neoecoae-20.5.2-gto.1.jar`。
+1. 在本倉庫 GitHub Releases 中選擇 **`20.5.3-gto.1`**，下載 `neoecoae-20.5.3-gto.1.jar`。
 2. 將該 JAR 放入目標 GTO 實例的 `mods` 目錄，並移除舊版 NeoECOAE JAR。`-sources.jar` 是原始碼封存檔，不用於安裝。
 3. 連線遊玩時，用戶端與伺服器均安裝相同版本。ECO 網絡握手要求兩端版本完全一致。
 4. 使用 Java 21 啟動目標實例，在配方檢視器中查詢材料與機器配方。
@@ -79,10 +79,10 @@ JDK 21 需能被 Gradle 工具鏈偵測；未自動識別時，可透過 Gradle 
 
 建置產物位於 `build/libs/`：
 
-- `neoecoae-20.5.2-gto.1.jar`：安裝包。
-- `neoecoae-20.5.2-gto.1-sources.jar`：原始碼封存檔。
+- `neoecoae-20.5.3-gto.1.jar`：安裝包。
+- `neoecoae-20.5.3-gto.1-sources.jar`：原始碼封存檔。
 
-編譯依賴目前固定為 GTO AE2 **`15.2610.31`**，見 [GTO 依賴鎖](docs/compat/gto-dependencies.json)；Dev25 實例使用的 **`15.2610.40`** 屬於執行時適配目標，兩者分別記錄。`bootstrap.py --gto` 會還原建置所需依賴，不會自動安裝完整 GTO 整合包。
+編譯依賴目前固定為 GTO AE2 **`15.2610.31`**，見 [GTO 依賴鎖](porting/gto-dependencies.json)；Dev25 實例使用的 **`15.2610.40`** 屬於執行時適配目標，兩者分別記錄。`bootstrap.py --gto` 會還原建置所需依賴，不會自動安裝完整 GTO 整合包。
 
 ## 目錄結構
 
@@ -104,11 +104,11 @@ docs/releases/              中英雙語發佈說明
 tools/compat/               固定依賴還原與產物檢查工具
 ```
 
-`libs/`、`build/` 和 `porting/` 為本機產生或工作目錄，不納入 Git。乾淨取出程式碼後所需的建置依賴資訊由 `tools/compat/build-dependencies.json` 與 `docs/compat/gto-dependencies.json` 提供。
+`libs/`、`build/` 和 `porting/` 為本機產生或工作目錄；其中固定依賴鎖 `porting/gto-dependencies.json` 納入 Git。乾淨取出程式碼後所需的建置依賴資訊由 `tools/compat/build-dependencies.json` 與該依賴鎖提供。
 
 ## 驗證狀態與問題回報
 
-據 [`20.5.2-gto.1` 發佈記錄](docs/releases/20.5.2-gto.1.md)，修復後的 **27 項 GTO 專題迴歸測試全部通過，無跳過**；完整 Dev25 實例已通過原啟動崩潰點，四處合成 CPU 選單橋接已確認生效，用戶已確認該實例修復正常。詳細過程見 [GTO 適配與驗收記錄](docs/compat/GTO_ADAPTATION_ZH_CN.md)（簡體中文）。
+本次本機 `jar sourcesJar gtoCompatibilityTest`、JAR 檢查與配方產生一致性檢查通過：**54 項專題測試，51 項通過、3 項跳過、0 失敗**。跳過項需要提供實際安裝的 AE2/GTOCore JAR；本次未重新執行完整客戶端實例和獨立專用伺服器。詳見 [20.5.3-gto.1 發佈說明](docs/releases/20.5.3-gto.1.md)。
 
 完整舊測試套件、全部附屬組合和獨立專用伺服器尚未完成驗收。部分舊測試仍依賴 GTO 已刪除的原版 AE2 類別，因此上面的建置指令使用獨立的 `gtoCompatibilityTest`，其結果不代表完整 `test` 或 `build` 已通過。
 

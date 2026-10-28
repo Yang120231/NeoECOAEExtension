@@ -1,6 +1,7 @@
 package cn.dancingsnow.neoecoae.integration.emi.recipe;
 
 import cn.dancingsnow.neoecoae.NeoECOAE;
+import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiCategories;
 import cn.dancingsnow.neoecoae.integration.emi.NeoECOAEEmiPlugin;
 import cn.dancingsnow.neoecoae.integration.recipe.LargeWorkstationRecipeDisplay;
 import cn.dancingsnow.neoecoae.integration.recipe.WorkstationRecipeInfoLayout;
@@ -32,11 +33,11 @@ public class IntegrationWorkingStationEmiRecipe extends BasicEmiRecipe {
     private LargeWorkstationRecipe largeRecipe;
 
     public IntegrationWorkingStationEmiRecipe(IntegratedWorkingStationRecipe holder) {
-        this(NeoECOAEEmiPlugin.INTEGRATED_WORKING_STATION, holder.getId(), holder, holder.energy());
+        this(NeoECOAEEmiCategories.INTEGRATED_WORKING_STATION, holder.getId(), holder, holder.energy());
     }
 
     public IntegrationWorkingStationEmiRecipe(LargeWorkstationRecipe recipe) {
-        this(NeoECOAEEmiPlugin.LARGE_WORKING_STATION,
+        this(NeoECOAEEmiCategories.LARGE_WORKING_STATION,
             NeoECOAE.id("/large_workstation/" + recipe.id().getNamespace() + "/" + recipe.id().getPath()),
             recipe.display(), recipe.energy());
         additionalFluidInputs = recipe.additionalFluidInputs();
@@ -81,7 +82,7 @@ public class IntegrationWorkingStationEmiRecipe extends BasicEmiRecipe {
 
     @Override
     public void addWidgets(WidgetHolder widgets) {
-        boolean large = category == NeoECOAEEmiPlugin.LARGE_WORKING_STATION;
+        boolean large = category == NeoECOAEEmiCategories.LARGE_WORKING_STATION;
         String texture = large ? "large_integration_working_station" : "integration_working_station";
         int backgroundHeight = large ? LargeWorkstationRecipeDisplay.BACKGROUND_HEIGHT : 75;
         widgets.addTexture(NeoECOAE.id("textures/guis/" + texture + ".png"), 0, 0, 168, backgroundHeight,

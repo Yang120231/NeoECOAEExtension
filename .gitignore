@@ -9,7 +9,8 @@ runs/
 logs/
 validation/
 .porting/
-/porting/
+/porting/*
+!/porting/gto-dependencies.json
 libs/
 local.properties
 hs_err_pid*
