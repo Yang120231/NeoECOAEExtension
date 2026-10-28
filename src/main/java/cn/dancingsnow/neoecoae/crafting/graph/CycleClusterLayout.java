@@ -1,5 +1,9 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,10 +26,10 @@ public final class CycleClusterLayout implements GraphLayoutEngine {
         if (cluster == null) return new LayeredGraphLayout().layout(graph, version);
 
         Map<Integer, Integer> ownerByNode = owners(graph, cluster);
-        Map<Integer, LocalLayout> locals = new LinkedHashMap<>();
+        Map<Integer, LocalLayout> locals = new Int2ObjectLinkedOpenHashMap<>();
         CircularCycleLayout circular = new CircularCycleLayout();
         for (int componentId : cluster.componentIds()) {
-            Map<Integer, ClientCraftingGraph.Node> localNodes = new LinkedHashMap<>();
+            Map<Integer, ClientCraftingGraph.Node> localNodes = new Int2ObjectLinkedOpenHashMap<>();
             for (var entry : graph.nodes().entrySet()) if (ownerByNode.get(entry.getKey()) != null
                     && ownerByNode.get(entry.getKey()) == componentId) localNodes.put(entry.getKey(), entry.getValue());
             List<ClientCraftingGraph.Link> localLinks = graph.links().stream()
@@ -38,13 +42,13 @@ public final class CycleClusterLayout implements GraphLayoutEngine {
         }
 
         Map<Integer, Integer> depths = condensationDepths(cluster);
-        Map<Integer, List<Integer>> layers = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> layers = new Int2ObjectLinkedOpenHashMap<>();
         for (int componentId : cluster.componentIds()) {
             layers.computeIfAbsent(depths.getOrDefault(componentId, 0), ignored -> new ArrayList<>()).add(componentId);
         }
-        Map<Integer, GraphLayoutSnapshot.Box> boxes = new LinkedHashMap<>();
-        Map<ClientCraftingGraph.Link, List<GraphLayoutSnapshot.Point>> routes = new LinkedHashMap<>();
-        Map<Integer, GraphLayoutSnapshot.Point> centers = new HashMap<>();
+        Map<Integer, GraphLayoutSnapshot.Box> boxes = new Int2ObjectLinkedOpenHashMap<>();
+        Map<ClientCraftingGraph.Link, List<GraphLayoutSnapshot.Point>> routes = new Object2ObjectLinkedOpenHashMap<>();
+        Map<Integer, GraphLayoutSnapshot.Point> centers = new Int2ObjectOpenHashMap<>();
         float x = PADDING;
         for (int depth : layers.keySet().stream().sorted().toList()) {
             List<Integer> components = layers.get(depth).stream().sorted().toList();
@@ -83,7 +87,7 @@ public final class CycleClusterLayout implements GraphLayoutEngine {
     }
 
     private static Map<Integer, Integer> owners(ClientCraftingGraph graph, CycleCluster cluster) {
-        Map<Integer, Integer> result = new HashMap<>();
+        Map<Integer, Integer> result = new Int2IntOpenHashMap();
         for (var cycle : graph.source().cycleGroups()) if (cluster.componentIds().contains(cycle.componentId())) {
             for (int memberId : cycle.memberNodeIds()) result.put(memberId, cycle.componentId());
         }
@@ -95,8 +99,8 @@ public final class CycleClusterLayout implements GraphLayoutEngine {
     }
 
     private static Map<Integer, Integer> condensationDepths(CycleCluster cluster) {
-        Map<Integer, Set<Integer>> outgoing = new HashMap<>();
-        Map<Integer, Integer> indegree = new HashMap<>();
+        Map<Integer, Set<Integer>> outgoing = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Integer> indegree = new Int2IntOpenHashMap();
         for (int componentId : cluster.componentIds()) indegree.put(componentId, 0);
         for (InterCycleFlow flow : cluster.flows()) if (outgoing
                 .computeIfAbsent(flow.fromComponentId(), ignored -> new LinkedHashSet<>()).add(flow.toComponentId())) {
@@ -105,7 +109,7 @@ public final class CycleClusterLayout implements GraphLayoutEngine {
         ArrayDeque<Integer> queue = new ArrayDeque<>();
         indegree.entrySet().stream().filter(entry -> entry.getValue() == 0).map(Map.Entry::getKey).sorted()
             .forEach(queue::addLast);
-        Map<Integer, Integer> depth = new HashMap<>();
+        Map<Integer, Integer> depth = new Int2IntOpenHashMap();
         while (!queue.isEmpty()) {
             int current = queue.removeFirst();
             int nextDepth = depth.getOrDefault(current, 0) + 1;
@@ -135,7 +139,7 @@ public final class CycleClusterLayout implements GraphLayoutEngine {
     private static void placeBridgeMaterials(ClientCraftingGraph graph, CycleCluster cluster,
             Map<Integer, Integer> owners, Map<Integer, GraphLayoutSnapshot.Point> centers,
             Map<Integer, GraphLayoutSnapshot.Box> boxes) {
-        Map<Integer, List<InterCycleFlow>> byMaterial = new LinkedHashMap<>();
+        Map<Integer, List<InterCycleFlow>> byMaterial = new Int2ObjectLinkedOpenHashMap<>();
         for (InterCycleFlow flow : cluster.flows()) byMaterial.computeIfAbsent(flow.materialNodeId(),
             ignored -> new ArrayList<>()).add(flow);
         for (var entry : byMaterial.entrySet()) {

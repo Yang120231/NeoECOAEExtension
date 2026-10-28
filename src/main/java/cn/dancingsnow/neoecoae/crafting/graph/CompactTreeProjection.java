@@ -1,5 +1,8 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,12 +38,12 @@ public final class CompactTreeProjection {
         }
         int depthLimit = Math.max(0, maxDepth);
         Map<Integer, List<Dependency>> dependencies = dependencies(source);
-        Map<Integer, ClientCraftingGraph.Node> nodes = new LinkedHashMap<>();
-        Map<Integer, CompactTreeNode> treeNodes = new LinkedHashMap<>();
+        Map<Integer, ClientCraftingGraph.Node> nodes = new Int2ObjectLinkedOpenHashMap<>();
+        Map<Integer, CompactTreeNode> treeNodes = new Int2ObjectLinkedOpenHashMap<>();
         List<ClientCraftingGraph.Link> links = new ArrayList<>();
-        Set<Integer> usedIds = new HashSet<>(source.nodes().keySet());
+        Set<Integer> usedIds = new IntOpenHashSet(source.nodes().keySet());
         IdAllocator ids = new IdAllocator(usedIds);
-        Set<Integer> emittedSources = new HashSet<>();
+        Set<Integer> emittedSources = new IntOpenHashSet();
         emittedSources.add(source.rootId());
 
         String rootPath = path("", source.rootId(), 0);
@@ -57,7 +60,7 @@ public final class CompactTreeProjection {
         Deque<PathFrame> queue = new ArrayDeque<>();
         String rootPath = path("", source.rootId(), 0);
         queue.add(new PathFrame(source.rootId(), rootPath, null));
-        Set<Integer> visited = new HashSet<>();
+        Set<Integer> visited = new IntOpenHashSet();
         while (!queue.isEmpty()) {
             PathFrame frame = queue.removeFirst();
             if (frame.sourceId() == targetSourceId) return reconstructPath(frame);
@@ -170,8 +173,8 @@ public final class CompactTreeProjection {
         boolean missing = false;
         boolean cycle = false;
         boolean unsupported = false;
-        Set<Integer> seen = new HashSet<>();
-        Set<Integer> active = new HashSet<>();
+        Set<Integer> seen = new IntOpenHashSet();
+        Set<Integer> active = new IntOpenHashSet();
         Deque<SummaryFrame> stack = new ArrayDeque<>();
         stack.push(new SummaryFrame(sourceId, 0, false));
         while (!stack.isEmpty()) {
@@ -209,12 +212,12 @@ public final class CompactTreeProjection {
     }
 
     private static Map<Integer, List<Dependency>> dependencies(ClientCraftingGraph source) {
-        Map<Integer, List<ClientCraftingGraph.Link>> outgoing = new HashMap<>();
+        Map<Integer, List<ClientCraftingGraph.Link>> outgoing = new Int2ObjectOpenHashMap<>();
         for (ClientCraftingGraph.Link link : source.links()) {
             outgoing.computeIfAbsent(link.fromId(), ignored -> new ArrayList<>()).add(link);
         }
         boolean hasSelected = source.links().stream().anyMatch(ClientCraftingGraph.Link::selected);
-        Map<Integer, List<Dependency>> result = new HashMap<>();
+        Map<Integer, List<Dependency>> result = new Int2ObjectOpenHashMap<>();
         for (ClientCraftingGraph.Node node : source.nodes().values()) {
             if (node.kind() == ClientCraftingGraph.Kind.PATTERN) continue;
             List<Dependency> children = new ArrayList<>();

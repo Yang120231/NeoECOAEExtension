@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.execution.fastpath;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
@@ -197,8 +198,8 @@ public final class ECOStateTransitionBatchModel implements ECOReusableStateModel
 
         private static Optional<NumericCompoundDelta> analyze(CompoundTag before, CompoundTag after) {
             if (!before.getAllKeys().equals(after.getAllKeys())) return Optional.empty();
-            Map<String, NumericDelta> deltas = new LinkedHashMap<>();
-            Map<String, NumericCompoundDelta> children = new LinkedHashMap<>();
+            Map<String, NumericDelta> deltas = new Object2ObjectLinkedOpenHashMap<>();
+            Map<String, NumericCompoundDelta> children = new Object2ObjectLinkedOpenHashMap<>();
             for (String key : before.getAllKeys()) {
                 Tag left = before.get(key);
                 Tag right = after.get(key);

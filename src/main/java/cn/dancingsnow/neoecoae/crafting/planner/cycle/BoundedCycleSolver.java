@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.cycle;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -599,7 +600,7 @@ public final class BoundedCycleSolver implements CycleSolver {
         int n = index.size();
         int t = transitions.size();
         List<AEKey> keys = new ArrayList<>(index.keySet());
-        Set<AEKey> members = new LinkedHashSet<>(request.component().members());
+        Set<AEKey> members = new ObjectLinkedOpenHashSet<>(request.component().members());
         boolean[] suppliable = new boolean[n];
         for (ComponentDependency dependency : request.externalResourceBoundary()) {
             for (var relationship : dependency.relationships()) {

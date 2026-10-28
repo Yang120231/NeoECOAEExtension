@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.cycle;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.component.ComponentDependency;
 import cn.dancingsnow.neoecoae.crafting.planner.component.CycleComponent;
@@ -76,7 +77,7 @@ public record CycleSolveRequest(
     }
 
     private static Map<AEKey, PlannerAmount> exact(Map<AEKey, Long> amounts) {
-        Map<AEKey, PlannerAmount> result = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> result = new Object2ObjectLinkedOpenHashMap<>();
         amounts.forEach((key, amount) -> result.put(key, PlannerAmount.of(amount == null ? 0L : amount)));
         return result;
     }

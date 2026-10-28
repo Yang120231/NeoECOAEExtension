@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.growth;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledInput;
@@ -55,9 +57,9 @@ public final class PatternProfileValidator {
         EnumSet<PatternCapability> capabilities = EnumSet.noneOf(PatternCapability.class);
         if (fastPathSafe(pattern)) capabilities.add(PatternCapability.FAST_PATH_SAFE);
 
-        Map<AEKey, Long> consumption = new LinkedHashMap<>();
-        Map<AEKey, Long> production = new LinkedHashMap<>();
-        Map<AEKey, Long> remainder = new LinkedHashMap<>();
+        Map<AEKey, Long> consumption = new Object2LongLinkedOpenHashMap<>();
+        Map<AEKey, Long> production = new Object2LongLinkedOpenHashMap<>();
+        Map<AEKey, Long> remainder = new Object2LongLinkedOpenHashMap<>();
         NetGrowthRejection rejection = netGrowthRejection(pattern, consumption, production, remainder);
         if (rejection == NetGrowthRejection.NONE) {
             capabilities.add(PatternCapability.NET_GROWTH_SAFE);
@@ -95,9 +97,9 @@ public final class PatternProfileValidator {
         if (pattern.outputs().isEmpty()) return NetGrowthRejection.INDETERMINATE_OUTPUT;
         if (pattern.inputs().isEmpty()) return NetGrowthRejection.NO_INPUTS;
 
-        Map<AEKey, PlannerAmount> exactConsumption = new LinkedHashMap<>();
-        Map<AEKey, PlannerAmount> exactProduction = new LinkedHashMap<>();
-        Map<AEKey, PlannerAmount> exactRemainder = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> exactConsumption = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> exactProduction = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> exactRemainder = new Object2ObjectLinkedOpenHashMap<>();
         // The semantic adapter may expose returned/reusable stock that is not present in AE2's ordinary output list.
         // Feed the normalized gross output vector into the existing exact validator so the growth fast path cannot
         // silently undercount Thunder feedback while the algebra itself remains unchanged.

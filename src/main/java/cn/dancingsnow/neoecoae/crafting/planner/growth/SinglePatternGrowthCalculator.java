@@ -1,5 +1,8 @@
 package cn.dancingsnow.neoecoae.crafting.planner.growth;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledPattern;
@@ -136,7 +139,7 @@ public final class SinglePatternGrowthCalculator {
     public SinglePatternGrowthResult evaluate(ValidatedPatternProfile profile, Map<AEKey, Long> requiredOutputs,
             Map<AEKey, Long> availableStock) {
         try {
-            Map<AEKey, PlannerAmount> exact = new LinkedHashMap<>();
+            Map<AEKey, PlannerAmount> exact = new Object2ObjectLinkedOpenHashMap<>();
             if (requiredOutputs != null) requiredOutputs.forEach((key, amount) ->
                 exact.put(key, PlannerAmount.of(amount == null ? 0L : amount)));
             return compute(profile, exact, availableStock);
@@ -208,7 +211,7 @@ public final class SinglePatternGrowthCalculator {
         PlannerAmount available = PlannerAmount.of(Math.max(0L, stock.getOrDefault(feedback, 0L)));
         PlannerAmount shortfall = consume.subtract(available).max(PlannerAmount.ZERO);
 
-        Map<AEKey, PlannerAmount> exactExternalDemand = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> exactExternalDemand = new Object2ObjectLinkedOpenHashMap<>();
         for (AEKey key : profile.consumption().keySet()) {
             if (feedback.equals(key)) continue;
             PlannerAmount netPerFiring = PlannerAmount.of(profile.consumptionOf(key))
@@ -217,8 +220,8 @@ public final class SinglePatternGrowthCalculator {
             exactExternalDemand.put(key, netPerFiring.multiply(firings));
         }
 
-        Map<AEKey, PlannerAmount> exactProducedOutputs = new LinkedHashMap<>();
-        Map<AEKey, PlannerAmount> exactNetDelta = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> exactProducedOutputs = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> exactNetDelta = new Object2ObjectLinkedOpenHashMap<>();
         for (AEKey key : profile.touchedKeys()) {
             PlannerAmount gross = PlannerAmount.of(profile.grossProductionOf(key));
             if (gross.signum() > 0) exactProducedOutputs.put(key, gross.multiply(firings));
@@ -226,7 +229,7 @@ public final class SinglePatternGrowthCalculator {
             if (!delta.isZero()) exactNetDelta.put(key, delta.multiply(firings));
         }
 
-        Map<AEKey, PlannerAmount> exactDeliverable = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> exactDeliverable = new Object2ObjectLinkedOpenHashMap<>();
         for (AEKey key : required.keySet()) {
             PlannerAmount have = PlannerAmount.of(Math.max(0L, stock.getOrDefault(key, 0L)));
             exactDeliverable.put(key, have.add(
@@ -262,13 +265,13 @@ public final class SinglePatternGrowthCalculator {
     }
 
     private static Map<AEKey, Long> toLongMap(Map<AEKey, PlannerAmount> amounts) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         amounts.forEach((key, amount) -> result.put(key, amount.longValueExact()));
         return result;
     }
 
     private static Map<AEKey, Long> representableMap(Map<AEKey, PlannerAmount> amounts) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         amounts.forEach((key, amount) -> {
             if (amount.fitsLong()) result.put(key, amount.longValueExact());
         });
@@ -284,12 +287,12 @@ public final class SinglePatternGrowthCalculator {
      * eligibility, so views are deduplicated exactly as the bounded solver deduplicates them.
      */
     private static List<CompiledPattern> distinctTransitions(List<CompiledPattern> patterns) {
-        Map<IPatternDetails, CompiledPattern> byDetails = new LinkedHashMap<>();
+        Map<IPatternDetails, CompiledPattern> byDetails = new Object2ObjectLinkedOpenHashMap<>();
         for (CompiledPattern pattern : patterns) {
             if (pattern == null || pattern.details() == null) continue;
             byDetails.putIfAbsent(pattern.details(), pattern);
         }
-        Set<CompiledPattern> distinct = new LinkedHashSet<>(byDetails.values());
+        Set<CompiledPattern> distinct = new ObjectLinkedOpenHashSet<>(byDetails.values());
         return new ArrayList<>(distinct);
     }
 

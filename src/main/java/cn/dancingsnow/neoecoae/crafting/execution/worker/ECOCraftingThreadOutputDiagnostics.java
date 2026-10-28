@@ -1,11 +1,11 @@
 package cn.dancingsnow.neoecoae.crafting.execution.worker;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingWorkerBlockEntity;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.crafting.amount.NEMath;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -127,8 +127,8 @@ final class ECOCraftingThreadOutputDiagnostics {
     }
 
     private static Aggregated aggregate(UUID jobId, JobDiagnostic diagnostic, long tick, long blockedTicks) {
-        Set<String> reasons = new LinkedHashSet<>();
-        Set<String> positions = new LinkedHashSet<>();
+        Set<String> reasons = new ObjectLinkedOpenHashSet<>();
+        Set<String> positions = new ObjectLinkedOpenHashSet<>();
         int threads = 0;
         int keys = 0;
         long amount = 0L;

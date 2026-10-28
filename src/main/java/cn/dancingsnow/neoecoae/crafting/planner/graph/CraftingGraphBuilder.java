@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledNetwork;
@@ -15,7 +16,7 @@ import java.util.Map;
 public final class CraftingGraphBuilder {
     public CraftingDependencyGraph build(CompiledNetwork network, ECOCancellation cancellation)
             throws InterruptedException {
-        Map<AEKey, CraftingGraphNode> nodes = new LinkedHashMap<>();
+        Map<AEKey, CraftingGraphNode> nodes = new Object2ObjectLinkedOpenHashMap<>();
         List<CraftingGraphEdge> edges = new ArrayList<>(network.edgeCount());
         ArrayDeque<AEKey> work = new ArrayDeque<>();
         LinkedHashSet<AEKey> reachable = new LinkedHashSet<>();

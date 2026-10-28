@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.client.gui.graph;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import appeng.api.client.AEKeyRendering;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AmountFormat;
@@ -393,7 +394,7 @@ public final class GraphRenderer implements AutoCloseable {
         if (cluster == null) return;
         Font font = Minecraft.getInstance().font;
         for (int componentId : cluster.componentIds()) {
-            Set<Integer> ids = new HashSet<>();
+            Set<Integer> ids = new IntOpenHashSet();
             graph.source().cycleGroups().stream().filter(cycle -> cycle.componentId() == componentId).findFirst()
                 .ifPresent(cycle -> ids.addAll(cycle.memberNodeIds()));
             graph.nodes().values().stream().filter(node -> node.pattern() != null

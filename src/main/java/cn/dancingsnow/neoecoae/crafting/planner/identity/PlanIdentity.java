@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.identity;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.stacks.AEKey;
@@ -67,7 +69,7 @@ public final class PlanIdentity {
 
     public static Map<PatternIdentity, Long> taskSignature(@Nullable Map<IPatternDetails, Long> tasks) {
         if (tasks == null) return null;
-        Map<PatternIdentity, Long> result = new LinkedHashMap<>();
+        Map<PatternIdentity, Long> result = new Object2LongLinkedOpenHashMap<>();
         for (var entry : tasks.entrySet()) {
             if (entry.getKey() == null || entry.getValue() == null || entry.getValue() < 0L) return null;
             PatternIdentity identity = patternIdentity(entry.getKey());
@@ -102,7 +104,7 @@ public final class PlanIdentity {
 
     private static Map<AEKey, Long> counterContents(@Nullable KeyCounter counter) {
         if (counter == null) return Map.of();
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         for (var value : counter) result.put(value.getKey(), value.getLongValue());
         return result;
     }
@@ -120,7 +122,7 @@ public final class PlanIdentity {
                 GenericStack[] possible = input.getPossibleInputs();
                 if (possible == null || possible.length == 0) return objectIdentity(pattern);
                 List<StackIdentity> alternatives = new ArrayList<>();
-                Map<AEKey, AEKey> remaining = new LinkedHashMap<>();
+                Map<AEKey, AEKey> remaining = new Object2ObjectLinkedOpenHashMap<>();
                 for (GenericStack candidate : possible) {
                     if (candidate == null || candidate.what() == null) return objectIdentity(pattern);
                     alternatives.add(new StackIdentity(candidate.what(), candidate.amount()));

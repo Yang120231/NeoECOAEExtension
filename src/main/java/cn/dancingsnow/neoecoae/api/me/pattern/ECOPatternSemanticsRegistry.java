@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api.me.pattern;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -14,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
  * each analysis uses an immutable registration snapshot.
  */
 public final class ECOPatternSemanticsRegistry {
-    private static final Map<ResourceLocation, Registration> ADAPTERS = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, Registration> ADAPTERS = new Object2ObjectLinkedOpenHashMap<>();
     private static long revision;
 
     private ECOPatternSemanticsRegistry() {

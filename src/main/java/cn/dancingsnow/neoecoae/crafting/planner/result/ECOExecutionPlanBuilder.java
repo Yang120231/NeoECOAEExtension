@@ -1,5 +1,12 @@
 package cn.dancingsnow.neoecoae.crafting.planner.result;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerLongMaps;
+import it.unimi.dsi.fastutil.ints.Int2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import cn.dancingsnow.neoecoae.crafting.planner.cycle.PatternRun;
 import cn.dancingsnow.neoecoae.crafting.planner.cycle.RepeatLayout;
@@ -41,10 +48,10 @@ public final class ECOExecutionPlanBuilder {
             Map<IPatternDetails, Long> patternTimes, ExecutionProvenance provenance) {
         validateCycleDispositions(signature, components);
         ECOExecutionSchedule schedule = ECOExecutionSchedule.from(components, executionOrder, patternTimes, provenance);
-        Map<Integer, ComponentPlanningResult> componentById = new HashMap<>();
+        Map<Integer, ComponentPlanningResult> componentById = new Int2ObjectOpenHashMap<>();
         components.forEach(component -> componentById.put(component.componentId(), component));
 
-        Map<PlanIdentity.PatternIdentity, PlannedTask> selectedByIdentity = new LinkedHashMap<>();
+        Map<PlanIdentity.PatternIdentity, PlannedTask> selectedByIdentity = new Object2ObjectLinkedOpenHashMap<>();
         for (var entry : patternTimes.entrySet()) {
             if (entry.getValue() == null || entry.getValue() <= 0) continue;
             var identity = requireIdentity(entry.getKey());
@@ -56,7 +63,7 @@ public final class ECOExecutionPlanBuilder {
         List<PlannedTask> selected = new ArrayList<>(selectedByIdentity.values());
         selected.sort(Comparator.comparing(task -> stableIdentity(task.identity())));
 
-        Map<PlanIdentity.PatternIdentity, Integer> phaseByIdentity = new LinkedHashMap<>();
+        Map<PlanIdentity.PatternIdentity, Integer> phaseByIdentity = new Object2IntLinkedOpenHashMap<>();
         for (int phaseIndex = 0; phaseIndex < schedule.phases().size(); phaseIndex++) {
             for (IPatternDetails pattern : schedule.phases().get(phaseIndex).patternSet()) {
                 var identity = requireIdentity(pattern);
@@ -70,7 +77,7 @@ public final class ECOExecutionPlanBuilder {
         }
 
         List<ECOExecutionPlan.TaskSpec> tasks = new ArrayList<>();
-        Map<PlanIdentity.PatternIdentity, Integer> taskIdByIdentity = new HashMap<>();
+        Map<PlanIdentity.PatternIdentity, Integer> taskIdByIdentity = new Object2IntOpenHashMap<>();
         for (PlannedTask task : selected) {
             Integer phaseIndex = phaseByIdentity.get(task.identity());
             if (phaseIndex == null) throw new IllegalStateException("A positive task has no phase owner");
@@ -98,7 +105,7 @@ public final class ECOExecutionPlanBuilder {
                 .map(ECOExecutionPlanBuilder::requireIdentity).map(taskIdByIdentity::get)
                 .sorted().toList();
             List<ECOExecutionPlan.ExecutionStep> steps = new ArrayList<>();
-            Map<Integer, Long> dynamicFirings = new LinkedHashMap<>();
+            Int2LongLinkedOpenHashMap dynamicFirings = new Int2LongLinkedOpenHashMap();
             ComponentPlanningResult component = componentById.get(schedulePhase.componentId());
             if (schedulePhase.type() == ECOExecutionSchedule.Type.CYCLE && component != null
                     && component.cycleResult() != null) {
@@ -120,7 +127,7 @@ public final class ECOExecutionPlanBuilder {
                     if (taskId == null || !taskIds.contains(taskId)) {
                         throw new IllegalStateException("Dynamic firing vector references a task outside its phase");
                     }
-                    dynamicFirings.merge(taskId, firing.getValue(), Math::addExact);
+                    dynamicFirings.mergeLong(taskId, firing.getValue(), Math::addExact);
                 }
                 validateDynamicCycleCounts(component, dynamicFirings, tasks);
             }
@@ -154,13 +161,13 @@ public final class ECOExecutionPlanBuilder {
         Map<PlanIdentity.PatternIdentity, Long> signature = PlanIdentity.taskSignature(
             component.cycleResult().patternTimes());
         if (signature == null) throw new IllegalStateException("Cycle firing vector has no stable identity");
-        Map<PlanIdentity.PatternIdentity, Long> expected = new HashMap<>();
+        Map<PlanIdentity.PatternIdentity, Long> expected = new Object2LongOpenHashMap<>();
         signature.forEach((identity, count) -> { if (count != null && count > 0) expected.put(identity, count); });
-        Map<PlanIdentity.PatternIdentity, Long> actual = new HashMap<>();
+        Object2LongOpenHashMap<PlanIdentity.PatternIdentity> actual = new Object2LongOpenHashMap<>();
         long[] repeats = RepeatLayout.multipliers(steps);
         for (int i = 0; i < steps.size(); i++) {
             var step = steps.get(i);
-            actual.merge(tasks.get(step.taskId()).identity(), Math.multiplyExact(step.count(), repeats[i]), Math::addExact);
+            actual.mergeLong(tasks.get(step.taskId()).identity(), Math.multiplyExact(step.count(), repeats[i]), Math::addExact);
         }
         if (!actual.equals(expected)) {
             throw new IllegalStateException("Compact cycle trace does not equal the solved firing vector");
@@ -176,7 +183,7 @@ public final class ECOExecutionPlanBuilder {
 
     private static void validateCycleDispositions(PlanIdentity.Signature signature,
             List<ComponentPlanningResult> components) {
-        Map<appeng.api.stacks.AEKey, Long> projectedReservations = new HashMap<>();
+        Map<appeng.api.stacks.AEKey, Long> projectedReservations = new Object2LongOpenHashMap<>();
         for (ComponentPlanningResult component : components) {
             if (component.type() != ComponentPlanningResult.Type.CYCLIC) continue;
             switch (component.cycleDisposition()) {
@@ -194,7 +201,7 @@ public final class ECOExecutionPlanBuilder {
             }
             for (var reservation : component.stockReservations().entrySet()) {
                 long planned = reservation.getValue() == null ? -1L : reservation.getValue();
-                long finalUsed = signature.usedItems().getOrDefault(reservation.getKey(), 0L);
+                long finalUsed = PlannerLongMaps.amount(signature.usedItems(), reservation.getKey());
                 if (planned <= 0L || finalUsed < planned) {
                     throw componentFailure(component, "Stock reservation is absent from final usedItems: key="
                         + reservation.getKey() + " stockReserved=" + planned + " finalUsedItems=" + finalUsed);
@@ -204,7 +211,7 @@ public final class ECOExecutionPlanBuilder {
             }
         }
         projectedReservations.forEach((key, projected) -> {
-            long finalUsed = signature.usedItems().getOrDefault(key, 0L);
+            long finalUsed = PlannerLongMaps.amount(signature.usedItems(), key);
             // Long.MAX_VALUE is the saturated projection of an exact amount that may
             // exceed long; the exact ledger is validated by ECOExactCraftingPlan.
             if (finalUsed != Long.MAX_VALUE && projected > finalUsed) {
@@ -231,8 +238,8 @@ public final class ECOExecutionPlanBuilder {
         }
         for (var requirement : component.requiredOutputs().entrySet()) {
             long required = requirement.getValue() == null ? -1L : requirement.getValue();
-            long stockReserved = component.stockReservations().getOrDefault(requirement.getKey(), 0L);
-            long finalUsed = signature.usedItems().getOrDefault(requirement.getKey(), 0L);
+            long stockReserved = PlannerLongMaps.amount(component.stockReservations(), requirement.getKey());
+            long finalUsed = PlannerLongMaps.amount(signature.usedItems(), requirement.getKey());
             if (required <= 0L || stockReserved < required || finalUsed < stockReserved) {
                 throw componentFailure(component, "STOCK_SATISFIED accounting mismatch: key="
                     + requirement.getKey() + " required=" + required + " stockReserved=" + stockReserved
@@ -262,8 +269,8 @@ public final class ECOExecutionPlanBuilder {
         Map<PlanIdentity.PatternIdentity, Long> expected = PlanIdentity.taskSignature(
             component.cycleResult().patternTimes());
         if (expected == null) throw new IllegalStateException("Dynamic cycle firing vector has no stable identity");
-        Map<PlanIdentity.PatternIdentity, Long> actual = new HashMap<>();
-        firings.forEach((taskId, count) -> actual.merge(tasks.get(taskId).identity(), count, Math::addExact));
+        Object2LongOpenHashMap<PlanIdentity.PatternIdentity> actual = new Object2LongOpenHashMap<>();
+        firings.forEach((taskId, count) -> actual.mergeLong(tasks.get(taskId).identity(), count, Math::addExact));
         expected = expected.entrySet().stream().filter(entry -> entry.getValue() > 0L).collect(
             java.util.stream.Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
         if (!actual.equals(expected)) {

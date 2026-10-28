@@ -1,5 +1,8 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -16,18 +19,18 @@ public final class LayeredGraphLayout implements GraphLayoutEngine {
     public GraphLayoutSnapshot layout(ClientCraftingGraph graph, long version) {
         long started = System.nanoTime();
         Map<Integer, Integer> layer = assignLayers(graph);
-        Map<Integer, List<Integer>> layers = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> layers = new Int2ObjectLinkedOpenHashMap<>();
         graph.nodes().keySet().stream().sorted().forEach(id ->
             layers.computeIfAbsent(layer.getOrDefault(id, 0), ignored -> new ArrayList<>()).add(id));
 
-        Map<Integer, Float> priorOrder = new HashMap<>();
+        Map<Integer, Float> priorOrder = new Int2ObjectOpenHashMap<>();
         for (var entry : layers.entrySet()) {
             entry.getValue().sort(Comparator.<Integer>comparingDouble(id -> barycenter(graph, id, priorOrder))
                 .thenComparingInt(Integer::intValue));
             for (int i = 0; i < entry.getValue().size(); i++) priorOrder.put(entry.getValue().get(i), (float) i);
         }
 
-        Map<Integer, GraphLayoutSnapshot.Box> boxes = new LinkedHashMap<>();
+        Map<Integer, GraphLayoutSnapshot.Box> boxes = new Int2ObjectLinkedOpenHashMap<>();
         float maxRight = 0;
         float maxBottom = 0;
         float x = 0;
@@ -53,7 +56,7 @@ public final class LayeredGraphLayout implements GraphLayoutEngine {
     }
 
     private static Map<Integer, Integer> assignLayers(ClientCraftingGraph graph) {
-        Map<Integer, Integer> layer = new HashMap<>();
+        Map<Integer, Integer> layer = new Int2IntOpenHashMap();
         if (!graph.nodes().containsKey(graph.rootId())) {
             graph.nodes().keySet().forEach(id -> layer.put(id, 0));
             return layer;

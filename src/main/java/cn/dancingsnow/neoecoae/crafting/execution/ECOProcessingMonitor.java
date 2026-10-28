@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.execution;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.api.me.attachment.ECOCraftingJobAttachment;
 import cn.dancingsnow.neoecoae.api.me.attachment.ECOCraftingJobAttachmentRegistry;
@@ -29,8 +30,8 @@ public final class ECOProcessingMonitor implements ECOCraftingJobAttachment {
     private static final ResourceLocation ID = new ResourceLocation("neoecoae", "processing_monitor");
     static final int READS_PER_CPU_TICK = 32, READS_PER_SERVER_TICK = 256, REFRESH_INTERVAL = 10;
     private static final Map<MinecraftServer, Budget> SERVER_BUDGETS = new WeakHashMap<>();
-    private final Map<AEKey, LinkedHashSet<Target>> targets = new LinkedHashMap<>();
-    private final Map<AEKey, Survey> surveys = new LinkedHashMap<>();
+    private final Map<AEKey, LinkedHashSet<Target>> targets = new Object2ObjectLinkedOpenHashMap<>();
+    private final Map<AEKey, Survey> surveys = new Object2ObjectLinkedOpenHashMap<>();
     private final ArrayDeque<Survey> pending = new ArrayDeque<>();
     private UUID jobId;
     private long budgetTick = Long.MIN_VALUE;

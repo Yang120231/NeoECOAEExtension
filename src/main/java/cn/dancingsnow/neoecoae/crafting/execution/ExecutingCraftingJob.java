@@ -18,6 +18,9 @@
 
 package cn.dancingsnow.neoecoae.crafting.execution;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.ArrayDeque;
@@ -86,8 +89,8 @@ public class ExecutingCraftingJob extends cn.dancingsnow.neoecoae.api.me.Executi
     GenericStack finalOutput;
     long remainingAmount;
     boolean exactOrder;
-    final Map<AEKey, java.math.BigInteger> deferredStock = new LinkedHashMap<>();
-    final Map<AEKey, java.math.BigInteger> deferredEmitted = new LinkedHashMap<>();
+    final Map<AEKey, java.math.BigInteger> deferredStock = new Object2ObjectLinkedOpenHashMap<>();
+    final Map<AEKey, java.math.BigInteger> deferredEmitted = new Object2ObjectLinkedOpenHashMap<>();
     /** Outputs of successful multi-craft dispatches in this job, used by the ECO status page. */
     final Set<AEKey> batchedOutputs = new HashSet<>();
     final Set<AEKey> stoppedProcessingOutputs = new HashSet<>();
@@ -278,7 +281,7 @@ public class ExecutingCraftingJob extends cn.dancingsnow.neoecoae.api.me.Executi
     }
 
     private Map<Integer, IPatternDetails> bindExecutionPatterns(ECOExecutionPlan plan, boolean validateTotals) {
-        Map<Integer, IPatternDetails> result = new HashMap<>();
+        Map<Integer, IPatternDetails> result = new Int2ObjectOpenHashMap<>();
         // AE2 may reconstruct equivalent pattern-detail wrappers while building the execution
         // plan. The old implementation searched every live task for every execution task and
         // recomputed the structural identity on each comparison (O(n^2)). Large cyclic plans

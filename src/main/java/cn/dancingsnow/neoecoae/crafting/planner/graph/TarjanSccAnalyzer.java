@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -85,7 +86,7 @@ public final class TarjanSccAnalyzer {
         int id = 0;
         for (List<AEKey> members : memberSets) {
             cancellation.checkpoint();
-            Set<AEKey> memberLookup = new LinkedHashSet<>(members);
+            Set<AEKey> memberLookup = new ObjectLinkedOpenHashSet<>(members);
             List<CraftingGraphEdge> internal = new ArrayList<>();
             for (AEKey member : members) {
                 for (CraftingGraphEdge edge : graph.outgoing(member)) {

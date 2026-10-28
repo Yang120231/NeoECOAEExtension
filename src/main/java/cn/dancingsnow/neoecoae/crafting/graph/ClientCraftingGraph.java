@@ -1,5 +1,9 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import java.util.ArrayDeque;
@@ -84,8 +88,8 @@ public final class ClientCraftingGraph {
         this.boundaryMaterialIds = boundaryMaterialIds;
         this.externalInputIds = externalInputIds;
         this.boundaryOutputIds = boundaryOutputIds;
-        Map<Integer, Set<Integer>> up = new HashMap<>();
-        Map<Integer, Set<Integer>> down = new HashMap<>();
+        Map<Integer, Set<Integer>> up = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Set<Integer>> down = new Int2ObjectOpenHashMap<>();
         for (Link link : links) {
             down.computeIfAbsent(link.fromId(), ignored -> new LinkedHashSet<>()).add(link.toId());
             up.computeIfAbsent(link.toId(), ignored -> new LinkedHashSet<>()).add(link.fromId());
@@ -108,16 +112,16 @@ public final class ClientCraftingGraph {
     }
 
     public static ClientCraftingGraph main(CraftingGraphSnapshot snapshot, boolean advanced) {
-        Map<Integer, CraftingGraphSnapshot.CycleGroup> cycleByMember = new HashMap<>();
+        Map<Integer, CraftingGraphSnapshot.CycleGroup> cycleByMember = new Int2ObjectOpenHashMap<>();
         for (var cycle : snapshot.cycleGroups()) {
             for (int member : cycle.memberNodeIds()) cycleByMember.put(member, cycle);
         }
         List<CycleCluster> clusters = CycleClusterProjection.derive(snapshot);
-        Map<Integer, CycleCluster> clusterByComponent = new HashMap<>();
+        Map<Integer, CycleCluster> clusterByComponent = new Int2ObjectOpenHashMap<>();
         for (CycleCluster cluster : clusters) for (int componentId : cluster.componentIds()) {
             clusterByComponent.put(componentId, cluster);
         }
-        Map<Integer, Node> nodes = new LinkedHashMap<>();
+        Map<Integer, Node> nodes = new Int2ObjectLinkedOpenHashMap<>();
         for (var material : snapshot.nodes()) {
             if (!cycleByMember.containsKey(material.nodeId())) {
                 nodes.put(material.nodeId(), materialNode(material));
@@ -168,9 +172,9 @@ public final class ClientCraftingGraph {
         var cycle = snapshot.cycleGroups().stream().filter(value -> value.componentId() == componentId).findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Unknown cycle component " + componentId));
         List<Integer> members = cycle.memberNodeIds();
-        Map<Integer, CraftingGraphSnapshot.PatternNode> cyclePatterns = new LinkedHashMap<>();
-        Set<Integer> externalInputIds = new LinkedHashSet<>();
-        Set<Integer> boundaryOutputIds = new LinkedHashSet<>();
+        Map<Integer, CraftingGraphSnapshot.PatternNode> cyclePatterns = new Int2ObjectLinkedOpenHashMap<>();
+        Set<Integer> externalInputIds = new IntLinkedOpenHashSet();
+        Set<Integer> boundaryOutputIds = new IntLinkedOpenHashSet();
         for (var pattern : snapshot.patterns()) {
             if (pattern.componentId() != componentId) continue;
             cyclePatterns.put(pattern.patternNodeId(), pattern);
@@ -187,9 +191,9 @@ public final class ClientCraftingGraph {
                 .filter(node -> !members.contains(node.nodeId()))
                 .findFirst().ifPresent(node -> externalInputIds.add(node.nodeId()));
         }
-        Set<Integer> boundaryMaterialIds = new LinkedHashSet<>(externalInputIds);
+        Set<Integer> boundaryMaterialIds = new IntLinkedOpenHashSet(externalInputIds);
         boundaryMaterialIds.addAll(boundaryOutputIds);
-        Map<Integer, Node> nodes = new LinkedHashMap<>();
+        Map<Integer, Node> nodes = new Int2ObjectLinkedOpenHashMap<>();
         for (var material : snapshot.nodes()) if (members.contains(material.nodeId())
                 || boundaryMaterialIds.contains(material.nodeId())) {
             nodes.put(material.nodeId(), materialNode(material));
@@ -199,7 +203,7 @@ public final class ClientCraftingGraph {
             nodes.put(id, patternNode(id, pattern));
         }
         List<Link> links = new ArrayList<>();
-        Set<String> dedupe = new LinkedHashSet<>();
+        Set<String> dedupe = new ObjectLinkedOpenHashSet<>();
         for (var pattern : cyclePatterns.values()) {
             int patternId = pattern.patternNodeId();
             boolean selected = pattern.status() == CraftingGraphSnapshot.CandidateStatus.SELECTED;
@@ -247,13 +251,13 @@ public final class ClientCraftingGraph {
     public static ClientCraftingGraph cluster(CraftingGraphSnapshot snapshot, CycleCluster cluster,
             boolean advanced) {
         List<Integer> componentIds = cluster.componentIds();
-        Set<Integer> memberIds = new LinkedHashSet<>();
+        Set<Integer> memberIds = new IntLinkedOpenHashSet();
         for (var cycle : snapshot.cycleGroups()) if (componentIds.contains(cycle.componentId())) {
             memberIds.addAll(cycle.memberNodeIds());
         }
         for (InterCycleFlow flow : cluster.flows()) memberIds.add(flow.materialNodeId());
 
-        Map<Integer, Node> nodes = new LinkedHashMap<>();
+        Map<Integer, Node> nodes = new Int2ObjectLinkedOpenHashMap<>();
         for (var material : snapshot.nodes()) if (memberIds.contains(material.nodeId())) {
             nodes.put(material.nodeId(), materialNode(material));
         }
@@ -275,7 +279,7 @@ public final class ClientCraftingGraph {
         for (var pattern : patterns) nodes.put(pattern.patternNodeId(), patternNode(pattern.patternNodeId(), pattern));
 
         List<Link> links = new ArrayList<>();
-        Set<String> dedupe = new LinkedHashSet<>();
+        Set<String> dedupe = new ObjectLinkedOpenHashSet<>();
         for (var pattern : patterns) {
             boolean selected = pattern.status() == CraftingGraphSnapshot.CandidateStatus.SELECTED;
             for (var input : pattern.inputs()) if (nodes.containsKey(input.materialNodeId())) {
@@ -299,11 +303,11 @@ public final class ClientCraftingGraph {
 
     public ClientCraftingGraph limited(int focusId, int depth, Set<Integer> collapsed) {
         if (!nodes.containsKey(focusId) || depth < 0) return this;
-        Set<Integer> visible = new LinkedHashSet<>();
+        Set<Integer> visible = new IntLinkedOpenHashSet();
         Set<Integer> frontier = Set.of(focusId);
         for (int level = 0; level <= depth && !frontier.isEmpty(); level++) {
             visible.addAll(frontier);
-            Set<Integer> next = new LinkedHashSet<>();
+            Set<Integer> next = new IntLinkedOpenHashSet();
             for (int id : frontier) {
                 if (collapsed.contains(id)) continue;
                 next.addAll(upstream(id));
@@ -312,7 +316,7 @@ public final class ClientCraftingGraph {
             next.removeAll(visible);
             frontier = next;
         }
-        Map<Integer, Node> subset = new LinkedHashMap<>();
+        Map<Integer, Node> subset = new Int2ObjectLinkedOpenHashMap<>();
         for (int id : visible) subset.put(id, nodes.get(id));
         List<Link> subsetLinks = links.stream()
             .filter(link -> visible.contains(link.fromId()) && visible.contains(link.toId())).toList();
@@ -326,14 +330,14 @@ public final class ClientCraftingGraph {
         if (view != View.MAIN || !nodes.containsKey(rootId)) return this;
 
         boolean hasSelectedLinks = links.stream().anyMatch(Link::selected);
-        Map<Integer, Set<Integer>> activeUpstream = new HashMap<>();
-        Map<Integer, Set<Integer>> activeDownstream = new HashMap<>();
+        Map<Integer, Set<Integer>> activeUpstream = new Int2ObjectOpenHashMap<>();
+        Map<Integer, Set<Integer>> activeDownstream = new Int2ObjectOpenHashMap<>();
         for (Link link : links) {
             if (hasSelectedLinks && !link.selected()) continue;
             activeDownstream.computeIfAbsent(link.fromId(), ignored -> new LinkedHashSet<>()).add(link.toId());
             activeUpstream.computeIfAbsent(link.toId(), ignored -> new LinkedHashSet<>()).add(link.fromId());
         }
-        Set<Integer> reachable = new LinkedHashSet<>();
+        Set<Integer> reachable = new IntLinkedOpenHashSet();
         var frontier = new ArrayDeque<Integer>();
         frontier.add(rootId);
         while (!frontier.isEmpty()) {
@@ -342,7 +346,7 @@ public final class ClientCraftingGraph {
             for (int child : activeDownstream.getOrDefault(id, Set.of())) frontier.addLast(child);
         }
 
-        Set<Integer> visible = new LinkedHashSet<>();
+        Set<Integer> visible = new IntLinkedOpenHashSet();
         var missingFrontier = new ArrayDeque<Integer>();
         for (int id : reachable) {
             Node node = nodes.get(id);
@@ -361,7 +365,7 @@ public final class ClientCraftingGraph {
 
         // Preserve a stable anchor when a valid plan contains no missing material.
         visible.add(rootId);
-        Map<Integer, Node> subset = new LinkedHashMap<>();
+        Map<Integer, Node> subset = new Int2ObjectLinkedOpenHashMap<>();
         for (int id : visible) subset.put(id, nodes.get(id));
         List<Link> subsetLinks = links.stream()
             .filter(link -> !hasSelectedLinks || link.selected())
@@ -388,7 +392,7 @@ public final class ClientCraftingGraph {
     public Set<Integer> downstream(int id) { return downstream.getOrDefault(id, Set.of()); }
 
     public Set<Integer> neighborhood(int id) {
-        Set<Integer> result = new LinkedHashSet<>(upstream(id));
+        Set<Integer> result = new IntLinkedOpenHashSet(upstream(id));
         result.addAll(downstream(id));
         return result;
     }
@@ -423,7 +427,7 @@ public final class ClientCraftingGraph {
     }
 
     private static Map<Integer, Set<Integer>> freeze(Map<Integer, Set<Integer>> values) {
-        Map<Integer, Set<Integer>> result = new HashMap<>();
+        Map<Integer, Set<Integer>> result = new Int2ObjectOpenHashMap<>();
         values.forEach((key, value) -> result.put(key, value));
         return result;
     }

@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
@@ -18,10 +20,10 @@ import java.util.Set;
 
 /** Demand ordering only: this never creates a producer or starts a recipe for its secondary output. */
 final class JointOutputDemandQueue {
-    private final Map<AEKey, Integer> rank = new LinkedHashMap<>();
+    private final Map<AEKey, Integer> rank = new Object2IntLinkedOpenHashMap<>();
     private final Map<AEKey, Set<AEKey>> dependents = new HashMap<>();
     private final Map<AEKey, Set<AEKey>> jointSources = new HashMap<>();
-    private final Set<AEKey> queued = new LinkedHashSet<>();
+    private final Set<AEKey> queued = new ObjectLinkedOpenHashSet<>();
     private final PriorityQueue<AEKey> ready = new PriorityQueue<>(Comparator.comparingInt(rank::get));
 
     JointOutputDemandQueue(List<AEKey> order, Map<AEKey, CompiledPattern> selected,

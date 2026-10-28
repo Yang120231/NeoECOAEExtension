@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.client.gui.graph;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.graph.ClientCraftingGraph;
 import cn.dancingsnow.neoecoae.crafting.graph.CompactTreeNode;
@@ -37,7 +38,7 @@ public final class ECOCraftingGraphScreen extends Screen {
     private GraphLayoutCache layoutCache;
     private final GraphRenderer renderer = new GraphRenderer();
     private final GraphProfiler profiler = new GraphProfiler();
-    private final Set<Integer> collapsed = new HashSet<>();
+    private final Set<Integer> collapsed = new IntOpenHashSet();
     private final Set<String> expandedTreePaths = new HashSet<>();
     private final Set<String> fullyExpandedTreePaths = new HashSet<>();
     private final Set<String> collapsedTreePaths = new HashSet<>();

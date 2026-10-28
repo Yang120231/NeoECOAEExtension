@@ -1,5 +1,9 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerLongMaps;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
@@ -62,7 +66,7 @@ final class CycleCandidateSearch {
     private final ExternalDemandPlanner externalDemandPlanner;
     private final ECOCancellation cancellation;
     private final Deque<Map<AEKey, PlannerAmount>> pending = new ArrayDeque<>();
-    private final Map<AEKey, PlannerAmount> knownCaps = new LinkedHashMap<>();
+    private final Map<AEKey, PlannerAmount> knownCaps = new Object2ObjectLinkedOpenHashMap<>();
     private boolean complete;
 
     CycleCandidateSearch(CompiledNetwork network, CondensationGraph condensation, Map<AEKey, Integer> choices,
@@ -89,17 +93,17 @@ final class CycleCandidateSearch {
 
     /** Re-solves until the final marking keeps every reusable seed that the candidate takes from stock. */
     Retention retainSeed(Candidate original) throws InterruptedException {
-        Set<AEKey> boundary = new LinkedHashSet<>();
+        Set<AEKey> boundary = new ObjectLinkedOpenHashSet<>();
         for (var dependency : cycle.outgoingDependencies()) {
             for (var relationship : dependency.relationships()) boundary.add(relationship.requiredInput());
         }
-        Set<AEKey> consumed = new LinkedHashSet<>();
-        Set<AEKey> produced = new LinkedHashSet<>();
+        Set<AEKey> consumed = new ObjectLinkedOpenHashSet<>();
+        Set<AEKey> produced = new ObjectLinkedOpenHashSet<>();
         for (CompiledPattern pattern : cycle.patterns()) {
             for (CompiledInput input : pattern.inputs()) consumed.add(input.key());
             for (GenericStack output : pattern.grossOutputs()) produced.add(output.what());
         }
-        Set<AEKey> reusable = new LinkedHashSet<>();
+        Set<AEKey> reusable = new ObjectLinkedOpenHashSet<>();
         for (AEKey key : consumed) if (produced.contains(key) && !boundary.contains(key)) reusable.add(key);
 
         // Copies left in ME by the verified original are not this job's retained seed. Keep that credit
@@ -108,13 +112,13 @@ final class CycleCandidateSearch {
         // changes in the candidate's surplus/reservation accounting on every retry.
         Map<AEKey, Long> originalReservations = ComponentPlanner.cycleInitialReservations(
                 exactRequiredOutputs, stock, original.result());
-        Map<AEKey, PlannerAmount> unreserved = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> unreserved = new Object2ObjectLinkedOpenHashMap<>();
         for (AEKey key : reusable) {
-            long held = stock.getOrDefault(key, 0L);
-            unreserved.put(key, PlannerAmount.of(held - Math.min(held, originalReservations.getOrDefault(key, 0L))));
+            long held = PlannerLongMaps.amount(stock, key);
+            unreserved.put(key, PlannerAmount.of(held - Math.min(held, PlannerLongMaps.amount(originalReservations, key))));
         }
 
-        Map<AEKey, PlannerAmount> retained = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> retained = new Object2ObjectLinkedOpenHashMap<>();
         Candidate current = original;
         ECOPlanningBudget slice = slice();
         try {
@@ -122,31 +126,31 @@ final class CycleCandidateSearch {
             // copies of a self-growing key downstream. Ask what one more copy needs, and keep that startup seed.
             if (!ComponentPlanner.hasPositiveFirings(original.result())) {
                 for (AEKey key : reusable) {
-                    if (demand(key).signum() <= 0 || stock.getOrDefault(key, 0L) <= 0L
+                    if (demand(key).signum() <= 0 || PlannerLongMaps.amount(stock, key) <= 0L
                             || unreserved.get(key).signum() > 0) continue;
-                    Map<AEKey, PlannerAmount> probe = new LinkedHashMap<>(original.targets());
+                    Map<AEKey, PlannerAmount> probe = new Object2ObjectLinkedOpenHashMap<>(original.targets());
                     probe.merge(key, demand(key).add(PlannerAmount.ONE), PlannerAmount::max);
                     CycleSolveResult startup = failures.solve(request(probe), slice);
                     if (startup.status() != CycleSolveStatus.SUCCESS) continue;
-                    long want = Math.min(startup.requiredSeed().getOrDefault(key, 0L), stock.getOrDefault(key, 0L));
+                    long want = Math.min(PlannerLongMaps.amount(startup.requiredSeed(), key), PlannerLongMaps.amount(stock, key));
                     if (want > 0L) retained.put(key, PlannerAmount.of(want));
                 }
             }
             for (int round = 0; ; round++) {
                 for (AEKey key : reusable) {
-                    long want = Math.min(current.result().requiredSeed().getOrDefault(key, 0L),
-                            stock.getOrDefault(key, 0L));
+                    long want = Math.min(PlannerLongMaps.amount(current.result().requiredSeed(), key),
+                            PlannerLongMaps.amount(stock, key));
                     if (want > 0L) retained.merge(key, PlannerAmount.of(want), PlannerAmount::max);
                 }
                 if (retained.isEmpty()) return new Retention(null, Map.of(), null);
                 boolean kept = true;
                 for (var entry : retained.entrySet()) {
                     PlannerAmount ending = PlannerAmount.of(
-                            current.result().deliverableOutputs().getOrDefault(entry.getKey(), 0L));
+                            PlannerLongMaps.amount(current.result().deliverableOutputs(), entry.getKey()));
                     if (ending.compareTo(demand(entry.getKey()).add(entry.getValue())
                             .add(unreserved.get(entry.getKey()))) < 0) kept = false;
                 }
-                Map<AEKey, PlannerAmount> targets = new LinkedHashMap<>(current.targets());
+                Map<AEKey, PlannerAmount> targets = new Object2ObjectLinkedOpenHashMap<>(current.targets());
                 retained.forEach((key, amount) -> targets.merge(key,
                         demand(key).add(amount).add(unreserved.get(key)), PlannerAmount::max));
                 // The targets carry the retention floor into capped supply alternatives as well.
@@ -185,7 +189,7 @@ final class CycleCandidateSearch {
                     complete = false;
                     break;
                 }
-                Map<AEKey, PlannerAmount> caps = new LinkedHashMap<>(pending.pop());
+                Map<AEKey, PlannerAmount> caps = new Object2ObjectLinkedOpenHashMap<>(pending.pop());
                 knownCaps.forEach((key, cap) -> caps.merge(key, cap, PlannerAmount::min));
                 if (!visited.add(caps)) continue;
                 rounds++;
@@ -232,13 +236,13 @@ final class CycleCandidateSearch {
                 plannedCycleInputs);
         Set<AEKey> delegated = ComponentPlanner.delegatedCycleInputs(network, condensation, choices, cycle,
                 demands.keySet());
-        Map<AEKey, Long> failing = new LinkedHashMap<>();
+        Map<AEKey, Long> failing = new Object2LongLinkedOpenHashMap<>();
         failed.result().positiveExternalDemand().forEach((key, amount) -> {
             if (delegated.contains(key) || plannedCycleInputs.containsKey(key)) return;
             // Uncapped demand includes all boundary fuel; a capped witness splits it into owned stock and
             // extra imports. Probe both portions together before subtracting owned stock from the cap.
-            long owned = Math.min(solveStock.getOrDefault(key, 0L),
-                    failed.result().requiredSeed().getOrDefault(key, 0L));
+            long owned = Math.min(PlannerLongMaps.amount(solveStock, key),
+                    PlannerLongMaps.amount(failed.result().requiredSeed(), key));
             PlannerAmount total = PlannerAmount.of(amount).add(owned);
             if (total.fitsLong()) failing.put(key, total.longValueExact());
             else complete = false;
@@ -283,7 +287,7 @@ final class CycleCandidateSearch {
         }
         var keys = failing.keySet().toArray(new AEKey[0]);
         for (int i = keys.length - 1; i >= 0; i--) {
-            Map<AEKey, PlannerAmount> child = new LinkedHashMap<>(branch);
+            Map<AEKey, PlannerAmount> child = new Object2ObjectLinkedOpenHashMap<>(branch);
             child.merge(keys[i], importLimit(keys[i], failing.get(keys[i]) - 1), PlannerAmount::min);
             pending.push(child);
         }
@@ -291,7 +295,7 @@ final class CycleCandidateSearch {
 
     /** CycleSolveRequest caps only imports beyond the stock already present in its marking. */
     private PlannerAmount importLimit(AEKey key, long totalSupply) {
-        return PlannerAmount.of(totalSupply).subtract(PlannerAmount.of(solveStock.getOrDefault(key, 0L)))
+        return PlannerAmount.of(totalSupply).subtract(PlannerAmount.of(PlannerLongMaps.amount(solveStock, key)))
                 .max(PlannerAmount.ZERO);
     }
 

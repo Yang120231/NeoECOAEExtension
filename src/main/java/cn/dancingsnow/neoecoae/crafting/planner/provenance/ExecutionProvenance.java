@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.provenance;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
@@ -22,7 +24,7 @@ public record ExecutionProvenance(Map<AEKey, Map<MaterialSource, PlannerAmount>>
     }
 
     public ExecutionProvenance {
-        Map<UUID, PlannerAmount> totals = new LinkedHashMap<>();
+        Map<UUID, PlannerAmount> totals = new Object2ObjectLinkedOpenHashMap<>();
         for (var entry : demands.entrySet()) {
             if (!entry.getKey().equals(entry.getValue().id())) {
                 throw new IllegalArgumentException("Demand identity does not match its ledger key");
@@ -69,8 +71,8 @@ public record ExecutionProvenance(Map<AEKey, Map<MaterialSource, PlannerAmount>>
     /** Actual recipe allocations only; unused byproducts and stock create no dependency. */
     public boolean hasPatternCycle(Set<IPatternDetails> tasks, ECOCancellation cancellation)
             throws InterruptedException {
-        Map<IPatternDetails, Set<IPatternDetails>> outgoing = new LinkedHashMap<>();
-        Map<IPatternDetails, Integer> indegree = new LinkedHashMap<>();
+        Map<IPatternDetails, Set<IPatternDetails>> outgoing = new Object2ObjectLinkedOpenHashMap<>();
+        Map<IPatternDetails, Integer> indegree = new Object2IntLinkedOpenHashMap<>();
         tasks.forEach(pattern -> indegree.put(pattern, 0));
         for (SupplyAllocation allocation : allocations) {
             cancellation.checkpoint();
@@ -100,8 +102,8 @@ public record ExecutionProvenance(Map<AEKey, Map<MaterialSource, PlannerAmount>>
     /** Completeness is exact and independent of the legacy per-material diagnostic totals. */
     public void requireComplete() {
         if (demands.isEmpty()) throw new IllegalStateException("Missing demand attribution");
-        Map<UUID, PlannerAmount> totals = new LinkedHashMap<>();
-        Map<AEKey, Map<MaterialSource, PlannerAmount>> attributed = new LinkedHashMap<>();
+        Map<UUID, PlannerAmount> totals = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, Map<MaterialSource, PlannerAmount>> attributed = new Object2ObjectLinkedOpenHashMap<>();
         allocations.forEach(a -> totals.merge(a.demandId(), a.amount(), PlannerAmount::add));
         allocations.forEach(a -> attributed.computeIfAbsent(a.material(), ignored -> new LinkedHashMap<>())
             .merge(a.source(), a.amount(), PlannerAmount::add));

@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -82,13 +83,13 @@ public final class GraphLayoutSnapshot {
         rowIndex = new GraphSpatialIndex<>(rowFrames.stream()
             .map(row -> new GraphSpatialIndex.Entry<>(row, row)).toList());
 
-        Map<Integer, List<Integer>> mutableEdges = new HashMap<>();
+        Map<Integer, List<Integer>> mutableEdges = new Int2ObjectOpenHashMap<>();
         for (int i = 0; i < links.size(); i++) {
             var link = links.get(i);
             mutableEdges.computeIfAbsent(link.fromId(), ignored -> new ArrayList<>()).add(i);
             mutableEdges.computeIfAbsent(link.toId(), ignored -> new ArrayList<>()).add(i);
         }
-        Map<Integer, int[]> frozenEdges = new HashMap<>();
+        Map<Integer, int[]> frozenEdges = new Int2ObjectOpenHashMap<>();
         mutableEdges.forEach((key, ids) -> frozenEdges.put(key, ids.stream().mapToInt(Integer::intValue).toArray()));
         this.edgesByNode = frozenEdges;
         this.layoutNanos = layoutNanos;

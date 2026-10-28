@@ -354,6 +354,31 @@ tasks.register('gtoCompatibilityTest', Test) {
     maxHeapSize = '2G'
 }
 
+// Crafting planner/execution regression on the GTO branch: the legacy tests that still compile against the
+// fork. scripts/legacy-test-compile-exclusions.txt lists the ones that reference classes GTO removed.
+def legacyTestExclusions = file('scripts/legacy-test-compile-exclusions.txt').readLines().findAll { !it.isBlank() }
+sourceSets {
+    craftingRegressionTest {
+        java.srcDir 'src/test/java'
+        java.include 'cn/dancingsnow/neoecoae/crafting/**'
+        java.include 'cn/dancingsnow/neoecoae/util/**'
+        java.exclude legacyTestExclusions
+        resources.srcDir 'src/test/resources'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += files(layout.buildDirectory.file("moddev/artifacts/client-extra-${minecraft_version}-${forge_version}.jar"))
+    }
+}
+configurations.craftingRegressionTestImplementation.extendsFrom configurations.testImplementation
+configurations.craftingRegressionTestRuntimeOnly.extendsFrom configurations.testRuntimeOnly
+tasks.register('craftingRegressionTest', Test) {
+    description = 'Runs the legacy crafting planner and execution tests that compile on the GTO branch.'
+    testClassesDirs = sourceSets.craftingRegressionTest.output.classesDirs
+    classpath = sourceSets.craftingRegressionTest.runtimeClasspath
+    useJUnitPlatform()
+    maxHeapSize = '3G'
+}
+
 tasks.named('processResources', ProcessResources) {
     def properties = [mod_id: mod_id, mod_name: mod_name, mod_version: mod_version,
                       mod_authors: mod_authors, mod_license: mod_license]

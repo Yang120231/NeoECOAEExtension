@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
@@ -37,7 +39,7 @@ final class RouteQuantityProof {
         private final OptimisticSupplyModel model;
         private final PlannerInventorySnapshot inventory;
         private final Map<AEKey, BigInteger> stock = new HashMap<>();
-        private final Map<Branch, Boolean> branchProofs = new LinkedHashMap<>();
+        private final Map<Branch, Boolean> branchProofs = new Object2ObjectLinkedOpenHashMap<>();
 
         private Prepared(OptimisticSupplyModel model, PlannerInventorySnapshot inventory, ECOCancellation cancellation)
                 throws InterruptedException {
@@ -52,7 +54,7 @@ final class RouteQuantityProof {
         boolean rejectsBranch(long requested, Map<AEKey, Integer> choices, Set<AEKey> fixed,
                 ECOCancellation cancellation) throws InterruptedException {
             cancellation.checkpoint();
-            Map<AEKey, Integer> signature = new HashMap<>();
+            Map<AEKey, Integer> signature = new Object2IntOpenHashMap<>();
             for (AEKey key : model.variableKeys) {
                 if (fixed.contains(key)) signature.put(key, choices.getOrDefault(key, 0));
             }

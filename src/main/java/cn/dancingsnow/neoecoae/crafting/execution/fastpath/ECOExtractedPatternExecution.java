@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.execution.fastpath;
 
+import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -204,8 +205,8 @@ public final class ECOExtractedPatternExecution {
         GenericStack[] possible = input.getPossibleInputs();
         if (possible == null || possible.length == 0) return OptionalLong.empty();
 
-        Set<Long> exactAmounts = new LinkedHashSet<>();
-        Set<Long> fuzzyAmounts = new LinkedHashSet<>();
+        Set<Long> exactAmounts = new LongLinkedOpenHashSet();
+        Set<Long> fuzzyAmounts = new LongLinkedOpenHashSet();
         for (GenericStack candidate : possible) {
             if (candidate == null || candidate.what() == null || candidate.amount() <= 0L) continue;
             if (candidate.what().equals(actual)) exactAmounts.add(candidate.amount());

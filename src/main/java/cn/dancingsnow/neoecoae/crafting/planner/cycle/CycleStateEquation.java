@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.cycle;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOPlanningBudget;
@@ -84,7 +85,7 @@ public final class CycleStateEquation {
         List<Map<Integer, BigInteger>> columns = new ArrayList<>();
         for (int p = 0; p < consumed.length; p++) {
             cancellation.checkpoint();
-            Map<Integer, BigInteger> column = new LinkedHashMap<>();
+            Map<Integer, BigInteger> column = new Int2ObjectLinkedOpenHashMap<>();
             for (int key = 0; key < stock.length; key++) {
                 if (consumed[p][key] != produced[p][key]) column.put(key,
                     BigInteger.valueOf(consumed[p][key]).subtract(BigInteger.valueOf(produced[p][key])));
@@ -190,7 +191,7 @@ public final class CycleStateEquation {
         List<Constraint> reduced = new ArrayList<>();
         for (Constraint row : constraints) {
             cancellation.checkpoint();
-            Map<Integer, BigInteger> coefficients = new LinkedHashMap<>(); BigInteger bound = row.bound;
+            Map<Integer, BigInteger> coefficients = new Int2ObjectLinkedOpenHashMap<>(); BigInteger bound = row.bound;
             for (int i = 0; i < row.indices.length; i++) {
                 int p = row.indices[i];
                 if (remap[p] < 0) bound = bound.subtract(row.coefficients[i].multiply(lower[p]));

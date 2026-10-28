@@ -1,5 +1,10 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,7 +26,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
         List<Integer> boundaryInputs = materialIds(graph, graph::isExternalInput);
         List<Integer> boundaryOutputs = materialIds(graph, id -> graph.isBoundaryOutput(id)
             && !graph.isExternalInput(id));
-        Set<Integer> boundary = new LinkedHashSet<>(boundaryInputs);
+        Set<Integer> boundary = new IntLinkedOpenHashSet(boundaryInputs);
         boundary.addAll(boundaryOutputs);
         List<Integer> ring = ringOrder(graph, graph.nodes().keySet().stream()
             .filter(id -> !boundary.contains(id)).sorted().toList());
@@ -32,8 +37,8 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
         float centerX = 0;
         float centerY = 0;
 
-        Map<Integer, GraphLayoutSnapshot.Box> boxes = new LinkedHashMap<>();
-        Map<Integer, Integer> ringIndex = new HashMap<>();
+        Map<Integer, GraphLayoutSnapshot.Box> boxes = new Int2ObjectLinkedOpenHashMap<>();
+        Map<Integer, Integer> ringIndex = new Int2IntOpenHashMap();
         for (int i = 0; i < ring.size(); i++) {
             int id = ring.get(i);
             ringIndex.put(id, i);
@@ -42,7 +47,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
                 centerY + radius * Math.sin(angle)));
         }
 
-        List<Integer> satellites = new ArrayList<>(boundaryInputs);
+        List<Integer> satellites = new IntArrayList(boundaryInputs);
         satellites.addAll(boundaryOutputs);
         placeBoundarySatellites(graph, boxes, satellites, ringIndex, ring.size(), centerX, centerY, radius,
             largestNode);
@@ -56,7 +61,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
         centerX += shiftX;
         centerY += shiftY;
 
-        Map<ClientCraftingGraph.Link, List<GraphLayoutSnapshot.Point>> routes = new LinkedHashMap<>();
+        Map<ClientCraftingGraph.Link, List<GraphLayoutSnapshot.Point>> routes = new Object2ObjectLinkedOpenHashMap<>();
         GraphPortAllocator ports = new GraphPortAllocator();
         Map<ClientCraftingGraph.Link, BoundaryPort> boundaryPorts = boundaryPorts(graph, boxes, boundary, ports);
         List<ClientCraftingGraph.Link> orderedLinks = graph.links().stream()
@@ -94,10 +99,10 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
      */
     private static List<Integer> ringOrder(ClientCraftingGraph graph, List<Integer> coreIds) {
         if (coreIds.size() <= 1) return coreIds;
-        Set<Integer> core = new LinkedHashSet<>(coreIds);
-        List<Integer> starts = new ArrayList<>(coreIds);
+        Set<Integer> core = new IntLinkedOpenHashSet(coreIds);
+        List<Integer> starts = new IntArrayList(coreIds);
         starts.sort(Comparator.comparingInt(id -> id == graph.rootId() ? Integer.MIN_VALUE : id));
-        List<Integer> cycle = new ArrayList<>();
+        List<Integer> cycle = new IntArrayList();
         for (int start : starts) {
             List<Integer> found = findDirectedCycle(graph, start, core);
             if (!found.isEmpty()) {
@@ -108,7 +113,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
         if (cycle.isEmpty()) cycle.addAll(starts);
         rotateTo(cycle, graph.rootId());
 
-        Set<Integer> placed = new LinkedHashSet<>(cycle);
+        Set<Integer> placed = new IntLinkedOpenHashSet(cycle);
         List<Integer> remaining = coreIds.stream().filter(id -> !placed.contains(id)).toList();
         boolean progress;
         do {
@@ -135,8 +140,8 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
     }
 
     private static List<Integer> findDirectedCycle(ClientCraftingGraph graph, int start, Set<Integer> core) {
-        List<Integer> path = new ArrayList<>();
-        Map<Integer, Integer> position = new HashMap<>();
+        List<Integer> path = new IntArrayList();
+        Map<Integer, Integer> position = new Int2IntOpenHashMap();
         int current = start;
         while (core.contains(current) && !position.containsKey(current)) {
             position.put(current, path.size());
@@ -157,7 +162,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
     private static void rotateTo(List<Integer> values, int id) {
         int index = values.indexOf(id);
         if (index <= 0) return;
-        List<Integer> copy = new ArrayList<>(values);
+        List<Integer> copy = new IntArrayList(values);
         for (int i = 0; i < values.size(); i++) values.set(i, copy.get((i + index) % copy.size()));
     }
 
@@ -166,7 +171,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
             Map<Integer, GraphLayoutSnapshot.Box> boxes, List<Integer> ids, Map<Integer, Integer> ringIndex,
             int ringSize, float centerX, float centerY, float radius, float largestRingNode) {
         if (ids.isEmpty()) return;
-        Map<Integer, List<Integer>> byAnchor = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> byAnchor = new Int2ObjectLinkedOpenHashMap<>();
         for (int id : ids) {
             int anchor = relatedRingIndex(graph, id, ringIndex);
             byAnchor.computeIfAbsent(anchor, ignored -> new ArrayList<>()).add(id);
@@ -319,7 +324,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
      */
     private static Map<ClientCraftingGraph.Link, BoundaryPort> boundaryPorts(ClientCraftingGraph graph,
             Map<Integer, GraphLayoutSnapshot.Box> boxes, Set<Integer> boundaryIds, GraphPortAllocator ports) {
-        Map<Integer, List<BoundaryLink>> byCore = new LinkedHashMap<>();
+        Map<Integer, List<BoundaryLink>> byCore = new Int2ObjectLinkedOpenHashMap<>();
         for (var link : graph.links()) {
             boolean fromBoundary = boundaryIds.contains(link.fromId());
             boolean toBoundary = boundaryIds.contains(link.toId());
@@ -330,7 +335,7 @@ public final class CircularCycleLayout implements GraphLayoutEngine {
                 .add(new BoundaryLink(link, satelliteId));
         }
 
-        Map<ClientCraftingGraph.Link, BoundaryPort> result = new LinkedHashMap<>();
+        Map<ClientCraftingGraph.Link, BoundaryPort> result = new Object2ObjectLinkedOpenHashMap<>();
         for (var entry : byCore.entrySet()) {
             GraphLayoutSnapshot.Box core = boxes.get(entry.getKey());
             if (core == null) continue;

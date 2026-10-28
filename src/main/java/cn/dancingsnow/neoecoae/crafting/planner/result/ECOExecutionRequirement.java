@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.result;
 
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import cn.dancingsnow.neoecoae.crafting.planner.identity.PlanIdentity;
 import java.util.HashMap;
@@ -18,7 +19,7 @@ public enum ECOExecutionRequirement {
 
     public static ECOExecutionRequirement classify(List<ComponentPlanningResult> components,
             Map<IPatternDetails, Long> plannedTasks) {
-        Map<PlanIdentity.PatternIdentity, Long> positivePlannedCounts = new HashMap<>();
+        Map<PlanIdentity.PatternIdentity, Long> positivePlannedCounts = new Object2LongOpenHashMap<>();
         Set<PlanIdentity.PatternIdentity> overflowingIdentities = new HashSet<>();
         Map<IPatternDetails, Long> fallbackCounts = new IdentityHashMap<>();
         Set<IPatternDetails> overflowingFallbacks = java.util.Collections.newSetFromMap(new IdentityHashMap<>());

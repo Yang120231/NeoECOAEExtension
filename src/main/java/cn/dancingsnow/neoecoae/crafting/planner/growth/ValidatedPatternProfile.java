@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.growth;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledPattern;
@@ -131,7 +133,7 @@ public final class ValidatedPatternProfile {
 
     /** Every key the contract touches, in a deterministic order: consumed first, then produced. */
     public List<AEKey> touchedKeys() {
-        Set<AEKey> keys = new LinkedHashSet<>(consumption.keySet());
+        Set<AEKey> keys = new ObjectLinkedOpenHashSet<>(consumption.keySet());
         keys.addAll(production.keySet());
         keys.addAll(remainder.keySet());
         return new ArrayList<>(keys);
@@ -151,7 +153,7 @@ public final class ValidatedPatternProfile {
 
     /** Net change of the whole contract per firing, positive and negative entries alike. */
     public Map<AEKey, Long> netDeltaPerFiring() {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         for (AEKey key : touchedKeys()) {
             long delta = netDeltaPerFiring(key);
             if (delta != 0) result.put(key, delta);

@@ -18,6 +18,7 @@
 
 package cn.dancingsnow.neoecoae.crafting.execution;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.platform.JdkCompat;
 
 import net.minecraft.nbt.CompoundTag;
@@ -40,8 +41,8 @@ public class ElapsedTimeTracker {
     private long lastTime = System.nanoTime();
     private long elapsedTime = 0;
     private boolean exact;
-    private final java.util.Map<AEKeyType, java.math.BigInteger> exactStarted = new LinkedHashMap<>();
-    private final java.util.Map<AEKeyType, java.math.BigInteger> exactCompleted = new LinkedHashMap<>();
+    private final java.util.Map<AEKeyType, java.math.BigInteger> exactStarted = new Object2ObjectLinkedOpenHashMap<>();
+    private final java.util.Map<AEKeyType, java.math.BigInteger> exactCompleted = new Object2ObjectLinkedOpenHashMap<>();
 
     private final Reference2LongMap<AEKeyType> startedWorkByType = new Reference2LongOpenHashMap<>(
             com.google.common.collect.Iterables.size(AEKeyTypes.getAll()));

@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.recipe;
 
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
@@ -146,8 +147,8 @@ public final class LargeWorkstationRecipes {
         return List.copyOf(groups);
     }
     private static MaterialContract materialContract(LargeWorkstationRecipe recipe, DynamicOps<JsonElement> ops) {
-        Map<Object, Long> items = new HashMap<>(), fluids = new HashMap<>();
-        Map<AEKey, Long> resources = new HashMap<>(), outputs = new HashMap<>();
+        Map<Object, Long> items = new Object2LongOpenHashMap<>(), fluids = new HashMap<>();
+        Map<AEKey, Long> resources = new Object2LongOpenHashMap<>(), outputs = new HashMap<>();
         for (var input : recipe.display().inputItems()) items.merge(itemPredicate(input.ingredient(), ops), (long) input.count(), Math::addExact);
         for (var fluid : recipe.inputFluids()) fluids.merge(fluidPredicate(fluid.ingredient(), ops), (long) fluid.amount(), Math::addExact);
         for (var extra : recipe.extraInputs()) if (!isLightning(extra)) resources.merge(extra.what(), extra.amount(), Math::addExact);
@@ -233,7 +234,7 @@ public final class LargeWorkstationRecipes {
         }
 
         private static <K> Map<K, Long> divide(Map<K, Long> amounts, long divisor) {
-            Map<K, Long> result = new HashMap<>();
+            Map<K, Long> result = new Object2LongOpenHashMap<>();
             amounts.forEach((key, amount) -> result.put(key, amount / divisor));
             return Map.copyOf(result);
         }

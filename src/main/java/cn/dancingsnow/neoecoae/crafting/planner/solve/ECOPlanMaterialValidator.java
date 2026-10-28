@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 
 import appeng.api.crafting.IPatternDetails;
@@ -33,8 +34,8 @@ public final class ECOPlanMaterialValidator {
             return new Issue(null, PlannerAmount.ZERO, PlannerAmount.ZERO, "INVALID_PLAN_ARGUMENT");
         }
 
-        Map<AEKey, PlannerAmount> supply = new LinkedHashMap<>();
-        Map<AEKey, PlannerAmount> demand = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> supply = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> demand = new Object2ObjectLinkedOpenHashMap<>();
         List<InputDemand> componentInsensitiveDemands = new ArrayList<>();
         Map<IPatternDetails, List<CompiledInput>> compiledInputs = compiledInputs(network);
         // Only usedItems are transferred into the crafting CPU when the plan is submitted. Unreserved network

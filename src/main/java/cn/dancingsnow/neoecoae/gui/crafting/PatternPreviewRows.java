@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.gui.crafting;
 
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import cn.dancingsnow.neoecoae.util.PatternSearchMatcher;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,7 +17,7 @@ final class PatternPreviewRows {
     record Cell(int entry, int recipe) {}
     private record Address(long bus, int slot, int recipe) {}
     private final List<Cell> visible = new ArrayList<>();
-    private final Map<Address, Integer> positions = new HashMap<>();
+    private final Map<Address, Integer> positions = new Object2IntOpenHashMap<>();
     private PatternPreviewEntry[] entries = new PatternPreviewEntry[0];
     private List<String> inputTerms = List.of(), outputTerms = List.of();
 

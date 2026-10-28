@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.result;
 
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -11,11 +12,11 @@ public final class CycleResourceLedger {
     private static final Logger LOGGER = LoggerFactory.getLogger("neoecoae");
     private static final boolean TRACE_EVENTS = false;
     private final int componentId;
-    private final Map<AEKey, Long> bootstrapReserve = new LinkedHashMap<>();
-    private final Map<AEKey, Long> bootstrapRequirement = new LinkedHashMap<>();
-    private final Map<AEKey, Long> internalConsumed = new LinkedHashMap<>();
-    private final Map<AEKey, Long> generated = new LinkedHashMap<>();
-    private final Map<AEKey, Long> releasedSurplus = new LinkedHashMap<>();
+    private final Map<AEKey, Long> bootstrapReserve = new Object2LongLinkedOpenHashMap<>();
+    private final Map<AEKey, Long> bootstrapRequirement = new Object2LongLinkedOpenHashMap<>();
+    private final Map<AEKey, Long> internalConsumed = new Object2LongLinkedOpenHashMap<>();
+    private final Map<AEKey, Long> generated = new Object2LongLinkedOpenHashMap<>();
+    private final Map<AEKey, Long> releasedSurplus = new Object2LongLinkedOpenHashMap<>();
 
     public CycleResourceLedger(int componentId, Map<AEKey, Long> bootstrap) {
         this.componentId = componentId;

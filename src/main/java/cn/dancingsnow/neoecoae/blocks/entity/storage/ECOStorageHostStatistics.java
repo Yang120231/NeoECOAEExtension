@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.blocks.entity.storage;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import cn.dancingsnow.neoecoae.all.NERegistries;
 import cn.dancingsnow.neoecoae.api.ECOTier;
 import cn.dancingsnow.neoecoae.api.storage.ECOCellType;
@@ -168,7 +169,7 @@ final class ECOStorageHostStatistics {
         }
 
         long energyConsumePerTick = 256L + (1L << (1 + 4 * host.getTier().getTier()));
-        Map<Integer, StorageTypeTotals> storageTypes = new HashMap<>();
+        Map<Integer, StorageTypeTotals> storageTypes = new Int2ObjectOpenHashMap<>();
         List<StorageHostUI.CellEntry> cellEntries = new ArrayList<>();
         boolean hasSingularity = false;
         driveUiSnapshots.keySet().retainAll(host.getCluster().getDrives());

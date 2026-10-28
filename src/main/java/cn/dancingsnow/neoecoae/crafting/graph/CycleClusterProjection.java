@@ -1,5 +1,10 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -18,9 +23,9 @@ public final class CycleClusterProjection {
     public static List<CycleCluster> derive(CraftingGraphSnapshot snapshot) {
         Set<Integer> components = snapshot.cycleGroups().stream()
             .map(CraftingGraphSnapshot.CycleGroup::componentId).collect(java.util.stream.Collectors.toSet());
-        Map<Integer, List<Endpoint>> producers = new LinkedHashMap<>();
-        Map<Integer, List<Endpoint>> consumers = new LinkedHashMap<>();
-        Map<Integer, Boolean> hasSelectedPattern = new HashMap<>();
+        Map<Integer, List<Endpoint>> producers = new Int2ObjectLinkedOpenHashMap<>();
+        Map<Integer, List<Endpoint>> consumers = new Int2ObjectLinkedOpenHashMap<>();
+        Map<Integer, Boolean> hasSelectedPattern = new Int2ObjectOpenHashMap<>();
         for (var pattern : snapshot.patterns()) if (components.contains(pattern.componentId())
                 && (pattern.status() == CraftingGraphSnapshot.CandidateStatus.SELECTED
                     || pattern.firingCount() > 0)) {
@@ -42,7 +47,7 @@ public final class CycleClusterProjection {
         }
 
         List<InterCycleFlow> flows = new ArrayList<>();
-        Set<String> identities = new LinkedHashSet<>();
+        Set<String> identities = new ObjectLinkedOpenHashSet<>();
         for (var entry : producers.entrySet()) {
             int materialId = entry.getKey();
             for (Endpoint producer : entry.getValue()) for (Endpoint consumer
@@ -60,7 +65,7 @@ public final class CycleClusterProjection {
             .thenComparingInt(InterCycleFlow::toComponentId).thenComparingInt(InterCycleFlow::materialNodeId)
             .thenComparingInt(InterCycleFlow::producerPatternId).thenComparingInt(InterCycleFlow::consumerPatternId));
 
-        Map<Integer, Set<Integer>> undirected = new HashMap<>();
+        Map<Integer, Set<Integer>> undirected = new Int2ObjectOpenHashMap<>();
         for (InterCycleFlow flow : flows) {
             undirected.computeIfAbsent(flow.fromComponentId(), ignored -> new LinkedHashSet<>())
                 .add(flow.toComponentId());
@@ -68,11 +73,11 @@ public final class CycleClusterProjection {
                 .add(flow.fromComponentId());
         }
         List<CycleCluster> result = new ArrayList<>();
-        Set<Integer> visited = new LinkedHashSet<>();
+        Set<Integer> visited = new IntLinkedOpenHashSet();
         for (int start : components.stream().sorted().toList()) {
             if (visited.contains(start) || !undirected.containsKey(start)) continue;
             ArrayDeque<Integer> queue = new ArrayDeque<>();
-            List<Integer> members = new ArrayList<>();
+            List<Integer> members = new IntArrayList();
             queue.add(start);
             visited.add(start);
             while (!queue.isEmpty()) {
@@ -82,7 +87,7 @@ public final class CycleClusterProjection {
             }
             if (members.size() < 2) continue;
             members.sort(Integer::compareTo);
-            Set<Integer> memberSet = new LinkedHashSet<>(members);
+            Set<Integer> memberSet = new IntLinkedOpenHashSet(members);
             List<InterCycleFlow> clusterFlows = flows.stream()
                 .filter(flow -> memberSet.contains(flow.fromComponentId()) && memberSet.contains(flow.toComponentId()))
                 .toList();

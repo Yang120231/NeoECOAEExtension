@@ -1,5 +1,14 @@
 package cn.dancingsnow.neoecoae.crafting.planner.result;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -87,7 +96,7 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
                     && !ECOExecutionRequirement.componentIsExecutableCycle(c)) continue;
             Type type = ECOExecutionRequirement.componentIsDynamic(c) ? Type.DYNAMIC_CYCLE
                 : c.type() == ComponentPlanningResult.Type.CYCLIC ? Type.CYCLE : Type.DAG;
-            Set<IPatternDetails> patterns = new LinkedHashSet<>();
+            Set<IPatternDetails> patterns = new ObjectLinkedOpenHashSet<>();
             for (IPatternDetails source : c.executionPatterns()) {
                 IPatternDetails executable = executablePattern(source, executableTaskIndex, plannedTasks != null);
                 if (executable == null || containsPhysicalPattern(assignedPatterns, executable)) continue;
@@ -151,10 +160,10 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
      */
     private static OrderedSchedule orderByExecutableDependencies(List<ComponentExecutionPhase> phases,
             ExecutionProvenance provenance, PatternIndex plannedTasks) {
-        Map<AEKey, Set<Integer>> producersByKey = new LinkedHashMap<>();
-        Map<AEKey, Set<Integer>> primaryProducersByKey = new LinkedHashMap<>();
+        Map<AEKey, Set<Integer>> producersByKey = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, Set<Integer>> primaryProducersByKey = new Object2ObjectLinkedOpenHashMap<>();
         PatternIndex phaseOfPattern = new PatternIndex();
-        Map<Integer, Integer> phaseOfComponent = new LinkedHashMap<>();
+        Map<Integer, Integer> phaseOfComponent = new Int2IntLinkedOpenHashMap();
         for (int phaseIndex = 0; phaseIndex < phases.size(); phaseIndex++) {
             phaseOfComponent.put(phases.get(phaseIndex).componentId(), phaseIndex);
             for (IPatternDetails pattern : phases.get(phaseIndex).patternSet()) {
@@ -174,7 +183,7 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
 
         List<Set<Integer>> outgoing = new ArrayList<>(phases.size());
         int[] indegree = new int[phases.size()];
-        Map<PhaseDependency, Set<String>> edgeKeys = new LinkedHashMap<>();
+        Map<PhaseDependency, Set<String>> edgeKeys = new Object2ObjectLinkedOpenHashMap<>();
         for (int i = 0; i < phases.size(); i++) outgoing.add(new LinkedHashSet<>());
         if (provenance != null) {
             provenance.requireComplete();
@@ -236,7 +245,7 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
         PriorityQueue<Integer> ready = new PriorityQueue<>();
         for (int i = 0; i < indegree.length; i++) if (indegree[i] == 0) ready.add(i);
         List<ComponentExecutionPhase> ordered = new ArrayList<>(phases.size());
-        List<Integer> orderedIndices = new ArrayList<>(phases.size());
+        List<Integer> orderedIndices = new IntArrayList(phases.size());
         while (!ready.isEmpty()) {
             int phaseIndex = ready.remove();
             ordered.add(phases.get(phaseIndex));
@@ -274,14 +283,14 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
      */
     private static String describeResidualCycles(List<ComponentExecutionPhase> phases, List<Set<Integer>> outgoing,
             Map<PhaseDependency, Set<String>> edgeKeys, List<Integer> orderedIndices) {
-        Set<Integer> remaining = new LinkedHashSet<>();
+        Set<Integer> remaining = new IntLinkedOpenHashSet();
         for (int i = 0; i < phases.size(); i++) if (!orderedIndices.contains(i)) remaining.add(i);
         List<List<Integer>> cycles = stronglyConnectedComponents(remaining, outgoing).stream()
             .filter(scc -> scc.size() > 1).toList();
         StringBuilder text = new StringBuilder("remainingPhases=").append(remaining.size())
             .append(" cyclicGroups=").append(cycles.size());
         for (int group = 0; group < cycles.size(); group++) {
-            List<Integer> members = new ArrayList<>(cycles.get(group));
+            List<Integer> members = new IntArrayList(cycles.get(group));
             members.sort(null);
             text.append("; cycle#").append(group).append(" phases=[");
             for (int i = 0; i < members.size(); i++) {
@@ -309,8 +318,8 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
 
     private static List<List<Integer>> stronglyConnectedComponents(Set<Integer> nodes, List<Set<Integer>> outgoing) {
         List<List<Integer>> result = new ArrayList<>();
-        Map<Integer, Integer> index = new HashMap<>(), low = new HashMap<>();
-        Set<Integer> onStack = new HashSet<>();
+        Map<Integer, Integer> index = new Int2IntOpenHashMap(), low = new HashMap<>();
+        Set<Integer> onStack = new IntOpenHashSet();
         java.util.ArrayDeque<Integer> stack = new java.util.ArrayDeque<>();
         int[] next = {0};
         for (int node : nodes) if (!index.containsKey(node)) tarjan(node, nodes, outgoing, index, low, onStack, stack, next, result);
@@ -325,7 +334,7 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
             if (!index.containsKey(w)) { tarjan(w,nodes,outgoing,index,low,onStack,stack,next,result); low.put(v, Math.min(low.get(v), low.get(w))); }
             else if (onStack.contains(w)) low.put(v, Math.min(low.get(v), index.get(w)));
         }
-        if (low.get(v).equals(index.get(v))) { List<Integer> scc = new ArrayList<>(); int w; do { w=stack.pop(); onStack.remove(w); scc.add(w); } while (w!=v); result.add(scc); }
+        if (low.get(v).equals(index.get(v))) { List<Integer> scc = new IntArrayList(); int w; do { w=stack.pop(); onStack.remove(w); scc.add(w); } while (w!=v); result.add(scc); }
     }
 
     private static boolean addDependency(List<Set<Integer>> outgoing, int[] indegree,
@@ -411,14 +420,14 @@ public record ECOExecutionSchedule(List<ComponentExecutionPhase> phases, List<Ph
         private final boolean plannedTaskIndex;
         private final List<IPatternDetails> entries = new ArrayList<>();
         private final IdentityHashMap<IPatternDetails, IPatternDetails> byInstance = new IdentityHashMap<>();
-        private final Map<PlanIdentity.PatternIdentity, IdentityBucket> byIdentity = new LinkedHashMap<>();
+        private final Map<PlanIdentity.PatternIdentity, IdentityBucket> byIdentity = new Object2ObjectLinkedOpenHashMap<>();
         private final IdentityHashMap<IPatternDetails, PlanIdentity.PatternIdentity> identityByInstance =
             new IdentityHashMap<>();
         private final IdentityHashMap<IPatternDetails, Integer> phaseByInstance = new IdentityHashMap<>();
-        private final Map<PlanIdentity.PatternIdentity, Integer> phaseByIdentity = new LinkedHashMap<>();
+        private final Map<PlanIdentity.PatternIdentity, Integer> phaseByIdentity = new Object2IntLinkedOpenHashMap<>();
         private final Set<PlanIdentity.PatternIdentity> ambiguousPhaseOwnership = new HashSet<>();
         private final IdentityHashMap<IPatternDetails, Long> plannedCountsByInstance = new IdentityHashMap<>();
-        private final Map<PlanIdentity.PatternIdentity, Long> plannedCountsByIdentity = new LinkedHashMap<>();
+        private final Map<PlanIdentity.PatternIdentity, Long> plannedCountsByIdentity = new Object2LongLinkedOpenHashMap<>();
 
         private PatternIndex() {
             this(false);

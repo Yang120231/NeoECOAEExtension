@@ -1,5 +1,8 @@
 package cn.dancingsnow.neoecoae.crafting.execution;
 
+import it.unimi.dsi.fastutil.ints.Int2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.stacks.AEItemKey;
@@ -105,7 +108,7 @@ public final class ECOExecutionPlanNbtCodec {
         ExecutionMode mode = ExecutionMode.valueOf(data.getString("mode"));
         ListTag taskTags = data.getList("tasks", Tag.TAG_COMPOUND);
         List<ECOExecutionPlan.TaskSpec> tasks = new ArrayList<>(taskTags.size());
-        Map<Integer, IPatternDetails> patternsById = new HashMap<>();
+        Map<Integer, IPatternDetails> patternsById = new Int2ObjectOpenHashMap<>();
         for (int i = 0; i < taskTags.size(); i++) {
             CompoundTag taskTag = taskTags.getCompound(i);
             int id = taskTag.getInt("id");
@@ -158,14 +161,14 @@ public final class ECOExecutionPlanNbtCodec {
                     step.contains("repetitions") ? step.getLong("repetitions") : 1L));
             }
 
-            Map<Integer, Long> dynamic = new LinkedHashMap<>();
+            Map<Integer, Long> dynamic = new Int2LongLinkedOpenHashMap();
             ListTag dynamicTags = phaseTag.getList("dynamic", Tag.TAG_COMPOUND);
             for (int dynamicIndex = 0; dynamicIndex < dynamicTags.size(); dynamicIndex++) {
                 CompoundTag firing = dynamicTags.getCompound(dynamicIndex);
                 dynamic.put(firing.getInt("task"), firing.getLong("count"));
             }
 
-            Map<AEKey, Long> seed = new LinkedHashMap<>();
+            Map<AEKey, Long> seed = new Object2LongLinkedOpenHashMap<>();
             ListTag seedTags = phaseTag.getList("initialSeed", Tag.TAG_COMPOUND);
             for (int seedIndex = 0; seedIndex < seedTags.size(); seedIndex++) {
                 GenericStack stack = GenericStack.readTag(seedTags.getCompound(seedIndex));
@@ -191,7 +194,7 @@ public final class ECOExecutionPlanNbtCodec {
             }
         }
 
-        Map<PlanIdentity.PatternIdentity, Long> signatureTasks = new LinkedHashMap<>();
+        Map<PlanIdentity.PatternIdentity, Long> signatureTasks = new Object2LongLinkedOpenHashMap<>();
         for (var task : tasks) signatureTasks.put(task.identity(), task.totalCount());
         if (finalOutput == null) throw new IllegalArgumentException("Persisted execution job has no final output");
         PlanIdentity.Signature signature = new PlanIdentity.Signature(

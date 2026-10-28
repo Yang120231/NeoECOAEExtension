@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.gui.crafting;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOMachineInterfaceBlockEntity;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.factory.BlockUIMenuType;
 import com.lowdragmc.lowdraglib.gui.modular.ModularUIContainer;
@@ -363,7 +364,7 @@ public final class PatternPreviewSync {
         final UUID playerId;
         AbstractContainerMenu menu;
         final BitSet changed = new BitSet();
-        final Map<Integer, ListTag> disks = new HashMap<>();
+        final Map<Integer, ListTag> disks = new Int2ObjectOpenHashMap<>();
         Pending pending;
         int revision = -1;
         int clientRevision = -1;

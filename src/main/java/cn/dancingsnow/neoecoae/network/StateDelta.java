@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.network;
 
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import io.netty.buffer.Unpooled;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,7 +15,7 @@ public final class StateDelta {
     public static byte[] encode(byte[] before, byte[] after) {
         if (before.length > MAX_STATE_BYTES || after.length > MAX_STATE_BYTES)
             throw new IllegalArgumentException("UI state exceeds budget");
-        Map<Integer, Integer> blocks = new HashMap<>();
+        Map<Integer, Integer> blocks = new Int2IntOpenHashMap();
         for (int i = 0; i + BLOCK <= before.length; i += BLOCK) blocks.putIfAbsent(hash(before, i), i);
         return BoundedData.encode(BoundedData.MAX_BYTES, out -> {
             out.writeVarInt(after.length);

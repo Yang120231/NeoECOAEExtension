@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.snapshot;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import appeng.api.stacks.AEKey;
 import appeng.menu.guisync.PacketWritable;
 import io.netty.buffer.Unpooled;
@@ -367,7 +368,7 @@ public record CraftingGraphSnapshot(
     private static List<Integer> readIntList(FriendlyByteBuf data) {
         int size = data.readVarInt();
         if (size < 0 || size > 1_000_000) throw new IllegalArgumentException("Invalid graph integer list size");
-        List<Integer> result = new ArrayList<>(size);
+        List<Integer> result = new IntArrayList(size);
         for (int i = 0; i < size; i++) result.add(data.readVarInt());
         return result;
     }

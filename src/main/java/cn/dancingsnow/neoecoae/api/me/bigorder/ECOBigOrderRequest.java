@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api.me.bigorder;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.execution.bigorder.ECOBigCraftingOrder;
 
 import appeng.api.networking.crafting.ICraftingPlan;
@@ -24,7 +25,7 @@ public record ECOBigOrderRequest(AEKey goal, BigInteger requested, boolean force
             ECOPlannerOptions options) {
         java.util.Objects.requireNonNull(result, "result");
         if (result.plan() == null) throw new IllegalArgumentException("Missing planning projection");
-        Map<AEKey, BigInteger> preview = new LinkedHashMap<>();
+        Map<AEKey, BigInteger> preview = new Object2ObjectLinkedOpenHashMap<>();
         result.trace().nodes().forEach(node -> {
             if (node.key() != null && node.exactToCraft().signum() > 0) {
                 preview.merge(node.key(), node.exactToCraft(), BigInteger::max);

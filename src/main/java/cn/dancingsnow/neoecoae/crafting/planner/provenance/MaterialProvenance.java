@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.provenance;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
@@ -11,16 +12,16 @@ import java.util.UUID;
 
 /** Mutable solve-local ledger for material sources and unconsumed byproduct credit. */
 public final class MaterialProvenance {
-    private final Map<AEKey, Map<MaterialSource, PlannerAmount>> suppliers = new LinkedHashMap<>();
-    private final Map<AEKey, Map<IPatternDetails, PlannerAmount>> creditLedger = new LinkedHashMap<>();
-    private final Map<UUID, MaterialDemand> demands = new LinkedHashMap<>();
+    private final Map<AEKey, Map<MaterialSource, PlannerAmount>> suppliers = new Object2ObjectLinkedOpenHashMap<>();
+    private final Map<AEKey, Map<IPatternDetails, PlannerAmount>> creditLedger = new Object2ObjectLinkedOpenHashMap<>();
+    private final Map<UUID, MaterialDemand> demands = new Object2ObjectLinkedOpenHashMap<>();
     private final List<SupplyAllocation> allocations = new ArrayList<>();
-    private final Map<UUID, PlannerAmount> allocated = new LinkedHashMap<>();
+    private final Map<UUID, PlannerAmount> allocated = new Object2ObjectLinkedOpenHashMap<>();
     /** Only outstanding demands, in their original registration order, indexed by the complete AE key. */
-    private final Map<AEKey, PendingDemands> pending = new LinkedHashMap<>();
+    private final Map<AEKey, PendingDemands> pending = new Object2ObjectLinkedOpenHashMap<>();
 
     private static final class PendingDemands {
-        final Map<UUID, MaterialDemand> demands = new LinkedHashMap<>();
+        final Map<UUID, MaterialDemand> demands = new Object2ObjectLinkedOpenHashMap<>();
         PlannerAmount amount = PlannerAmount.ZERO;
     }
 
@@ -192,7 +193,7 @@ public final class MaterialProvenance {
         if (available.compareTo(amount) < 0) {
             throw new IllegalStateException("Crafted credit and provenance ledger diverged for " + key);
         }
-        Map<IPatternDetails, PlannerAmount> consumed = new LinkedHashMap<>();
+        Map<IPatternDetails, PlannerAmount> consumed = new Object2ObjectLinkedOpenHashMap<>();
         PlannerAmount remaining = amount;
         for (var entry : credits.entrySet()) {
             if (remaining.isZero()) break;

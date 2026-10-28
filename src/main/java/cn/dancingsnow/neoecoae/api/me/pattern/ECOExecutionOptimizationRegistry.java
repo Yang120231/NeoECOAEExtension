@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api.me.pattern;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 
 /** Higher priority wins; equal priorities are ordered by registration ID, independent of load order. */
 public final class ECOExecutionOptimizationRegistry {
-    private static final Map<ResourceLocation, Entry> ENTRIES = new LinkedHashMap<>();
+    private static final Map<ResourceLocation, Entry> ENTRIES = new Object2ObjectLinkedOpenHashMap<>();
     private static volatile List<Entry> ordered = List.of();
     private static volatile long revision;
 

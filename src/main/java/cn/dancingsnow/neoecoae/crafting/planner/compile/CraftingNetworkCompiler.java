@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.compile;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.stacks.AEKey;
@@ -70,7 +71,7 @@ public final class CraftingNetworkCompiler {
         }
         Set<ResourceLocation> ignoredItemIds = fuzzyPlanningItemIds == null ? Set.of()
             : fuzzyPlanningItemIds;
-        Map<AEKey, List<CompiledPattern>> producers = new LinkedHashMap<>();
+        Map<AEKey, List<CompiledPattern>> producers = new Object2ObjectLinkedOpenHashMap<>();
         Set<AEKey> emittable = new HashSet<>();
         Set<AEKey> queued = new HashSet<>();
         ArrayDeque<AEKey> work = new ArrayDeque<>();

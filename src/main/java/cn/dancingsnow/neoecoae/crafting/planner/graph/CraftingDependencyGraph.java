@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -18,12 +19,12 @@ public final class CraftingDependencyGraph {
         this.goal = goal;
         this.nodes = nodes;
         this.edges = edges;
-        Map<AEKey, List<CraftingGraphEdge>> byProducer = new LinkedHashMap<>();
+        Map<AEKey, List<CraftingGraphEdge>> byProducer = new Object2ObjectLinkedOpenHashMap<>();
         for (AEKey key : nodes.keySet()) byProducer.put(key, new ArrayList<>());
         for (CraftingGraphEdge edge : edges) {
             byProducer.computeIfAbsent(edge.producer(), ignored -> new ArrayList<>()).add(edge);
         }
-        Map<AEKey, List<CraftingGraphEdge>> frozen = new LinkedHashMap<>();
+        Map<AEKey, List<CraftingGraphEdge>> frozen = new Object2ObjectLinkedOpenHashMap<>();
         byProducer.forEach((key, value) -> frozen.put(key, value));
         this.outgoing = frozen;
     }

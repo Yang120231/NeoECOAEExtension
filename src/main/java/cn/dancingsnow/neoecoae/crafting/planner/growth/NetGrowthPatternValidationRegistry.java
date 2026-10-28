@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.growth;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEItemKey;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
@@ -44,9 +46,9 @@ public final class NetGrowthPatternValidationRegistry {
         PatternSemantics semantics = deterministicStaticContract(details);
         if (semantics == null) return false;
         try {
-            Map<appeng.api.stacks.AEKey, PlannerAmount> consumed = new LinkedHashMap<>();
-            Map<appeng.api.stacks.AEKey, PlannerAmount> produced = new LinkedHashMap<>();
-            Map<appeng.api.stacks.AEKey, PlannerAmount> remainder = new LinkedHashMap<>();
+            Map<appeng.api.stacks.AEKey, PlannerAmount> consumed = new Object2ObjectLinkedOpenHashMap<>();
+            Map<appeng.api.stacks.AEKey, PlannerAmount> produced = new Object2ObjectLinkedOpenHashMap<>();
+            Map<appeng.api.stacks.AEKey, PlannerAmount> remainder = new Object2ObjectLinkedOpenHashMap<>();
             for (var output : semantics.producedOutputs()) {
                 produced.merge(output.what(), PlannerAmount.of(output.amount()), PlannerAmount::add);
             }
@@ -125,7 +127,7 @@ public final class NetGrowthPatternValidationRegistry {
 
     private static final class WeakIdentityGenerationMap<T> {
         private final ReferenceQueue<T> queue = new ReferenceQueue<>();
-        private final Map<IdentityRef<T>, Long> entries = new HashMap<>();
+        private final Map<IdentityRef<T>, Long> entries = new Object2LongOpenHashMap<>();
 
         synchronized void add(T value, long generation) {
             expunge();

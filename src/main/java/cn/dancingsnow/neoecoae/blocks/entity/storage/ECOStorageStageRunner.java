@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.blocks.entity.storage;
 
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import cn.dancingsnow.neoecoae.impl.storage.StorageFaults;
 import net.minecraft.world.level.Level;
 
@@ -13,7 +14,7 @@ final class ECOStorageStageRunner {
 
     private final ECOStorageSystemBlockEntity host;
     private final StorageFaults faults = new StorageFaults();
-    private final Map<String, Long> retryTicks = new HashMap<>();
+    private final Map<String, Long> retryTicks = new Object2LongOpenHashMap<>();
 
     ECOStorageStageRunner(ECOStorageSystemBlockEntity host) {
         this.host = host;

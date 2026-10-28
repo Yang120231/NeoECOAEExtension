@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.execution.worker;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingWorkerBlockEntity;
 import cn.dancingsnow.neoecoae.gui.task.ComputationTaskEntry;
 import java.util.ArrayList;
@@ -19,7 +20,7 @@ public final class ECOCraftingTaskSummary {
     private ECOCraftingTaskSummary() {}
 
     public static List<ComputationTaskEntry> collect(List<ECOCraftingWorkerBlockEntity> workers, BlockPos controllerPos) {
-        Map<TaskKey, Aggregate> aggregates = new LinkedHashMap<>();
+        Map<TaskKey, Aggregate> aggregates = new Object2ObjectLinkedOpenHashMap<>();
         for (ECOCraftingWorkerBlockEntity worker : workers) {
             for (ECOCraftingThread.Snapshot snapshot : worker.getThreadSnapshots()) {
                 ItemStack output = snapshot.outputItem();

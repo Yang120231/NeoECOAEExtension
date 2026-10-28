@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.compat.gregtech;
 
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.stacks.AEFluidKey;
@@ -74,7 +75,7 @@ public final class ECOGregTechProcessingDispatch {
         var access = ACCESS.get(logic.getClass());
         try {
             if (access.bufferCapacity() != null) {
-                Map<AEKey, Long> perCraft = new HashMap<>();
+                Map<AEKey, Long> perCraft = new Object2LongOpenHashMap<>();
                 for (var counter : inputs) {
                     for (var entry : counter) perCraft.merge(entry.getKey(), entry.getLongValue(), Math::addExact);
                 }

@@ -1,5 +1,8 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 
 import appeng.api.crafting.IPatternDetails;
@@ -27,13 +30,13 @@ public final class SolveState {
     final PlannerCounter used = new PlannerCounter();
     final PlannerCounter emitted = new PlannerCounter();
     final PlannerCounter missing = new PlannerCounter();
-    final Map<AEKey, PlannerAmount> demand = new LinkedHashMap<>();
-    final Map<IPatternDetails, PlannerAmount> patternTimes = new LinkedHashMap<>();
+    final Map<AEKey, PlannerAmount> demand = new Object2ObjectLinkedOpenHashMap<>();
+    final Map<IPatternDetails, PlannerAmount> patternTimes = new Object2ObjectLinkedOpenHashMap<>();
     final Map<AEKey, IPatternDetails> demandProducers = new HashMap<>();
     final Map<AEKey, CompiledPattern> selected = new HashMap<>();
-    final Map<AEKey, IPatternDetails> deferredSuppliers = new LinkedHashMap<>();
+    final Map<AEKey, IPatternDetails> deferredSuppliers = new Object2ObjectLinkedOpenHashMap<>();
     final Map<AEKey, Set<AEKey>> parents = new HashMap<>();
-    final Set<AEKey> unsupported = new LinkedHashSet<>();
+    final Set<AEKey> unsupported = new ObjectLinkedOpenHashSet<>();
     PlannerAmount bytes = PlannerAmount.ZERO;
 
     SolveState(KeyCounter inventory) {
@@ -262,7 +265,7 @@ public final class SolveState {
     }
 
     private static <K> Map<K, Long> exactLongMap(Map<K, PlannerAmount> source, String stage) {
-        Map<K, Long> result = new LinkedHashMap<>();
+        Map<K, Long> result = new Object2LongLinkedOpenHashMap<>();
         for (var entry : source.entrySet()) {
             if (!entry.getValue().fitsLong()) {
                 throw new ArithmeticException(stage + " exceeds AE2 long range: " + entry.getValue());

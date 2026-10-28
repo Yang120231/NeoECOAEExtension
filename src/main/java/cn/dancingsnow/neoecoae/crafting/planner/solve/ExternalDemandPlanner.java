@@ -1,5 +1,9 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerText;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 
 import appeng.api.crafting.IPatternDetails;
@@ -135,9 +139,9 @@ final class ExternalDemandPlanner {
 
         KeyCounter direct = new KeyCounter();
         List<SolveState> states = new ArrayList<>();
-        Set<IPatternDetails> selected = new LinkedHashSet<>();
-        Map<AEKey, Long> delegated = new LinkedHashMap<>();
-        Map<AEKey, Long> deficits = new LinkedHashMap<>();
+        Set<IPatternDetails> selected = new ObjectLinkedOpenHashSet<>();
+        Map<AEKey, Long> delegated = new Object2LongLinkedOpenHashMap<>();
+        Map<AEKey, Long> deficits = new Object2LongLinkedOpenHashMap<>();
         for (var demand : demands.entrySet()) {
             cancellation.checkpoint();
             // A cyclic supplier owns both the requested output and the stock that can bootstrap its feedback
@@ -193,7 +197,7 @@ final class ExternalDemandPlanner {
 
     private static Map<AEKey, Long> copyLongMap(KeyCounter source) {
         if (!source.iterator().hasNext()) return Map.of();
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         for (var entry : source) result.put(entry.getKey(), entry.getLongValue());
         return Map.copyOf(result);
     }
@@ -250,7 +254,7 @@ final class ExternalDemandPlanner {
                     .findFirst().orElse("External DAG plan exceeds AE2 long range"));
         }
         return failure(CycleExternalDemandStatus.UNSUPPORTED, Map.of(),
-            "External demands=" + demands + " status=" + solved.status()
+            "External demands=" + PlannerText.describe(demands) + " status=" + solved.status()
                 + ": " + solved.trace().diagnostics().stream()
                     .map(diagnostic -> diagnostic.code() + ": " + diagnostic.message())
                     .collect(java.util.stream.Collectors.joining("; ")));
@@ -264,7 +268,7 @@ final class ExternalDemandPlanner {
         FilteredRoute cached = filteredRoutes.get(key);
         if (cached != null) return cached;
         Map<AEKey, List<cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledPattern>> producers =
-            new LinkedHashMap<>();
+            new Object2ObjectLinkedOpenHashMap<>();
         // Exclude only physical patterns owned by this component, retaining independent seed producers.
         network.producers().forEach((material, candidates) -> producers.put(material, candidates.stream()
             .filter(pattern -> !forbiddenPatterns.contains(pattern.details())).toList()));
@@ -310,7 +314,7 @@ final class ExternalDemandPlanner {
         return result;
     }
     private static Map<AEKey, Long> positive(KeyCounter counter) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         for (var entry : counter) if (entry.getLongValue() > 0) result.put(entry.getKey(), entry.getLongValue());
         return result;
     }

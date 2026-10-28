@@ -1,5 +1,10 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerText;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 
 import appeng.api.stacks.AEKey;
@@ -79,7 +84,7 @@ public final class AcyclicCraftingSolver {
     Outcome solveDemands(CompiledNetwork network, PlannerInventorySnapshot inventory, Map<AEKey, Long> demands,
             Map<AEKey, Integer> initialChoices, Set<IPatternDetails> deferredPatterns,
             boolean ignorePatternSubstitutions, ECOCancellation cancellation) throws InterruptedException {
-        Map<AEKey, PlannerAmount> goals = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> goals = new Object2ObjectLinkedOpenHashMap<>();
         demands.forEach((key, amount) -> { if (amount > 0) goals.put(key, PlannerAmount.of(amount)); });
         return solveGoals(network, inventory, goals, false, initialChoices, deferredPatterns,
             ignorePatternSubstitutions, cancellation);
@@ -95,7 +100,7 @@ public final class AcyclicCraftingSolver {
             trace.addDiagnostic(new PlannerDiagnostic(PlannerDiagnostic.Code.AMOUNT_OVERFLOW, "Goal amount must be positive"));
             return new Outcome(PlanningStatus.AMOUNT_OVERFLOW, new SolveState(inventory), trace);
         }
-        Map<AEKey, Integer> choices = new HashMap<>(initialChoices);
+        Map<AEKey, Integer> choices = new Object2IntOpenHashMap<>(initialChoices);
         int retryBudget = Math.max(1, network.reachablePatternCount() + 1);
         SolveState state = null;
         SolveState missingRoute = null;
@@ -148,7 +153,7 @@ public final class AcyclicCraftingSolver {
                 addTrace(network, state, amount, trace);
                 if (!state.unsupported.isEmpty()) {
                     trace.addDiagnostic(new PlannerDiagnostic(PlannerDiagnostic.Code.NATIVE_FALLBACK,
-                        "No batch-safe candidate remains for " + state.unsupported));
+                        "No batch-safe candidate remains for " + PlannerText.describe(state.unsupported)));
                     return new Outcome(PlanningStatus.PARTIAL_UNSUPPORTED, state, trace);
                 }
                 if (addExecutionRepresentabilityDiagnostics(state, trace)) {
@@ -192,7 +197,7 @@ public final class AcyclicCraftingSolver {
             boolean ignorePatternSubstitutions, ECOCancellation cancellation) throws InterruptedException {
         PlannerCounter stock = new PlannerCounter();
         inventory.initialize(stock);
-        Set<AEKey> stockLeaves = new LinkedHashSet<>(stock.asMap().keySet());
+        Set<AEKey> stockLeaves = new ObjectLinkedOpenHashSet<>(stock.asMap().keySet());
         if (additionalGoal) stockLeaves.remove(network.goal());
         while (!stockLeaves.isEmpty()) {
             cancellation.checkpoint();
@@ -220,10 +225,10 @@ public final class AcyclicCraftingSolver {
         Set<AEKey> allowed = network.keys();
         if (!allowed.contains(network.goal())) return List.of();
 
-        Map<AEKey, Set<AEKey>> outgoing = new LinkedHashMap<>();
-        Map<AEKey, Integer> indegree = new LinkedHashMap<>();
+        Map<AEKey, Set<AEKey>> outgoing = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, Integer> indegree = new Object2IntLinkedOpenHashMap<>();
         ArrayDeque<AEKey> discover = new ArrayDeque<>();
-        Set<AEKey> reachable = new LinkedHashSet<>();
+        Set<AEKey> reachable = new ObjectLinkedOpenHashSet<>();
         for (AEKey goal : goals) {
             discover.add(goal);
             reachable.add(goal);
@@ -289,7 +294,7 @@ public final class AcyclicCraftingSolver {
         state.bytes = PlannerAmount.of(route.keys().size()).multiply(8L);
         SpecialPatternResolver specialResolver = new SpecialPatternResolver(
             network, state, workspace.candidateChoice(), cancellation, ignorePatternSubstitutions);
-        Map<AEKey, CompiledPattern> selected = new LinkedHashMap<>();
+        Map<AEKey, CompiledPattern> selected = new Object2ObjectLinkedOpenHashMap<>();
         for (AEKey key : route.keys()) {
             CompiledPattern pattern = selectedPattern(network, key, workspace.candidateChoice());
             if (pattern != null) selected.put(key, pattern);
@@ -299,7 +304,7 @@ public final class AcyclicCraftingSolver {
         // primary branch can supply it. No additional producer views or speculative firings exist.
         JointOutputDemandQueue pending = new JointOutputDemandQueue(route.keys(), selected,
             deferredPatterns, stockLeaves);
-        Set<AEKey> unsettled = new LinkedHashSet<>();
+        Set<AEKey> unsettled = new ObjectLinkedOpenHashSet<>();
         goals.keySet().forEach(pending::add);
         while (!pending.isEmpty()) {
             cancellation.checkpoint();
@@ -366,7 +371,7 @@ public final class AcyclicCraftingSolver {
             PlannerAmount oldTimes = state.patternTimes.getOrDefault(pattern.details(), PlannerAmount.ZERO);
             state.patternTimes.put(pattern.details(), oldTimes.add(times));
             state.bytes = state.bytes.add(times);
-            Map<AEKey, PlannerAmount> produced = new LinkedHashMap<>();
+            Map<AEKey, PlannerAmount> produced = new Object2ObjectLinkedOpenHashMap<>();
             for (var output : pattern.outputs()) {
                 PlannerAmount total = PlannerAmount.of(output.amount()).multiply(times);
                 produced.put(output.what(), produced.getOrDefault(output.what(), PlannerAmount.ZERO).add(total));

@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.result;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
@@ -48,7 +50,7 @@ public record CycleDiagnostic(
     }
 
     public CycleDiagnostic withAvailableAmounts(KeyCounter inventory) {
-        Map<AEKey, Long> available = new LinkedHashMap<>();
+        Map<AEKey, Long> available = new Object2LongLinkedOpenHashMap<>();
         for (AEKey key : keys) {
             available.putIfAbsent(key, Math.max(0L, inventory.get(key)));
         }
@@ -57,19 +59,19 @@ public record CycleDiagnostic(
     }
 
     private static Map<AEKey, ExactCycleAmount> exact(Map<AEKey, Long> values) {
-        Map<AEKey, ExactCycleAmount> result = new LinkedHashMap<>();
+        Map<AEKey, ExactCycleAmount> result = new Object2ObjectLinkedOpenHashMap<>();
         values.forEach((key, value) -> result.put(key, ExactCycleAmount.of(value)));
         return result;
     }
 
     private static Map<AEKey, ExactCycleAmount> exactAmounts(Map<AEKey, PlannerAmount> values) {
-        Map<AEKey, ExactCycleAmount> result = new LinkedHashMap<>();
+        Map<AEKey, ExactCycleAmount> result = new Object2ObjectLinkedOpenHashMap<>();
         values.forEach((key, value) -> result.put(key, ExactCycleAmount.of(value)));
         return result;
     }
 
     private static Map<AEKey, Long> representable(Map<AEKey, PlannerAmount> values) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         values.forEach((key, value) -> {
             if (value.fitsLong()) result.put(key, value.longValueExact());
         });

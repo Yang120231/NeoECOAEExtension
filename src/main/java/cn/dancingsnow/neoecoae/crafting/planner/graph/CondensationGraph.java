@@ -1,5 +1,10 @@
 package cn.dancingsnow.neoecoae.crafting.planner.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledPattern;
@@ -39,13 +44,13 @@ public final class CondensationGraph {
 
     public static CondensationGraph build(CraftingDependencyGraph graph, List<SccComponent> sccs,
             ECOCancellation cancellation) throws InterruptedException {
-        Map<AEKey, Integer> componentByKey = new HashMap<>();
+        Map<AEKey, Integer> componentByKey = new Object2IntOpenHashMap<>();
         for (SccComponent scc : sccs) {
             cancellation.checkpoint();
             for (AEKey member : scc.members()) componentByKey.put(member, scc.componentId());
         }
 
-        Map<Pair, List<CraftingGraphEdge>> grouped = new LinkedHashMap<>();
+        Map<Pair, List<CraftingGraphEdge>> grouped = new Object2ObjectLinkedOpenHashMap<>();
         for (CraftingGraphEdge edge : graph.edges()) {
             cancellation.checkpoint();
             int from = componentByKey.get(edge.producer());
@@ -56,14 +61,14 @@ public final class CondensationGraph {
             .map(entry -> new ComponentDependency(entry.getKey().from(), entry.getKey().to(), entry.getValue()))
             .toList();
 
-        Map<Integer, List<ComponentDependency>> incoming = new HashMap<>();
-        Map<Integer, List<ComponentDependency>> outgoing = new HashMap<>();
+        Map<Integer, List<ComponentDependency>> incoming = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<ComponentDependency>> outgoing = new Int2ObjectOpenHashMap<>();
         for (ComponentDependency dependency : dependencies) {
             outgoing.computeIfAbsent(dependency.fromComponentId(), ignored -> new ArrayList<>()).add(dependency);
             incoming.computeIfAbsent(dependency.toComponentId(), ignored -> new ArrayList<>()).add(dependency);
         }
 
-        Map<Integer, PlanningComponent> components = new LinkedHashMap<>();
+        Map<Integer, PlanningComponent> components = new Int2ObjectLinkedOpenHashMap<>();
         for (SccComponent scc : sccs) {
             cancellation.checkpoint();
             LinkedHashSet<CompiledPattern> patterns = new LinkedHashSet<>();
@@ -80,7 +85,7 @@ public final class CondensationGraph {
             components.put(scc.componentId(), component);
         }
 
-        Map<Integer, Integer> indegree = new HashMap<>();
+        Map<Integer, Integer> indegree = new Int2IntOpenHashMap();
         for (Integer id : components.keySet()) indegree.put(id, 0);
         for (ComponentDependency edge : dependencies) indegree.merge(edge.toComponentId(), 1, Integer::sum);
         ArrayDeque<Integer> ready = new ArrayDeque<>();

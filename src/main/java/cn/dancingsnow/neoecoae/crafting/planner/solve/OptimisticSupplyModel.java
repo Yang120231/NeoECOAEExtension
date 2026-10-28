@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
@@ -66,7 +67,7 @@ final class OptimisticSupplyModel {
 
     static @Nullable OptimisticSupplyModel compile(CompiledNetwork network, ECOCancellation cancellation)
             throws InterruptedException {
-        Set<AEKey> keys = new LinkedHashSet<>(network.keys());
+        Set<AEKey> keys = new ObjectLinkedOpenHashSet<>(network.keys());
         keys.add(network.goal());
         List<Recipe> recipes = new ArrayList<>();
         Map<AEKey, List<Production>> producers = new HashMap<>();

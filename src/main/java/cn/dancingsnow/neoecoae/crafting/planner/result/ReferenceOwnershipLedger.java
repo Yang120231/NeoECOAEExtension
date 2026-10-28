@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.result;
 
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -7,8 +8,8 @@ import java.util.Map;
 
 /** Map-based specification used to validate the primitive ownership kernel and event replay. */
 public final class ReferenceOwnershipLedger {
-    private final Map<Object, Long> onHand = new LinkedHashMap<>();
-    private final Map<Object, Long> futureNeed = new LinkedHashMap<>();
+    private final Map<Object, Long> onHand = new Object2LongLinkedOpenHashMap<>();
+    private final Map<Object, Long> futureNeed = new Object2LongLinkedOpenHashMap<>();
     private final List<PendingChoiceGroup> choices;
     private final List<OwnershipEvent> events = new ArrayList<>();
 

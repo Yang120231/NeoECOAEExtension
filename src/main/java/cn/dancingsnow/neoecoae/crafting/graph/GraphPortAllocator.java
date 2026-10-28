@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.HashMap;
 import java.util.Map;
 import org.jetbrains.annotations.Nullable;
@@ -8,7 +9,7 @@ import org.jetbrains.annotations.Nullable;
 final class GraphPortAllocator {
     enum Side { TOP, RIGHT, BOTTOM, LEFT }
 
-    private final Map<Integer, int[]> useCounts = new HashMap<>();
+    private final Map<Integer, int[]> useCounts = new Int2ObjectOpenHashMap<>();
 
     void reserveSide(int nodeId, Side side) {
         int[] counts = useCounts.computeIfAbsent(nodeId, ignored -> new int[8]);

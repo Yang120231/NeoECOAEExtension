@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.blocks.entity.crafting;
 
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import appeng.api.config.Actionable;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.networking.IGrid;
@@ -920,13 +922,13 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
             return CraftingControllerPanelState.UNFORMED;
         }
         Direction top = OrientationStrategies.horizontalFacing().getSide(getBlockState(), RelativeSide.TOP);
-        Map<BlockPos, Integer> cores = new LinkedHashMap<>();
+        Map<BlockPos, Integer> cores = new Object2IntLinkedOpenHashMap<>();
         for (ECOCraftingParallelCoreBlockEntity core : cluster.getParallelCores()) {
             cores.put(core.getBlockPos(), core.getTier().getTier());
         }
         List<ECOCraftingWorkerBlockEntity> workers = getCraftingControllerWorkers();
-        List<Integer> upper = new ArrayList<>(workers.size());
-        List<Integer> lower = new ArrayList<>(workers.size());
+        List<Integer> upper = new IntArrayList(workers.size());
+        List<Integer> lower = new IntArrayList(workers.size());
         for (ECOCraftingWorkerBlockEntity worker : workers) {
             upper.add(cores.getOrDefault(worker.getBlockPos().relative(top), 0));
             lower.add(cores.getOrDefault(worker.getBlockPos().relative(top.getOpposite()), 0));

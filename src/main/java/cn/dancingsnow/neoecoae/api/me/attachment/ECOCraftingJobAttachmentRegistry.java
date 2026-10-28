@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api.me.attachment;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ import net.minecraft.resources.ResourceLocation;
 public final class ECOCraftingJobAttachmentRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger("neoecoae.api");
     private static final Map<ResourceLocation,
-            Function<ECOCraftingJobContext, ? extends ECOCraftingJobAttachment>> FACTORIES = new LinkedHashMap<>();
+            Function<ECOCraftingJobContext, ? extends ECOCraftingJobAttachment>> FACTORIES = new Object2ObjectLinkedOpenHashMap<>();
 
     private ECOCraftingJobAttachmentRegistry() {
     }

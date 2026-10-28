@@ -1,5 +1,10 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerText;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerLongMaps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 
 import appeng.api.crafting.IPatternDetails;
@@ -228,8 +233,8 @@ public final class ComponentPlanner {
         }
         List<ComponentPlanningResult> componentResults = new ArrayList<>();
         List<CycleDiagnostic> cycleDiagnostics = new ArrayList<>();
-        Map<Integer, Map<AEKey, PlannerAmount>> delegatedCycleDemands = new LinkedHashMap<>();
-        Map<AEKey, Long> attributedCycleReservations = new LinkedHashMap<>();
+        Map<Integer, Map<AEKey, PlannerAmount>> delegatedCycleDemands = new Int2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, Long> attributedCycleReservations = new Object2LongLinkedOpenHashMap<>();
         boolean unresolvedCycle = false;
 
         if (!activeSelection.acyclic()) {
@@ -270,8 +275,8 @@ public final class ComponentPlanner {
             CycleComponent cycle = (CycleComponent) component;
             long cycleStartedNanos = ECOPlanningStageLogger.start();
             try {
-                Map<AEKey, PlannerAmount> exactRequiredOutputs = new LinkedHashMap<>();
-                Map<AEKey, Long> requiredOutputs = new LinkedHashMap<>();
+                Map<AEKey, PlannerAmount> exactRequiredOutputs = new Object2ObjectLinkedOpenHashMap<>();
+                Map<AEKey, Long> requiredOutputs = new Object2LongLinkedOpenHashMap<>();
                 for (AEKey member : cycle.members()) {
                     PlannerAmount exactDemand = acyclic.state().demandAmountFor(member);
                     if (exactDemand.signum() > 0) {
@@ -360,9 +365,9 @@ public final class ComponentPlanner {
                         if (cycleResult.status() == CycleSolveStatus.INSUFFICIENT_EXTERNAL_INPUT) {
                             trace.addDiagnostic(new PlannerDiagnostic(
                                     PlannerDiagnostic.Code.CYCLE_PROVEN_INFEASIBLE_AT_CURRENT_STOCK,
-                                    "Component " + cycle.componentId() + " cannot satisfy " + solveTargets
-                                            + " from current stock " + stock + "; seed shortfall="
-                                            + cycleResult.seedShortfall()));
+                                    "Component " + cycle.componentId() + " cannot satisfy " + PlannerText.describe(solveTargets)
+                                            + " from current stock " + PlannerText.describe(stock) + "; seed shortfall="
+                                            + PlannerText.describe(cycleResult.seedShortfall())));
                         }
                     }
                     ExternalDemandPlanner.Outcome external = null;
@@ -383,14 +388,14 @@ public final class ComponentPlanner {
                         }
                         for (Map<AEKey, Long> initialCandidate : candidates) {
                             Map<AEKey, Long> candidate = initialCandidate;
-                            Set<Map<AEKey, Long>> attemptedSeeds = new LinkedHashSet<>();
+                            Set<Map<AEKey, Long>> attemptedSeeds = new ObjectLinkedOpenHashSet<>();
                             while (attemptedSeeds.add(Map.copyOf(candidate))) {
                                 cancellation.checkpoint();
                                 // Do not run the cycle solver for a hypothetical bucket/tool that no
                                 // inventory or external producer can supply. This also preserves failure caching.
                                 Set<AEKey> seedDelegates = delegatedCycleInputs(network, activeCondensation,
                                     activeSelection.choices(), cycle, candidate.keySet());
-                                Map<AEKey, Long> heldSeed = new LinkedHashMap<>();
+                                Map<AEKey, Long> heldSeed = new Object2LongLinkedOpenHashMap<>();
                                 for (AEKey key : candidate.keySet()) {
                                     long present = stock.getOrDefault(key, 0L);
                                     if (present > 0L) heldSeed.put(key, present);
@@ -512,16 +517,16 @@ public final class ComponentPlanner {
                         if (!retention.seed().isEmpty()) {
                             trace.addDiagnostic(retainingSupplied
                                     ? new PlannerDiagnostic(PlannerDiagnostic.Code.CYCLE_SEED_RETAINED,
-                                            "Reusable cycle seed " + retention.seed() + " remains after delivery")
+                                            "Reusable cycle seed " + PlannerText.describe(retention.seed()) + " remains after delivery")
                                     : new PlannerDiagnostic(PlannerDiagnostic.Code.CYCLE_SEED_NOT_RETAINED,
-                                            "Reusable cycle seed " + retention.seed() + " is consumed: "
+                                            "Reusable cycle seed " + PlannerText.describe(retention.seed()) + " is consumed: "
                                                     + retainingFailure));
                         }
                         if (supplied.searched()) {
                             trace.addDiagnostic(external.solved()
                                     ? new PlannerDiagnostic(PlannerDiagnostic.Code.CYCLE_SUPPLY_ALTERNATIVE,
                                             "Boundary supply failed for the first firing vector; verified alternative "
-                                                    + "with import caps " + supplied.caps())
+                                                    + "with import caps " + PlannerText.describe(supplied.caps()))
                                     : supplied.complete()
                                     ? new PlannerDiagnostic(PlannerDiagnostic.Code.CYCLE_SUPPLY_SEARCH_EXHAUSTED,
                                             "Every capped alternative was closed by the cycle solver; missing items "
@@ -569,7 +574,7 @@ public final class ComponentPlanner {
                         } else {
                             // PlannerCounter exposes an immutable view, not an immutable snapshot. Freeze it before
                             // replaceWith() so the component projection observes the committed delta exactly once.
-                            Map<AEKey, PlannerAmount> usedBefore = new LinkedHashMap<>(acyclic.state().usedAmounts());
+                            Map<AEKey, PlannerAmount> usedBefore = new Object2ObjectLinkedOpenHashMap<>(acyclic.state().usedAmounts());
                             boolean hasFirings = hasPositiveFirings(cycleResult);
                             if (!hasFirings && !stockCoversRequiredOutputs(requiredOutputs, initialReservations)) {
                                 cycleStatus = CyclePlanningStatus.UNKNOWN_BUDGET;
@@ -867,7 +872,7 @@ public final class ComponentPlanner {
 
     private static void validateProvenanceCoverage(CompiledNetwork network, SolveState state,
                                                    List<ComponentPlanningResult> components, ECOPlanTrace trace) {
-        Set<String> reported = new LinkedHashSet<>();
+        Set<String> reported = new ObjectLinkedOpenHashSet<>();
         Set<IPatternDetails> cyclePatterns = components.stream()
                 .filter(component -> component.type() == ComponentPlanningResult.Type.CYCLIC)
                 .flatMap(component -> component.executionPatterns().stream())
@@ -904,7 +909,7 @@ public final class ComponentPlanner {
 
     private static Map<AEKey, Long> relevantStock(CycleComponent cycle, java.util.Set<AEKey> requiredOutputs,
                                                   KeyCounter inventory, SolveState state, Map<AEKey, Long> componentReservations) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Object2LongLinkedOpenHashMap<AEKey> result = new Object2LongLinkedOpenHashMap<>();
         for (AEKey member : cycle.members()) result.put(member, remaining(inventory, state, member));
         for (AEKey required : requiredOutputs) result.putIfAbsent(required, remaining(inventory, state, required));
         for (var dependency : cycle.outgoingDependencies()) {
@@ -913,9 +918,9 @@ public final class ComponentPlanner {
                 result.putIfAbsent(key, remaining(inventory, state, key));
             }
         }
-        componentReservations.forEach((key, reserved) -> {
+        PlannerLongMaps.forEach(componentReservations, (key, reserved) -> {
             if (state.stored.isUnbounded(key)) result.put(key, Long.MAX_VALUE);
-            else result.merge(key, reserved, Math::addExact);
+            else result.mergeLong(key, reserved, Math::addExact);
         });
         return result;
     }
@@ -933,9 +938,9 @@ public final class ComponentPlanner {
     }
 
     static Map<AEKey, Long> mergeDemands(Map<AEKey, Long> first, Map<AEKey, Long> second) {
-        Map<AEKey, Long> result = new LinkedHashMap<>(first);
-        second.forEach((key, amount) -> {
-            if (amount != null && amount > 0L) result.merge(key, amount, Math::addExact);
+        Object2LongLinkedOpenHashMap<AEKey> result = new Object2LongLinkedOpenHashMap<>(first);
+        PlannerLongMaps.forEach(second, (key, amount) -> {
+            if (amount > 0L) result.mergeLong(key, amount, Math::addExact);
         });
         return result;
     }
@@ -966,7 +971,7 @@ public final class ComponentPlanner {
     private static Set<IPatternDetails> selectedExecutionPatterns(SolveState state, AEKey key,
                                                                   Set<AEKey> structuralKeys, boolean includeLocalSpecialProducers) {
         CompiledPattern selected = state.selected.get(key);
-        Set<IPatternDetails> result = new LinkedHashSet<>();
+        Set<IPatternDetails> result = new ObjectLinkedOpenHashSet<>();
         if (selected != null && state.patternTimes
                 .getOrDefault(selected.details(), PlannerAmount.ZERO).signum() > 0) {
             result.add(selected.details());
@@ -1007,7 +1012,7 @@ public final class ComponentPlanner {
      */
     private static Map<AEKey, PlannerAmount> additionalOutputTargets(Map<AEKey, PlannerAmount> requiredOutputs,
                                                                      Map<AEKey, Long> relevantStock, AEKey finalGoal) {
-        Map<AEKey, PlannerAmount> result = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> result = new Object2ObjectLinkedOpenHashMap<>();
         requiredOutputs.forEach((key, amount) -> {
             // Intermediate demand already includes the stock reserved by the DAG pass. Adding it again
             // makes a 23-stock / 51-demand growth recipe run 51 times instead of the required 28.
@@ -1026,30 +1031,30 @@ public final class ComponentPlanner {
      */
     static Map<AEKey, Long> cycleInitialReservations(Map<AEKey, PlannerAmount> requiredOutputs,
                                                      Map<AEKey, Long> startingStock, CycleSolveResult result) {
-        Map<AEKey, Long> reservations = new LinkedHashMap<>();
-        result.requiredSeed().forEach((key, amount) -> {
-            if (amount != null && amount > 0L) {
-                long stockBacked = Math.min(amount, Math.max(0L, startingStock.getOrDefault(key, 0L)));
+        Object2LongLinkedOpenHashMap<AEKey> reservations = new Object2LongLinkedOpenHashMap<>();
+        PlannerLongMaps.forEach(result.requiredSeed(), (key, amount) -> {
+            if (amount > 0L) {
+                long stockBacked = Math.min(amount, Math.max(0L, PlannerLongMaps.amount(startingStock, key)));
                 if (stockBacked > 0L) reservations.put(key, stockBacked);
             }
         });
         requiredOutputs.forEach((key, exactDemand) -> {
             if (!exactDemand.fitsLong() || exactDemand.signum() <= 0) return;
             long demand = exactDemand.longValueExact();
-            long initial = Math.max(0L, startingStock.getOrDefault(key, 0L));
-            long deliverable = Math.max(0L, result.deliverableOutputs().getOrDefault(key, 0L));
+            long initial = Math.max(0L, PlannerLongMaps.amount(startingStock, key));
+            long deliverable = Math.max(0L, PlannerLongMaps.amount(result.deliverableOutputs(), key));
             // deliverable is the ending balance after the verified witness runs from initial stock. Preserve enough
             // of that starting stock to cover both any net cycle consumption and the balance owed to downstream.
             long endingSurplus = deliverable > demand ? deliverable - demand : 0L;
             long stockBacked = initial - Math.min(initial, endingSurplus);
-            if (stockBacked > 0L) reservations.merge(key, stockBacked, Math::max);
+            if (stockBacked > 0L) reservations.mergeLong(key, stockBacked, Math::max);
         });
         return reservations;
     }
 
     private static Map<AEKey, Long> reservationDelta(Map<AEKey, PlannerAmount> before,
                                                      Map<AEKey, PlannerAmount> after) {
-        Map<AEKey, Long> delta = new LinkedHashMap<>();
+        Object2LongLinkedOpenHashMap<AEKey> delta = new Object2LongLinkedOpenHashMap<>();
         after.forEach((key, amount) -> {
             PlannerAmount difference = amount.subtract(before.getOrDefault(key, PlannerAmount.ZERO));
             if (difference.signum() > 0) delta.put(key, difference.longValueExact());
@@ -1062,13 +1067,13 @@ public final class ComponentPlanner {
      */
     private static Map<AEKey, Long> existingComponentReservations(Map<AEKey, PlannerAmount> required,
                                                                   SolveState state, Map<AEKey, Long> alreadyAttributed) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Object2LongLinkedOpenHashMap<AEKey> result = new Object2LongLinkedOpenHashMap<>();
         required.forEach((key, amount) -> {
             if (amount == null || amount.signum() <= 0) return;
             PlannerAmount used = state.usedAmounts().getOrDefault(key, PlannerAmount.ZERO);
             if (used.signum() <= 0) return;
             PlannerAmount available = used.subtract(
-                    PlannerAmount.of(alreadyAttributed.getOrDefault(key, 0L))).max(PlannerAmount.ZERO);
+                    PlannerAmount.of(PlannerLongMaps.amount(alreadyAttributed, key))).max(PlannerAmount.ZERO);
             PlannerAmount reserved = amount.min(available);
             if (reserved.signum() > 0) {
                 result.put(key, reserved.fitsLong() ? reserved.longValueExact() : Long.MAX_VALUE);
@@ -1079,25 +1084,28 @@ public final class ComponentPlanner {
 
     static Map<AEKey, Long> reservationRemainder(Map<AEKey, Long> required,
                                                  Map<AEKey, Long> alreadyOwned) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
-        required.forEach((key, amount) -> {
-            long remainder = amount - Math.min(amount, alreadyOwned.getOrDefault(key, 0L));
+        Object2LongLinkedOpenHashMap<AEKey> result = new Object2LongLinkedOpenHashMap<>();
+        PlannerLongMaps.forEach(required, (key, amount) -> {
+            long remainder = amount - Math.min(amount, PlannerLongMaps.amount(alreadyOwned, key));
             if (remainder > 0L) result.put(key, remainder);
         });
         return result;
     }
 
     private static Map<AEKey, Long> mergeReservations(Map<AEKey, Long> first, Map<AEKey, Long> second) {
-        Map<AEKey, Long> result = new LinkedHashMap<>(first);
-        second.forEach((key, amount) -> result.merge(key, amount, Math::addExact));
+        Object2LongLinkedOpenHashMap<AEKey> result = new Object2LongLinkedOpenHashMap<>(first);
+        PlannerLongMaps.forEach(second, (key, amount) -> result.mergeLong(key, amount, Math::addExact));
         return result;
     }
 
     private static boolean stockCoversRequiredOutputs(Map<AEKey, Long> required,
                                                       Map<AEKey, Long> reservations) {
         if (required.isEmpty()) return false;
-        return required.entrySet().stream().allMatch(entry -> entry.getValue() != null && entry.getValue() > 0L
-                && reservations.getOrDefault(entry.getKey(), 0L) >= entry.getValue());
+        for (var entry : required.entrySet()) {
+            Long amount = entry.getValue();
+            if (amount == null || amount <= 0L || PlannerLongMaps.amount(reservations, entry.getKey()) < amount) return false;
+        }
+        return true;
     }
 
     /** Worth the optional retaining re-plan: the cycle borrowed a stocked seed, or met its demand by draining stock. */
@@ -1168,7 +1176,7 @@ public final class ComponentPlanner {
 
     private static CycleDiagnostic diagnostic(CycleComponent cycle, KeyCounter inventory,
                                               CycleSolveResult cycleResult, ECOPlanTrace trace) {
-        Map<AEKey, PlannerAmount> exactNet = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> exactNet = new Object2ObjectLinkedOpenHashMap<>();
         java.util.LinkedHashSet<AEKey> diagnosticKeys = new java.util.LinkedHashSet<>(cycle.members());
         for (var pattern : cycle.patterns()) {
             for (var output : pattern.grossOutputs()) diagnosticKeys.add(output.what());
@@ -1187,7 +1195,7 @@ public final class ComponentPlanner {
                     exactNet.put(input.key(), exactNet.get(input.key()).subtract(input.amountPerPattern()));
                 }
         }
-        Map<AEKey, PlannerAmount> exactTotal = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> exactTotal = new Object2ObjectLinkedOpenHashMap<>();
         if (cycleResult != null && cycleResult.hasExactExecutionCounts()) {
             for (AEKey key : diagnosticKeys) exactTotal.put(key, PlannerAmount.ZERO);
             countedPatterns.clear();
@@ -1220,7 +1228,7 @@ public final class ComponentPlanner {
     }
 
     static Map<AEKey, Long> representable(Map<AEKey, PlannerAmount> exact) {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Object2LongLinkedOpenHashMap<AEKey> result = new Object2LongLinkedOpenHashMap<>();
         for (var entry : exact.entrySet()) {
             if (entry.getValue().fitsLong()) result.put(entry.getKey(), entry.getValue().longValueExact());
         }

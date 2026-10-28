@@ -1,5 +1,7 @@
 package cn.dancingsnow.neoecoae.crafting.planner.cycle;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledPattern;
@@ -190,7 +192,7 @@ public record CycleSolveResult(
 
     /** Positive-only view, convenient for merging into planner reporting. */
     public Map<AEKey, Long> positiveExternalDemand() {
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         externalDemand.forEach((key, amount) -> {
             if (amount != null && amount > 0) result.put(key, amount);
         });
@@ -208,14 +210,14 @@ public record CycleSolveResult(
      */
     public Map<AEKey, Long> seedParallelism(Map<AEKey, Long> reservations) {
         if (status != CycleSolveStatus.SUCCESS || executionPlan.isEmpty()) return Map.of();
-        Map<AEKey, PlannerAmount> net = new LinkedHashMap<>();
-        Map<AEKey, PlannerAmount> smallestUse = new LinkedHashMap<>();
-        Map<IPatternDetails, CompiledPattern> unique = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> net = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> smallestUse = new Object2ObjectLinkedOpenHashMap<>();
+        Map<IPatternDetails, CompiledPattern> unique = new Object2ObjectLinkedOpenHashMap<>();
         executionPlan.forEach(run -> unique.putIfAbsent(run.pattern().details(), run.pattern()));
         for (CompiledPattern pattern : unique.values()) {
             PlannerAmount times = exactPatternTimes.getOrDefault(pattern.details(), PlannerAmount.ZERO);
             if (times.signum() <= 0) continue;
-            Map<AEKey, PlannerAmount> inputs = new LinkedHashMap<>();
+            Map<AEKey, PlannerAmount> inputs = new Object2ObjectLinkedOpenHashMap<>();
             pattern.inputs().forEach(input -> inputs.merge(input.key(), input.amountPerPattern(), PlannerAmount::add));
             inputs.forEach((key, amount) -> {
                 net.merge(key, PlannerAmount.ZERO.subtract(amount.multiply(times)), PlannerAmount::add);
@@ -224,7 +226,7 @@ public record CycleSolveResult(
             pattern.grossOutputs().forEach(output ->
                 net.merge(output.what(), times.multiply(output.amount()), PlannerAmount::add));
         }
-        Map<AEKey, Long> result = new LinkedHashMap<>();
+        Map<AEKey, Long> result = new Object2LongLinkedOpenHashMap<>();
         requiredSeed.forEach((key, amount) -> {
             PlannerAmount use = smallestUse.get(key);
             if (amount > 0 && use != null && use.signum() > 0
@@ -237,7 +239,7 @@ public record CycleSolveResult(
     }
 
     private static Map<IPatternDetails, PlannerAmount> exact(Map<IPatternDetails, Long> values) {
-        Map<IPatternDetails, PlannerAmount> result = new LinkedHashMap<>();
+        Map<IPatternDetails, PlannerAmount> result = new Object2ObjectLinkedOpenHashMap<>();
         values.forEach((pattern, count) -> result.put(pattern, PlannerAmount.of(count == null ? 0L : count)));
         return result;
     }

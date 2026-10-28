@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api.me.bigorder;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.config.Actionable;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -14,7 +15,7 @@ import net.minecraft.nbt.Tag;
 /** Exact-order inventory. The inherited counter is a saturated compatibility window, never overflow storage. */
 public final class ECOExactInventory extends ListCraftingInventory {
     private static final BigInteger MAX = BigInteger.valueOf(Long.MAX_VALUE);
-    private final Map<AEKey, BigInteger> excess = new LinkedHashMap<>();
+    private final Map<AEKey, BigInteger> excess = new Object2ObjectLinkedOpenHashMap<>();
     private final ChangeListener listener;
     private boolean enabled;
 

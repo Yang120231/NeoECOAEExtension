@@ -1,5 +1,10 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import java.util.ArrayList;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -27,7 +32,7 @@ public final class CompactTreeLayout implements GraphLayoutEngine {
         Map<Integer, List<Integer>> children = children(graph);
         Map<Integer, Float> widths = subtreeWidths(graph, children);
 
-        Map<Integer, GraphLayoutSnapshot.Box> boxes = new LinkedHashMap<>();
+        Map<Integer, GraphLayoutSnapshot.Box> boxes = new Int2ObjectLinkedOpenHashMap<>();
         List<Integer> roots = roots(graph, children);
         Deque<Placement> placements = new ArrayDeque<>();
         float x = 0;
@@ -45,7 +50,7 @@ public final class CompactTreeLayout implements GraphLayoutEngine {
         }
         place(placements, children, widths, graph, boxes);
 
-        Map<ClientCraftingGraph.Link, List<GraphLayoutSnapshot.Point>> routes = new LinkedHashMap<>();
+        Map<ClientCraftingGraph.Link, List<GraphLayoutSnapshot.Point>> routes = new Object2ObjectLinkedOpenHashMap<>();
         for (var link : graph.links()) {
             var from = boxes.get(link.fromId());
             var to = boxes.get(link.toId());
@@ -86,14 +91,14 @@ public final class CompactTreeLayout implements GraphLayoutEngine {
     }
 
     private static Map<Integer, List<Integer>> children(ClientCraftingGraph graph) {
-        Map<Integer, List<Integer>> result = new LinkedHashMap<>();
+        Map<Integer, List<Integer>> result = new Int2ObjectLinkedOpenHashMap<>();
         for (var link : graph.links()) result.computeIfAbsent(link.fromId(), ignored -> new ArrayList<>()).add(link.toId());
         return result;
     }
 
     private static List<Integer> roots(ClientCraftingGraph graph, Map<Integer, List<Integer>> children) {
-        Set<Integer> childIds = new HashSet<>(children.values().stream().flatMap(List::stream).toList());
-        List<Integer> roots = new ArrayList<>();
+        Set<Integer> childIds = new IntOpenHashSet(children.values().stream().flatMap(List::stream).toList());
+        List<Integer> roots = new IntArrayList();
         if (graph.nodes().containsKey(graph.rootId())) roots.add(graph.rootId());
         graph.nodes().keySet().stream().filter(id -> !childIds.contains(id) && !roots.contains(id)).sorted()
             .forEach(roots::add);
@@ -102,8 +107,8 @@ public final class CompactTreeLayout implements GraphLayoutEngine {
 
     private static Map<Integer, Float> subtreeWidths(ClientCraftingGraph graph,
             Map<Integer, List<Integer>> children) {
-        Map<Integer, Float> widths = new HashMap<>();
-        Set<Integer> scheduled = new HashSet<>();
+        Map<Integer, Float> widths = new Int2ObjectOpenHashMap<>();
+        Set<Integer> scheduled = new IntOpenHashSet();
         Deque<WidthFrame> stack = new ArrayDeque<>();
         for (int id : graph.nodes().keySet()) {
             if (widths.containsKey(id) || !scheduled.add(id)) continue;

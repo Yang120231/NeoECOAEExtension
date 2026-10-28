@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.planner.semantic;
 
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -59,19 +60,19 @@ public record PatternSemantics(
     }
 
     public Set<AEKey> consumedKeys() {
-        Set<AEKey> keys = new LinkedHashSet<>();
+        Set<AEKey> keys = new ObjectLinkedOpenHashSet<>();
         for (Input input : consumedInputs) if (input.key() != null) keys.add(input.key());
         return keys;
     }
 
     public Set<AEKey> producedKeys() {
-        Set<AEKey> keys = new LinkedHashSet<>();
+        Set<AEKey> keys = new ObjectLinkedOpenHashSet<>();
         for (GenericStack output : producedOutputs) if (output != null && output.what() != null) keys.add(output.what());
         return keys;
     }
 
     public Set<AEKey> returnedKeys() {
-        Set<AEKey> keys = new LinkedHashSet<>();
+        Set<AEKey> keys = new ObjectLinkedOpenHashSet<>();
         for (GenericStack output : returnedOutputs) if (output != null && output.what() != null) keys.add(output.what());
         return keys;
     }

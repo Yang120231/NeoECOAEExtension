@@ -1,5 +1,8 @@
 package cn.dancingsnow.neoecoae.crafting.planner.snapshot;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
@@ -98,7 +101,7 @@ public final class CraftingGraphSnapshotFactory {
         collectTaskMaterialFlow(result, materials);
         collectReservedInventory(result, materials);
 
-        Map<AEKey, Integer> nodeIds = new LinkedHashMap<>();
+        Map<AEKey, Integer> nodeIds = new Object2IntLinkedOpenHashMap<>();
         List<MaterialNode> nodes = new ArrayList<>(materials.size());
         for (MutableMaterial material : materials.values()) {
             int id = nodes.size();
@@ -205,8 +208,8 @@ public final class CraftingGraphSnapshotFactory {
                 }
             }
             var solve = cycle.solveResult();
-            Map<AEKey, Long> externalInputValues = new LinkedHashMap<>();
-            Map<AEKey, PlannerAmount> exactExternalInputs = new LinkedHashMap<>();
+            Map<AEKey, Long> externalInputValues = new Object2LongLinkedOpenHashMap<>();
+            Map<AEKey, PlannerAmount> exactExternalInputs = new Object2ObjectLinkedOpenHashMap<>();
             for (var edge : cycle.externalEdges()) {
                 if (edge.requiredInput() != null) {
                     exactExternalInputs.merge(edge.requiredInput(), edge.input().amountPerPattern(), PlannerAmount::add);
@@ -362,7 +365,7 @@ public final class CraftingGraphSnapshotFactory {
     /** Trace demand keys can differ from the component variants actually reserved from storage. */
     private static void collectReservedInventory(ECOPlanningResult result,
             Map<AEKey, MutableMaterial> materials) {
-        Map<AEKey, PlannerAmount> reserved = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> reserved = new Object2ObjectLinkedOpenHashMap<>();
         if (result.plan() != null) {
             for (var entry : result.plan().usedItems()) {
                 reserved.put(entry.getKey(), PlannerAmount.of(entry.getLongValue()));

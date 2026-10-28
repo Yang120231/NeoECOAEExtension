@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.sync.ValueWire;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.sync.bindings.*;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.sync.bindings.impl.DataBindingBuilder;
@@ -27,7 +28,7 @@ public class UIElement extends WidgetGroup {
     private final Map<UIEvents,List<Consumer<UIEvent>>> captures=new EnumMap<>(UIEvents.class);
     private final List<BoundValue> bindings=new ArrayList<>();
     private final List<RPCEventBuilder.Event> rpcEvents=new ArrayList<>();
-    private final Map<Integer,Consumer<Object>> rpcCallbacks=new HashMap<>();
+    private final Map<Integer,Consumer<Object>> rpcCallbacks=new Int2ObjectOpenHashMap<>();
     private int nextRpc=1;
     private boolean display=true,layoutDirty=true,hover,allowHitTest=true,focusable;
     private final ElementTransform transform=new ElementTransform();

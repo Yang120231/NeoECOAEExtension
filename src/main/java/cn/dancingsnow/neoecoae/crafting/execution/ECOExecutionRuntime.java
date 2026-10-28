@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.crafting.execution;
 
+import cn.dancingsnow.neoecoae.crafting.planner.PlannerLongMaps;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.config.Actionable;
 import appeng.api.stacks.AEKey;
@@ -631,7 +632,7 @@ public final class ECOExecutionRuntime {
         }
         runtime.startupSeedRemainingByPhase.forEach(Map::clear);
         ListTag seeds = data.getList("startupSeeds", Tag.TAG_COMPOUND);
-        Map<AEKey, Long> legacySeeds = new LinkedHashMap<>();
+        Map<AEKey, Long> legacySeeds = new Object2LongLinkedOpenHashMap<>();
         for (int i = 0; i < seeds.size(); i++) {
             CompoundTag seed = seeds.getCompound(i);
             GenericStack stack = GenericStack.readTag(seed);
@@ -851,7 +852,7 @@ public final class ECOExecutionRuntime {
         long safe = upper;
         for (var entry : reserved.entrySet()) {
             var available = cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory.amount(inventory, entry.getKey())
-                .subtract(java.math.BigInteger.valueOf(protectedSeeds.getOrDefault(entry.getKey(), 0L)))
+                .subtract(java.math.BigInteger.valueOf(PlannerLongMaps.amount(protectedSeeds, entry.getKey())))
                 .subtract(entry.getValue()).max(java.math.BigInteger.ZERO);
             long crafts = available.divide(java.math.BigInteger.valueOf(totals.getLong(entry.getKey())))
                 .min(java.math.BigInteger.valueOf(Long.MAX_VALUE)).longValueExact();
@@ -1014,7 +1015,7 @@ public final class ECOExecutionRuntime {
                     required = NEMath.saturatingAdd(required, later.amount());
                 }
             }
-            long available = Math.max(0L, inventory.list.get(key) - protectedAmounts.getOrDefault(key, 0L));
+            long available = Math.max(0L, inventory.list.get(key) - PlannerLongMaps.amount(protectedAmounts, key));
             if (available < required) return false;
         }
         return true;
@@ -1026,7 +1027,7 @@ public final class ECOExecutionRuntime {
         if (protectedAmounts.isEmpty() || inputs.isEmpty()) return true;
         for (var entry : inputs.entrySet()) {
             var available = cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory.amount(inventory, entry.getKey())
-                .subtract(java.math.BigInteger.valueOf(protectedAmounts.getOrDefault(entry.getKey(), 0L)));
+                .subtract(java.math.BigInteger.valueOf(PlannerLongMaps.amount(protectedAmounts, entry.getKey())));
             if (available.compareTo(entry.getValue()) < 0) return false;
         }
         return true;
@@ -1334,8 +1335,8 @@ public final class ECOExecutionRuntime {
         for (int start = 0; start < steps.size();) {
             int end = groupEnd[start];
             long repetitions = steps.get(end).repetitions();
-            Map<Integer, Long> perLap = new LinkedHashMap<>();
-            for (int i = start; i <= end; i++) perLap.merge(steps.get(i).taskId(), steps.get(i).count(), Math::addExact);
+            Int2LongLinkedOpenHashMap perLap = new Int2LongLinkedOpenHashMap();
+            for (int i = start; i <= end; i++) perLap.mergeLong(steps.get(i).taskId(), steps.get(i).count(), Math::addExact);
             long complete = prefix ? repetitions : 0L;
             for (var entry : perLap.entrySet()) complete = Math.min(complete, completedByTask[entry.getKey()] / entry.getValue());
             for (var entry : perLap.entrySet()) completedByTask[entry.getKey()] -= complete * entry.getValue();
@@ -1381,7 +1382,7 @@ public final class ECOExecutionRuntime {
                     }
                 }
                 if (!hasLiveWork) continue;
-                long planned = plan.phases().get(phaseIndex).initialSeed().getOrDefault(entry.getKey(), 0L);
+                long planned = PlannerLongMaps.amount(plan.phases().get(phaseIndex).initialSeed(), entry.getKey());
                 if (planned <= 0L) continue;
                 owners.add(phaseIndex);
                 plannedTotal = NEMath.saturatingAdd(plannedTotal, planned);
@@ -1399,7 +1400,7 @@ public final class ECOExecutionRuntime {
             for (var ownerIterator = owners.iterator(); ownerIterator.hasNext();) {
                 int phaseIndex = ownerIterator.nextInt();
                 long assigned = Math.min(remaining,
-                    plan.phases().get(phaseIndex).initialSeed().getOrDefault(entry.getKey(), 0L));
+                    PlannerLongMaps.amount(plan.phases().get(phaseIndex).initialSeed(), entry.getKey()));
                 startupSeedRemainingByPhase.get(phaseIndex).put(entry.getKey(), assigned);
                 remaining -= assigned;
             }
@@ -1410,7 +1411,7 @@ public final class ECOExecutionRuntime {
         for (int phaseIndex = 0; phaseIndex < startupSeedRemainingByPhase.size(); phaseIndex++) {
             Map<AEKey, Long> planned = plan.phases().get(phaseIndex).initialSeed();
             for (var entry : startupSeedRemainingByPhase.get(phaseIndex).object2LongEntrySet()) {
-                if (entry.getLongValue() <= 0L || entry.getLongValue() > planned.getOrDefault(entry.getKey(), 0L)) {
+                if (entry.getLongValue() <= 0L || entry.getLongValue() > PlannerLongMaps.amount(planned, entry.getKey())) {
                     throw new IllegalArgumentException("Persisted startup seed exceeds its phase ownership");
                 }
             }

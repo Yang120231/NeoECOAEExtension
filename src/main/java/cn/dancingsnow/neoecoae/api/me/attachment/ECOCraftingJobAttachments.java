@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.api.me.attachment;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.api.me.lifecycle.ECOCraftingJobContext;
 import cn.dancingsnow.neoecoae.api.me.lifecycle.ECOCraftingJobResult;
 import java.util.ArrayList;
@@ -16,8 +17,8 @@ import org.slf4j.LoggerFactory;
 public final class ECOCraftingJobAttachments {
     private static final Logger LOGGER = LoggerFactory.getLogger("neoecoae");
 
-    private final Map<ResourceLocation, ECOCraftingJobAttachment> bound = new LinkedHashMap<>();
-    private final Map<ResourceLocation, CompoundTag> unboundData = new LinkedHashMap<>();
+    private final Map<ResourceLocation, ECOCraftingJobAttachment> bound = new Object2ObjectLinkedOpenHashMap<>();
+    private final Map<ResourceLocation, CompoundTag> unboundData = new Object2ObjectLinkedOpenHashMap<>();
 
     public void initialize(ECOCraftingJobContext context) {
         bound.clear();

@@ -1,5 +1,6 @@
 package cn.dancingsnow.neoecoae.client.gui.workstation;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import appeng.client.gui.implementations.PatternProviderScreen;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.Blitter;
@@ -26,7 +27,7 @@ import java.util.Set;
 public class LargeIntegratedWorkingStationPatternProviderScreen
     extends PatternProviderScreen<LargeIntegratedWorkingStationPatternProviderMenu> {
 
-    private final Set<Integer> shiftDraggedSlots = new HashSet<>();
+    private final Set<Integer> shiftDraggedSlots = new IntOpenHashSet();
     private final WorkstationPatternScroll patternScroll = new WorkstationPatternScroll();
     private final Scrollbar patternScrollbar;
     private final Component defaultHeading;
