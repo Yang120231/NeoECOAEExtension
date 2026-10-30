@@ -333,6 +333,13 @@ sourceSets {
         java.include 'cn/dancingsnow/neoecoae/network/ECONetworkVersionTest.java'
         java.include 'cn/dancingsnow/neoecoae/util/InventoryTestBootstrap.java'
         java.include 'cn/dancingsnow/neoecoae/util/LargeWorkstationTestKeys.java'
+        // Storage migration budget, incremental domain listing and drive notification coalescing.
+        java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/GtoTestKeys.java'
+        java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageMigrationBudgetTest.java'
+        java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageIncrementalListingTest.java'
+        java.include 'cn/dancingsnow/neoecoae/blocks/entity/storage/MigrationProgressAccess.java'
+        java.include 'cn/dancingsnow/neoecoae/blocks/entity/storage/StorageDriveTestFixtures.java'
+        java.include 'cn/dancingsnow/neoecoae/blocks/entity/storage/DrivePersistenceNotificationTest.java'
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
         runtimeClasspath += files(layout.buildDirectory.file("moddev/artifacts/client-extra-${minecraft_version}-${forge_version}.jar"))

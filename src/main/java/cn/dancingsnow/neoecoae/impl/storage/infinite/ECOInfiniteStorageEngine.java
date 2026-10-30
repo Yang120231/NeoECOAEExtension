@@ -118,6 +118,25 @@ public interface ECOInfiniteStorageEngine {
         return cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion.UNKNOWN;
     }
 
+    /** Position for {@link #visitListingChanges}; {@code null} when this engine has no change log. */
+    default cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor listingCursor() {
+        return null;
+    }
+
+    /**
+     * Reports the keys whose {@link #getAvailableStacks} amount may have changed since {@code from}, each with its
+     * current listed amount (0 when no longer listed). {@code false} requires a full listing.
+     */
+    default boolean visitListingChanges(cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor from,
+                                        java.util.function.ObjLongConsumer<AEKey> changed) {
+        return false;
+    }
+
+    /** Why this domain currently refuses migration writes, or {@code null} when it accepts them. */
+    default String migrationBlockReason() {
+        return isHealthy() ? null : "Infinite storage domain is not writable: " + status();
+    }
+
     default boolean reserveRestore(AEKey key, UUID transaction) {
         return false;
     }

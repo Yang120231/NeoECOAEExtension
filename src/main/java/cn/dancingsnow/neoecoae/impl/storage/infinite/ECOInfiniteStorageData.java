@@ -316,6 +316,22 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
         return amounts.contentRevision() + listingChanges;
     }
 
+    /** Current position of the incremental listing log; see {@link #visitListingChanges}. */
+    public cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor listingCursor() {
+        return amounts.changes.cursor();
+    }
+
+    /**
+     * Reports each key whose visible listing amount may have changed since {@code from}, with the amount
+     * {@link SavedDataInfiniteStorageEngine#getAvailableStacks} would list now (0 when hidden or removed).
+     * {@code false} means the caller must list everything again.
+     */
+    public boolean visitListingChanges(cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor from,
+                                       java.util.function.ObjLongConsumer<AEKey> changed) {
+        if (!canRead()) return false;
+        return amounts.changes.visitSince(from, key -> changed.accept(key, canRead(key) ? amounts.visible(key) : 0L));
+    }
+
     public String lastFailureReason() {
         String write = writeFailure();
         return write != null ? write : failure;
@@ -466,6 +482,7 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
     public void markUnreadable(String reason) {
         unreadable = true;
         listingChanges++;
+        amounts.changes.invalidate();
         refreshMountedStorageAvailability();
         failure = reason;
     }
@@ -473,6 +490,7 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
     public void markIncompleteLegacy(List<String> failures) {
         incompleteLegacy = true;
         listingChanges++;
+        amounts.changes.invalidate();
         refreshMountedStorageAvailability();
         failure = String.join("; ", failures);
     }
@@ -486,6 +504,8 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
             // Old reservations have no target quantities. Upgrade them before touching any target.
         }
         restores.put(key, new Restore(transaction, targets, "", plan));
+        // A reservation hides the key from listings without changing its quantity.
+        amounts.changes.invalidate();
         setDirty();
         return true;
     }
@@ -542,6 +562,7 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
         HugeAmount remaining = HugeAmount.of(amounts.get(key).toBigInteger().subtract(transferred));
         amounts.set(key, remaining);
         restores.remove(key);
+        amounts.changes.invalidate();
         setDirty();
         return true;
     }

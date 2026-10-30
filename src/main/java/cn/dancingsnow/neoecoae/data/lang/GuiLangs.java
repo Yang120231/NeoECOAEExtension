@@ -260,6 +260,8 @@ public class GuiLangs {
         provider.add("gui.neoecoae.storage.ui.normal", "Normal storage mode");
         provider.add("gui.neoecoae.storage.ui.infinite", "Infinite storage mode");
         provider.add("gui.neoecoae.storage.ui.migrating", "Migrating to infinite storage");
+        provider.add("gui.neoecoae.storage.ui.migration_progress", "Migration progress: %s%%");
+        provider.add("gui.neoecoae.storage.ui.migration_blocked", "Migration blocked: %s");
         provider.add("gui.neoecoae.storage.ui.cell_state.absent", "No storage cell installed");
         provider.add("gui.neoecoae.storage.ui.cell_state.empty", "Available: empty cell");
         provider.add("gui.neoecoae.storage.ui.cell_state.not_empty", "Available: contains resources");

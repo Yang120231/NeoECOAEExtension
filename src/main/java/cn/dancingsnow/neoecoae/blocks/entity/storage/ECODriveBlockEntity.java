@@ -339,14 +339,27 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
 
     @Override
     public void notifyPersistence() {
-        if (level instanceof ServerLevel serverLevel) {
+        // Disk contents live in SavedData; this only refreshes the drive's derived state. Hot transfers notify every
+        // tick, so keep at most one pending task and resend the block only when what clients render changed.
+        if (level instanceof ServerLevel serverLevel && !persistenceNotificationQueued) {
+            // A racing async notifier can at worst queue one extra, idempotent task.
+            persistenceNotificationQueued = true;
             ServerTaskUtil.executeIfServerRunning(serverLevel, () -> {
+                persistenceNotificationQueued = false;
+                CellState previousState = cellState;
                 updateCellState();
                 setChanged();
-                markForUpdate();
+                if (previousState != cellState || lastNotifiedCellStack != cellStack) {
+                    lastNotifiedCellStack = cellStack;
+                    markForUpdate();
+                }
             });
         }
     }
+
+    private volatile boolean persistenceNotificationQueued;
+    @Nullable
+    private ItemStack lastNotifiedCellStack;
 
     private void updateCellState() {
         if (level == null || level.isClientSide) {

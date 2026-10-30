@@ -32,6 +32,18 @@ public class ConfigLangs {
             "Amount threshold used when an ECO storage host automatically marks compressible items.\n" +
                 "Only items with amounts strictly greater than this value are marked."
         );
+        provider.add("neoecoae.configuration.infiniteMigrationTickBudgetMicros", "Infinite Migration Time Budget per Tick");
+        provider.add(
+            "neoecoae.configuration.infiniteMigrationTickBudgetMicros.tooltip",
+            "Time budget per tick (microseconds) for migrating into infinite storage, shared by all drives in that tick.\n" +
+                "At least one resource is migrated per tick."
+        );
+        provider.add("neoecoae.configuration.infiniteMigrationKeysPerTick", "Infinite Migration Resource Types per Tick");
+        provider.add(
+            "neoecoae.configuration.infiniteMigrationKeysPerTick.tooltip",
+            "Maximum resource types migrated into infinite storage per tick.\n" +
+                "An atomic whole-disk transfer counts as its number of resource types."
+        );
 
         provider.add("neoecoae.configuration.postCraftingEvent", "Post Crafting Event");
         provider.add(

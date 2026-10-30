@@ -31,6 +31,9 @@ public final class ECOInfiniteStorage implements MEStorage, CombinedExactAmountS
     // Only stack-owned built-in inventories and keys with no registered handler are stable.
     // UUID-backed or third-party handlers are probed on every insertion.
     private final Object2ByteLinkedOpenHashMap<AEKey> admission = new Object2ByteLinkedOpenHashMap<>();
+    // Reader identity (GTO's StorageService) -> incremental listing position; readers do not override equals.
+    private final java.util.Map<Object, cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor> readerCursors =
+        new java.util.WeakHashMap<>();
 
     public ECOInfiniteStorage(ECOInfiniteStorageEngine engine, Component description, BooleanSupplier allowInsert) {
         this.engine = engine;
@@ -108,6 +111,25 @@ public final class ECOInfiniteStorage implements MEStorage, CombinedExactAmountS
     public long getChangeVersion() {
         long version = neoecoae$listingVersion();
         return version < 0 ? -1L : version;
+    }
+
+    /**
+     * GTO's StorageService journal: reports {@code (key, listedAmount)} for keys changed since this reader's last
+     * drain, so a large domain is not listed again when one resource (for example FE) changes. Every reader keeps its
+     * own cursor per view; {@code false} resets the cursor and asks the reader to list everything.
+     */
+    @Override
+    public boolean drainChanges(Object reader, java.util.function.ObjLongConsumer<AEKey> changed) {
+        if (reader == null) return false;
+        if (!allowInsert.getAsBoolean() || engine.listingVersion() < 0) {
+            readerCursors.remove(reader);
+            return false;
+        }
+        var from = readerCursors.get(reader);
+        boolean drained = from != null && engine.visitListingChanges(from, changed);
+        var next = engine.listingCursor();
+        if (next == null) readerCursors.remove(reader); else readerCursors.put(reader, next);
+        return drained;
     }
 
     @Override

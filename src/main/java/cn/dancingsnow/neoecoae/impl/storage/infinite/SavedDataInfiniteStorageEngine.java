@@ -279,6 +279,25 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
     }
 
     @Override
+    public cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor listingCursor() {
+        return data.listingCursor();
+    }
+
+    @Override
+    public boolean visitListingChanges(cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog.Cursor from,
+                                       java.util.function.ObjLongConsumer<AEKey> changed) {
+        return data.visitListingChanges(from, changed);
+    }
+
+    @Override
+    public String migrationBlockReason() {
+        if (data.canMigrate()) return null;
+        List<String> failures = data.failures();
+        return failures.isEmpty() ? "Infinite storage domain cannot accept migration: " + data.status()
+            : String.join("; ", failures);
+    }
+
+    @Override
     public CommitResult commit() {
         data.setDirty();
         return new CommitResult(data.canWrite(), data.revision(), data.lastFailureReason());

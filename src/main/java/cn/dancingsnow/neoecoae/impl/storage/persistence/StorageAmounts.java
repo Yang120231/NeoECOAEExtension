@@ -49,6 +49,7 @@ public class StorageAmounts {
         total.subtract(before); total.add(value);
         contentRevision++;
         if ((before == 0) != (value == 0)) structureRevision++;
+        changed(key);
     }
     public void set(AEKey key, HugeAmount value) {
         if (key == null || value == null) throw new IllegalArgumentException("Missing storage key or amount");
@@ -60,12 +61,13 @@ public class StorageAmounts {
         total.subtract(before); total.add(value);
         contentRevision++;
         if (before.isZero() != value.isZero()) structureRevision++;
+        changed(key);
     }
     public void add(AEKey key, long amount) { add(key, visible(key), amount); }
     public void add(AEKey key, long current, long amount) {
         if (amount <= 0) return;
         OverflowAmount big = current == Long.MAX_VALUE ? overflow.get(key) : null;
-        if (big != null) { big.add(amount); total.add(amount); contentRevision++; return; }
+        if (big != null) { big.add(amount); total.add(amount); contentRevision++; changed(key); return; }
         if (amount <= Long.MAX_VALUE - current) setLong(key, current + amount);
         else set(key, get(key).add(amount));
     }
@@ -85,6 +87,7 @@ public class StorageAmounts {
                 if (remaining == 0) { amounts.removeLong(key); structureRevision++; }
                 else amounts.put(key, remaining);
             }
+            changed(key);
         }
         return visible(key);
     }
@@ -92,7 +95,14 @@ public class StorageAmounts {
         if (amounts.isEmpty()) return;
         amounts.clear(); overflow.clear(); amounts.trim(); overflow.trim(); total.clear();
         contentRevision++; structureRevision++;
+        cleared();
     }
+
+    /** Called after every quantity change of {@code key}; the listing amount may have changed. */
+    protected void changed(AEKey key) {}
+
+    /** Called after the table was emptied without per-key notifications. */
+    protected void cleared() {}
     public boolean isEmpty() { return amounts.isEmpty(); }
     public boolean hasOverflow() { return !overflow.isEmpty(); }
     public void forEach(BiConsumer<AEKey, HugeAmount> action) {

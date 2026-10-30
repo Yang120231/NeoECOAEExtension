@@ -303,7 +303,9 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
                 holder.player,
                 (position, expected, shift) -> StorageCellUiExtraction.extract(this, holder.player, position, expected, shift),
                 (position, expected) -> StorageCellUiInsertion.insert(this, holder.player, position, expected),
-                () -> new ItemStack(getBlockState().getBlock())
+                () -> new ItemStack(getBlockState().getBlock()),
+                this::getInfiniteMigrationProgressPercent,
+                this::getInfiniteMigrationBlockedReason
         ), this::getTier, this::getBlockState);
         actionUI.addTo(root, MultiblockBuildUI.create(this, holder.player));
         return ECOModularUI.create(root, holder.player);
@@ -650,8 +652,14 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
         return hostMode == ECOStorageHostMode.FORMED_INFINITE;
     }
 
-    private int getInfiniteMigrationProgressPercent() {
+    public int getInfiniteMigrationProgressPercent() {
         return infiniteModeController.migrationProgressPercent();
+    }
+
+    /** Reason the running infinite-storage migration is blocked, or an empty string. */
+    public String getInfiniteMigrationBlockedReason() {
+        String reason = infiniteModeController.migrationBlockedReason();
+        return reason == null ? "" : reason;
     }
 
     public boolean canUseHostDomainStorage() {
