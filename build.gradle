@@ -65,6 +65,10 @@ def pinned = { String mod ->
     "porting.pinned:${releaseJars[mod].name.take(releaseJars[mod].name.length() - 4)}:${releaseVersions[mod]}"
 }
 repositories {
+    maven {
+        url = 'https://gtodyssey.com/maven/releases'
+        content { includeGroup 'com.gto.fastcollection' }
+    }
     ivy {
         name = 'VerifiedReleaseJars'
         url = uri('libs/pinned')
@@ -127,6 +131,8 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:5.15.2'
     testImplementation 'org.slf4j:slf4j-api:2.0.16'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // The GTO AE2 tick handler uses these collections outside the game launcher as well.
+    testRuntimeOnly 'com.gto.fastcollection:FastCollection:26.8.7'
     // Exercise optional per-recipe layout hooks against the same JEI release as the API.
     testRuntimeOnly("mezz.jei:jei-1.20.1-forge:${jeiVersion}") { transitive = false }
     ['lwjgl', 'lwjgl-glfw', 'lwjgl-opengl', 'lwjgl-stb'].each {
@@ -333,6 +339,7 @@ sourceSets {
         java.include 'cn/dancingsnow/neoecoae/network/ECONetworkVersionTest.java'
         java.include 'cn/dancingsnow/neoecoae/util/InventoryTestBootstrap.java'
         java.include 'cn/dancingsnow/neoecoae/util/LargeWorkstationTestKeys.java'
+        java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOStickyDispatchIntegrationTest.java'
         // Storage migration budget, incremental domain listing and drive notification coalescing.
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/GtoTestKeys.java'
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageMigrationBudgetTest.java'
