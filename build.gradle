@@ -340,6 +340,9 @@ sourceSets {
         java.include 'cn/dancingsnow/neoecoae/util/InventoryTestBootstrap.java'
         java.include 'cn/dancingsnow/neoecoae/util/LargeWorkstationTestKeys.java'
         java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOStickyDispatchIntegrationTest.java'
+        // Processing submissions are budgeted by calls; counted GTL buffers take whole ready batches.
+        java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOProcessingSubmissionBudgetTest.java'
+        java.include 'org/gtlcore/gtlcore/common/machine/multiblock/part/ae/MEPatternBufferPartMachineBase.java'
         // Storage migration budget, incremental domain listing and drive notification coalescing.
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/GtoTestKeys.java'
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageMigrationBudgetTest.java'
