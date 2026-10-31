@@ -4,7 +4,7 @@ English | [简体中文](README_ZH_CN.md) | [繁體中文](README_ZH_HK.md) | [�
 
 Neo ECO AE Extension is an Applied Energistics 2 addon that provides expandable crafting, storage and computation systems for ME networks, alongside integrated workstations for processing advanced components.
 
-The `1.20.1-GTO` branch is based on `1.20.1` and specifically adapts to the AE2 and GregTech interfaces used by **GregTech Odyssey (GTO)**. The current version is **`20.5.3-gto.1`**, a prerelease targeting **GTO `0.6.0-dev25` (Dev25)**. For ordinary AE2 modpacks, use this repository's `1.20.1` branch and its corresponding releases.
+The `1.20.1-GTO` branch is based on `1.20.1` and specifically adapts to the AE2 and GregTech interfaces used by **GregTech Odyssey (GTO)**. The current version is **`20.5.4-gto.1`**, a prerelease targeting **GTO `0.6.0-dev25` (Dev25)**. For ordinary AE2 modpacks, use this repository's `1.20.1` branch and its corresponding releases.
 
 ## Features
 
@@ -40,7 +40,7 @@ This edition adapts GTO's native crafting CPU, pattern dispatch, crafting confir
 
 ## Installation and usage
 
-1. Select **`20.5.3-gto.1`** in this repository's GitHub Releases and download `neoecoae-20.5.3-gto.1.jar`.
+1. Select **`20.5.4-gto.1`** in this repository's GitHub Releases and download `neoecoae-20.5.4-gto.1.jar`.
 2. Put the JAR in the target GTO instance's `mods` directory and remove older NeoECOAE JARs. The `-sources.jar` archive contains source code and is not an installable mod.
 3. For multiplayer, install the same version on both client and server. The ECO network handshake requires an exact version match.
 4. Start the target instance with Java 21 and use the recipe viewer to look up materials and machine recipes.
@@ -79,8 +79,8 @@ Gradle must be able to discover JDK 21. If automatic detection fails, specify it
 
 Artifacts are written to `build/libs/`:
 
-- `neoecoae-20.5.3-gto.1.jar`: the installable mod.
-- `neoecoae-20.5.3-gto.1-sources.jar`: source code.
+- `neoecoae-20.5.4-gto.1.jar`: the installable mod.
+- `neoecoae-20.5.4-gto.1-sources.jar`: source code.
 
 The compile dependency is currently pinned to GTO AE2 **`15.2610.31`**, as recorded in the [GTO dependency lock](porting/gto-dependencies.json). Dev25 uses **`15.2610.40`** as the runtime adaptation target; the two versions are tracked separately. `bootstrap.py --gto` restores build dependencies, but does not install the full GTO modpack.
 
@@ -108,7 +108,7 @@ tools/compat/               Pinned dependency restoration and artifact checks
 
 ## Validation status and issue reports
 
-For this release, `jar sourcesJar gtoCompatibilityTest`, artifact checks and recipe generation consistency checks passed locally: **54 focused tests, 51 passed, 3 skipped, 0 failed**. The skipped checks require the installed AE2/GTOCore JARs. The full client instance and standalone server were not rerun. See the [20.5.3-gto.1 release notes](docs/releases/20.5.3-gto.1.md).
+For this release, `jar sourcesJar gtoCompatibilityTest` and artifact checks passed locally: **86 focused tests, 83 passed, 3 skipped, 0 failed**; all **34 selected cycle planning regression tests also passed**. The skipped checks require the installed AE2/GTOCore JARs. The full client instance and standalone server were not rerun. See the [20.5.4-gto.1 release notes](docs/releases/20.5.4-gto.1.md).
 
 The full legacy test suite, all addon combinations and a standalone dedicated server have not completed acceptance testing. Some legacy tests still depend on vanilla AE2 classes removed by GTO, so the build command above uses the independent `gtoCompatibilityTest` task. Its results do not establish that the full `test` or `build` tasks pass.
 
