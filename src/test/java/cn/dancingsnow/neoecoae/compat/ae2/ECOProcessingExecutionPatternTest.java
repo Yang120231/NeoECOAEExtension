@@ -5,14 +5,29 @@ import static org.mockito.Mockito.*;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.*;
 import java.util.*;
-import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.*;
 
 class ECOProcessingExecutionPatternTest {
     @BeforeAll static void bootstrap() { cn.dancingsnow.neoecoae.util.InventoryTestBootstrap.initialize(); }
+    @Test void providerCatalogRecognizesAnEquivalentSeparatelyDecodedPattern() throws Exception {
+        var definition = mock(AEItemKey.class);
+        var original = decoded(definition);
+        var decoded = decoded(definition);
+        assertNotSame(original, decoded);
+        assertEquals(original, decoded);
+        var scaled = new ECOProcessingExecutionPattern(original, 64);
+        assertTrue(new ArrayList<>(List.of(decoded)).contains(scaled), "Provider lookup must follow pattern contents");
+        assertEquals(scaled, new ECOProcessingExecutionPattern(decoded, 64));
+        assertEquals(scaled.hashCode(), decoded.hashCode());
+        assertNotEquals(scaled, new ECOProcessingExecutionPattern(decoded, 32));
+        assertNotEquals(scaled, new ECOProcessingExecutionPattern(decoded, 64,
+                new cn.dancingsnow.neoecoae.crafting.execution.batch.ECOBatchInputScaling(key -> true)));
+        assertNotEquals(scaled, mock(IPatternDetails.class));
+        assertNotEquals(scaled, null);
+    }
     @Test void preservesRepeatedSparseSlotsAndScalesEveryInputBeforeInsertion() {
-        var iron = AEItemKey.of(Items.IRON_INGOT);
-        var gold = AEItemKey.of(Items.GOLD_INGOT);
+        var iron = mock(AEKey.class);
+        var gold = mock(AEKey.class);
         var original = mock(IPatternDetails.class);
         doAnswer(call -> {
             KeyCounter[] input = call.getArgument(0);
@@ -31,10 +46,22 @@ class ECOProcessingExecutionPatternTest {
     }
     @Test void incompleteEmissionIsRejectedBeforeTouchingMachine() {
         var original = mock(IPatternDetails.class);
-        var input = new KeyCounter(); input.add(AEItemKey.of(Items.IRON_INGOT), 6);
+        var input = new KeyCounter(); input.add(mock(AEKey.class), 6);
         var emitted = new ArrayList<GenericStack>();
         assertThrows(IllegalArgumentException.class, () -> new ECOProcessingExecutionPattern(original, 3)
                 .pushInputsToExternalInventory(new KeyCounter[]{input}, (k, n) -> emitted.add(new GenericStack(k, n))));
         assertTrue(emitted.isEmpty());
+    }
+
+    private static appeng.crafting.pattern.AEProcessingPattern decoded(AEItemKey definition) throws Exception {
+        // Keep the fork's real pattern equality without requiring Minecraft's IAEItem Mixin in JUnit.
+        var allocator = Class.forName("org.objenesis.ObjenesisStd").getConstructor().newInstance();
+        var type = appeng.crafting.pattern.AEProcessingPattern.class;
+        var pattern = (appeng.crafting.pattern.AEProcessingPattern) allocator.getClass()
+                .getMethod("newInstance", Class.class).invoke(allocator, type);
+        var field = type.getDeclaredField("definition");
+        field.setAccessible(true);
+        field.set(pattern, definition);
+        return pattern;
     }
 }
