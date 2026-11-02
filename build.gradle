@@ -379,6 +379,8 @@ sourceSets {
         java.srcDir 'src/test/java'
         java.include 'cn/dancingsnow/neoecoae/crafting/**'
         java.include 'cn/dancingsnow/neoecoae/util/**'
+        // The plan export runs the real planner on a mocked network and checks its report sections.
+        java.include 'cn/dancingsnow/neoecoae/command/CraftingPlanExportTest.java'
         java.exclude legacyTestExclusions
         resources.srcDir 'src/test/resources'
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath

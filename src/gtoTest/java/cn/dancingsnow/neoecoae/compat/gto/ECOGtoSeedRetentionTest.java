@@ -27,7 +27,10 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-/** A parent consumes stock from a self-growing cycle; only an actual shortfall needs growth. */
+/**
+ * A parent consumes stock from a self-growing cycle. Strict seed retention keeps the cycle's minimal seed (one A):
+ * stock below seed + demand grows first, and growth without fuel reports the fuel instead of consuming the seed.
+ */
 class ECOGtoSeedRetentionTest {
     private final AEKey a = key("A"), b = key("B"), f = key("F"), x = key("X");
     // P1: A + F -> 2B, P2: B -> A, PX: A -> X. F is a boundary input without a producer.
@@ -35,30 +38,30 @@ class ECOGtoSeedRetentionTest {
     private final CompiledPattern p2 = fastPattern(1, a, 1, new GenericStack(b, 1));
     private final CompiledPattern px = fastPattern(2, x, 1, new GenericStack(a, 1));
 
-    @Test void exactStockDoesNotGrowToReplenishTheSeed() throws Exception {
+    @Test void exactStockGrowsOneLapSoTheSeedRemains() throws Exception {
         var outcome = plan(inventory(100, 10_000), 100);
-        assertEquals(PlanningStatus.SUCCESS, outcome.status(), describe(outcome));
-        assertEquals(Map.of(px.details(), 100L), outcome.state().patternTimes(), describe(outcome));
-        assertEquals(100L, outcome.state().usedItems().get(a));
-        assertEquals(0L, outcome.state().usedItems().get(f));
-        assertFalse(has(outcome, PlannerDiagnostic.Code.CYCLE_SEED_RETAINED), describe(outcome));
-    }
-
-    @Test void stockShortfallGrowsOnlyTheMissingAmount() throws Exception {
-        var outcome = plan(inventory(99, 10_000), 100);
         assertEquals(PlanningStatus.SUCCESS, outcome.status(), describe(outcome));
         assertEquals(Map.of(px.details(), 100L, p1.details(), 1L, p2.details(), 2L),
             outcome.state().patternTimes(), describe(outcome));
         assertEquals(99L, outcome.state().usedItems().get(a));
         assertEquals(1L, outcome.state().usedItems().get(f));
-        assertFalse(has(outcome, PlannerDiagnostic.Code.CYCLE_SEED_RETAINED), describe(outcome));
+        assertTrue(has(outcome, PlannerDiagnostic.Code.CYCLE_SEED_RETAINED), describe(outcome));
     }
 
-    @Test void exactStockWithoutFuelStillUsesTheStoredSeeds() throws Exception {
-        var outcome = plan(inventory(100, 0), 100);
+    @Test void stockShortfallGrowsTheShortfallAndKeepsTheSeed() throws Exception {
+        var outcome = plan(inventory(99, 10_000), 100);
         assertEquals(PlanningStatus.SUCCESS, outcome.status(), describe(outcome));
-        assertEquals(Map.of(px.details(), 100L), outcome.state().patternTimes());
-        assertEquals(100L, outcome.state().usedItems().get(a));
+        assertEquals(Map.of(px.details(), 100L, p1.details(), 2L, p2.details(), 4L),
+            outcome.state().patternTimes(), describe(outcome));
+        assertEquals(98L, outcome.state().usedItems().get(a));
+        assertEquals(2L, outcome.state().usedItems().get(f));
+        assertTrue(has(outcome, PlannerDiagnostic.Code.CYCLE_SEED_RETAINED), describe(outcome));
+    }
+
+    @Test void exactStockWithoutFuelReportsTheFuelInsteadOfConsumingTheSeed() throws Exception {
+        var outcome = plan(inventory(100, 0), 100);
+        assertEquals(PlanningStatus.MISSING_ITEMS, outcome.status(), describe(outcome));
+        assertEquals(1L, outcome.state().missingItems().get(f), describe(outcome));
         assertFalse(has(outcome, PlannerDiagnostic.Code.CYCLE_SEED_RETAINED));
     }
 
@@ -67,6 +70,7 @@ class ECOGtoSeedRetentionTest {
         assertEquals(PlanningStatus.SUCCESS, outcome.status(), describe(outcome));
         assertEquals(Map.of(px.details(), 100L), outcome.state().patternTimes());
         assertEquals(0L, outcome.state().usedItems().get(f));
+        assertEquals(100L, outcome.state().usedItems().get(a));
     }
 
     private ComponentPlanner.Outcome plan(KeyCounter inventory, long amount) throws Exception {
