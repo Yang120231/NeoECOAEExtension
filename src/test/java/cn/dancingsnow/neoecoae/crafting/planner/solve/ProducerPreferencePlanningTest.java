@@ -70,6 +70,27 @@ class ProducerPreferencePlanningTest {
     }
 
     @ParameterizedTest @ValueSource(booleans = {false, true})
+    void primaryOnlyIndexCanSupplyAMissingByproductByRepeatingItsKnownRecipe(boolean cycles) throws Exception {
+        var upstream = pattern(List.of(stack(raw, 1)), stack(a, 1), stack(b, 1));
+        var finish = pattern(List.of(stack(a, 1), stack(b, 3)), stack(goal, 1));
+        var result = plan(service(upstream, finish), stock(raw, 10), 1, cycles);
+        assertEquals(Map.of(upstream, 3L, finish, 1L), result.plan().patternTimes());
+        assertEquals(3L, result.plan().usedItems().get(raw));
+    }
+
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void stockSatisfiedStructuralCycleKeepsThePreferredProducer(boolean cycles) throws Exception {
+        var finish = pattern(List.of(stack(a, 1)), stack(goal, 1));
+        var aroundA = pattern(List.of(stack(b, 1)), stack(a, 1));
+        var aroundB = pattern(List.of(stack(a, 1)), stack(b, 1));
+        var alternative = pattern(List.of(stack(raw, 1)), stack(goal, 1));
+        var result = plan(service(finish, aroundA, aroundB, alternative), stock(a, 1, raw, 10), 1, cycles);
+        assertEquals(Map.of(finish, 1L), result.plan().patternTimes());
+        assertEquals(1L, result.plan().usedItems().get(a));
+        assertEquals(0L, result.plan().usedItems().get(raw));
+    }
+
+    @ParameterizedTest @ValueSource(booleans = {false, true})
     void recoveryCanCombineIndividuallyInsufficientSupplies(boolean cycles) throws Exception {
         var preferred = pattern(List.of(stack(raw, 1)), stack(goal, 1));
         var fallback = pattern(List.of(stack(alternateRaw, 1)), stack(goal, 1));
