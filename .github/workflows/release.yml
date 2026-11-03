@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   publish:
-    if: startsWith(github.event.release.tag_name, '20.') && contains(github.event.release.tag_name, '-gto.') && github.event.release.prerelease
+    if: startsWith(github.event.release.tag_name, '20.') && (contains(github.event.release.tag_name, '-gto.') || endsWith(github.event.release.tag_name, '-GTO'))
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -95,8 +95,7 @@ jobs:
             build/test-results/gtoCompatibilityTest/
             build/compat-build-evidence/
           if-no-files-found: ignore
-      - name: Upload pre-release jar to GitHub Release
-        if: github.event.release.prerelease
+      - name: Upload jars to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
@@ -106,24 +105,3 @@ jobs:
           "build/libs/neoecoae-$RELEASE_VERSION.jar"
           "build/libs/neoecoae-$RELEASE_VERSION-sources.jar"
           "build/libs/SHA256SUMS.txt" --clobber
-      - name: Publish Mod
-        if: '!github.event.release.prerelease'
-        uses: Kir-Antipov/mc-publish@v3.3.1
-        with:
-          name: Neo ECO AE Extension v${{ steps.release.outputs.version }}
-          version: ${{ steps.release.outputs.version }}
-          version-type: release
-          changelog-file: ${{ steps.release.outputs.notes }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          github-tag: ${{ github.event.release.tag_name }}
-          modrinth-id: udZtKfzP
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          curseforge-id: 1460639
-          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          loaders: forge
-          game-versions: '1.20.1'
-          java: '21'
-          environment: 'client | server'
-          files: |
-            build/libs/neoecoae-${{ steps.release.outputs.version }}.jar
-            build/libs/neoecoae-${{ steps.release.outputs.version }}-sources.jar

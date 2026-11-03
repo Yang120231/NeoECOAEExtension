@@ -73,7 +73,7 @@ class ComputationStatCardsTest {
     }
 
     @Test void idleItemsHaveNoMachineRows() {
-        var item = new ComputationCpuItemEntry(appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.STONE),
+        var item = new ComputationCpuItemEntry(mock(appeng.api.stacks.AEKey.class),
             java.math.BigInteger.ONE, java.math.BigInteger.ZERO, java.math.BigInteger.ZERO, false);
         assertTrue(ComputationProcessingTooltips.rows(item).isEmpty());
     }
