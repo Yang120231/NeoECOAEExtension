@@ -63,6 +63,13 @@ side="BOTH"
     curseforge="applied-energistics-2"
 
 [[dependencies.neoecoae]]
+modId="emi"
+mandatory=true
+versionRange="[1.1.1034,)"
+ordering="AFTER"
+side="CLIENT"
+
+[[dependencies.neoecoae]]
 modId="guideme"
 mandatory=true
 versionRange="[20.1.14,20.2.0)"
