@@ -36,6 +36,10 @@ def pinned = { String mod ->
 }
 repositories {
     maven {
+        url = 'https://api.modrinth.com/maven'
+        content { includeGroup 'maven.modrinth' }
+    }
+    maven {
         url = 'https://gtodyssey.com/maven/releases'
         content {
             includeGroup 'com.gto'
@@ -69,6 +73,7 @@ repositories {
 }
 
 dependencies {
+    modCompileOnly('maven.modrinth:embeddium:0.3.31+mc1.20.1') { transitive = false }
     ['ae2', 'guideme', 'ldlib'].each { modImplementation pinned(it) }
     // Like the pinned GTO AE2 fork, GTO runs on Java 21 while this addon's output targets Java 17.
     modImplementation("com.gto:gtocore-forge-1.20.1:${gtocore_version}") {
