@@ -5,7 +5,7 @@ import cn.dancingsnow.neoecoae.platform.JdkCompat;
 import appeng.api.client.AEKeyRendering;
 import appeng.api.config.CpuSelectionMode;
 import cn.dancingsnow.neoecoae.gui.theme.ECOIcon;
-import appeng.client.gui.widgets.Scrollbar;
+import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.core.localization.GuiText;
 import cn.dancingsnow.neoecoae.crafting.execution.ECOCraftingCPU;
 import cn.dancingsnow.neoecoae.gui.common.HostText;
@@ -51,7 +51,7 @@ final class ComputationCpuSelector extends BindableValue<CompoundTag> {
     private long scrollSequence;
 
     ComputationCpuSelector(ComputationControllerUI.Config config, IntConsumer openDetails,
-            CpuSelectionState.Identities<ECOCraftingCPU> identities) {
+            CpuSelectionState.Identities<ICraftingCPU> identities) {
         super(new CompoundTag());
         this.config = config;
         this.openDetails = openDetails;
@@ -69,7 +69,7 @@ final class ComputationCpuSelector extends BindableValue<CompoundTag> {
         addChildren(selectionRequest, scrollRequest);
         for (int row = 0; row < ROWS; row++) addChild(rowHitbox(row));
 
-        scrollbar = new ComputationScrollbar(this, TRACK_X, TRACK_Y, TRACK_HEIGHT, Scrollbar.SMALL, ComputationScrollbar.SMALL_WIDTH, this::scrollTo);
+        scrollbar = new ComputationScrollbar(this, TRACK_X, TRACK_Y, TRACK_HEIGHT, true, ComputationScrollbar.SMALL_WIDTH, this::scrollTo);
         addChild(scrollbar);
         addEventListener(UIEvents.MOUSE_WHEEL, event -> {
             if (event.x < getPositionX() + LIST_X || event.x >= getPositionX() + TRACK_X + ComputationScrollbar.SMALL_WIDTH
@@ -173,7 +173,7 @@ final class ComputationCpuSelector extends BindableValue<CompoundTag> {
         context.graphics.flush();
         int color = 0x413F54;
         text(context, font, name(entry).getString(), x + 3, y + 2, 50, 0.666F, color);
-        context.graphics.blit(entry.overlay(), Math.round(x + 55), Math.round(y), 0, 0, 10, 10, 10, 10);
+        if (entry.overlay() != null) context.graphics.blit(entry.overlay(), Math.round(x + 55), Math.round(y), 0, 0, 10, 10, 10, 10);
         if (entry.output() != null && !entry.status().equals("idle")) {
             icon(context, ECOIcon.S_CRAFT, x + 2, y + 10);
             fittedText(context, font, entry.amount(entry.requested(), false), x + 14, y + 13, 39, 0.666F, color);
@@ -242,16 +242,16 @@ final class ComputationCpuSelector extends BindableValue<CompoundTag> {
 
     private static final class ServerState {
         private final ComputationControllerUI.Config config;
-        private final CpuSelectionState<ECOCraftingCPU> selection;
+        private final CpuSelectionState<ICraftingCPU> selection;
         private CompoundTag cached;
         private long sampledTick = Long.MIN_VALUE, revision, scrollSequence;
 
-        private ServerState(ComputationControllerUI.Config config, CpuSelectionState.Identities<ECOCraftingCPU> identities) {
+        private ServerState(ComputationControllerUI.Config config, CpuSelectionState.Identities<ICraftingCPU> identities) {
             this.config = config;
             selection = new CpuSelectionState<>(ROWS, identities);
         }
         private void refresh() {
-            selection.update(config.cpus().get(), ECOCraftingCPU::isBusy,
+            selection.update(config.cpus().get(), ICraftingCPU::isBusy,
                 cpu -> cpu.getName() == null ? null : cpu.getName().getString());
         }
         private void select(int serial) {
@@ -282,7 +282,7 @@ final class ComputationCpuSelector extends BindableValue<CompoundTag> {
             tag.putInt("selectedSerial", selection.selectedSerial());
             var registries = config.registries();
             ListTag page = new ListTag();
-            for (ECOCraftingCPU cpu : selection.page()) page.add(ComputationCpuEntry.sample(cpu, selection.serial(cpu)).write(registries));
+            for (ICraftingCPU cpu : selection.page()) page.add(ComputationCpuEntry.sample(cpu, selection.serial(cpu)).write(registries));
             tag.put("page", page);
             return cached = tag;
         }

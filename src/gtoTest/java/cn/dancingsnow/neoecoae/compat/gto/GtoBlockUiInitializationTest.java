@@ -16,12 +16,16 @@ import static org.mockito.Mockito.*;
 class GtoBlockUiInitializationTest {
     private static final String UI_CLASS =
         "cn.dancingsnow.neoecoae.platform.ui.runtime.gui.factory.BlockUIMenuType";
+    private static final String PLAYER_UI_CLASS =
+        "cn.dancingsnow.neoecoae.platform.ui.runtime.gui.factory.PlayerUIMenuType";
 
     @ParameterizedTest(name = "register before joining a world, dedicated server = {0}")
     @ValueSource(booleans = {false, true})
     void commonSetupRegistersFactoryWithoutOpeningSingleplayer(boolean dedicatedServer) throws Exception {
         var id = new ResourceLocation("neoecoae", "block_ui");
+        var playerId = new ResourceLocation("neoecoae", "player_ui");
         var previous = UIFactory.FACTORIES.remove(id);
+        var previousPlayer = UIFactory.FACTORIES.remove(playerId);
         try {
             // Isolate static state to represent a freshly launched process, without a player,
             // level or a previous integrated-server UI open initializing the factory for us.
@@ -31,7 +35,8 @@ class GtoBlockUiInitializationTest {
                     if (dedicatedServer && name.startsWith("net.minecraft.client.")) {
                         throw new ClassNotFoundException("Client class on dedicated server: " + name);
                     }
-                    if (!name.equals(UI_CLASS) && !name.startsWith(UI_CLASS + "$")) {
+                    if (!name.equals(UI_CLASS) && !name.startsWith(UI_CLASS + "$")
+                        && !name.equals(PLAYER_UI_CLASS) && !name.startsWith(PLAYER_UI_CLASS + "$")) {
                         return super.loadClass(name, resolve);
                     }
                     synchronized (getClassLoadingLock(name)) {
@@ -61,6 +66,7 @@ class GtoBlockUiInitializationTest {
             var setup = type.getMethod("onCommonSetup", FMLCommonSetupEvent.class);
             assertDoesNotThrow(() -> setup.invoke(null, event));
             assertNull(UIFactory.FACTORIES.get(id), "Registration must wait for serial setup work");
+            assertNull(UIFactory.FACTORIES.get(playerId));
             assertNotNull(queuedWork.get());
             assertDoesNotThrow(() -> queuedWork.get().run());
 
@@ -68,11 +74,17 @@ class GtoBlockUiInitializationTest {
             assertNotNull(factory, "The first multiplayer UI packet must find the factory");
             assertSame(loader, factory.getClass().getClassLoader());
             assertEquals(id, factory.uiFactoryId);
+            var playerFactory = UIFactory.FACTORIES.get(playerId);
+            assertNotNull(playerFactory, "Terminal status packets also need their factory before joining a world");
+            assertSame(loader, playerFactory.getClass().getClassLoader());
             assertDoesNotThrow(() -> queuedWork.get().run());
             assertSame(factory, UIFactory.FACTORIES.get(id));
+            assertSame(playerFactory, UIFactory.FACTORIES.get(playerId));
         } finally {
             if (previous == null) UIFactory.FACTORIES.remove(id);
             else UIFactory.FACTORIES.put(id, previous);
+            if (previousPlayer == null) UIFactory.FACTORIES.remove(playerId);
+            else UIFactory.FACTORIES.put(playerId, previousPlayer);
         }
     }
 }

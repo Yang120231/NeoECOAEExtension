@@ -2,6 +2,9 @@ package cn.dancingsnow.neoecoae.crafting.execution;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.networking.crafting.ICraftingProvider;
+import cn.dancingsnow.neoecoae.blocks.entity.LargeWorkstationPatternProvider;
 import cn.dancingsnow.neoecoae.api.me.attachment.ECOCraftingJobAttachment;
 import cn.dancingsnow.neoecoae.api.me.attachment.ECOCraftingJobAttachmentRegistry;
 import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider.Target;
@@ -66,6 +69,24 @@ public final class ECOProcessingMonitor implements ECOCraftingJobAttachment {
         }
     }
 
+    /** A native workstation has a fixed destination even when its safety latch prevents the first push. */
+    void considered(UUID id, IPatternDetails pattern, ICraftingProvider provider) {
+        if (!(provider instanceof LargeWorkstationPatternProvider workstation)) return;
+        try {
+            var cluster = workstation.getWorkstationInterface().getCluster();
+            if (cluster == null) return;
+            var controller = cluster.getController();
+            if (controller == null || controller.getLevel() == null) return;
+            bind(id);
+            var target = new Target(controller.getLevel().dimension().location(), controller.getBlockPos());
+            for (var output : pattern.getOutputs()) {
+                if (output.amount() > 0) observe(output.what(), target);
+            }
+        } catch (RuntimeException | LinkageError incompatible) {
+            report(incompatible);
+        }
+    }
+
     void observe(AEKey output, Target target) {
         if (!targets.computeIfAbsent(output, ignored -> new LinkedHashSet<>()).add(target)) return;
         var survey = surveys.get(output);
@@ -81,7 +102,7 @@ public final class ECOProcessingMonitor implements ECOCraftingJobAttachment {
         var survey = surveys.computeIfAbsent(output, Survey::new);
         survey.requestedTick = tick;
         if (survey.scan == null && tick >= survey.nextTick) {
-            survey.scan = new ECOGtoMachineStatus.Scan(destinations, output);
+            survey.scan = new ECOGtoMachineStatus.Scan(destinations, output, jobId);
         }
         if (survey.scan != null && !survey.queued) {
             pending.addLast(survey);
