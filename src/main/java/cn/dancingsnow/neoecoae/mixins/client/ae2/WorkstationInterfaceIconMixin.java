@@ -3,7 +3,7 @@ package cn.dancingsnow.neoecoae.mixins.client.ae2;
 import appeng.client.gui.Icon;
 import appeng.client.gui.style.Blitter;
 import cn.dancingsnow.neoecoae.client.gui.workstation.WorkstationInterfaceArtwork;
-import gto_ae.hooks.gui.IIcon;
+import com.gto.ae.hooks.gui.IIcon;
 import org.spongepowered.asm.mixin.Mixin;
 
 @Mixin(value = Icon.class, remap = false)

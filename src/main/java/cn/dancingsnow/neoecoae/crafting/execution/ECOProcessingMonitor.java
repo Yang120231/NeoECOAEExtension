@@ -7,7 +7,7 @@ import cn.dancingsnow.neoecoae.api.me.attachment.ECOCraftingJobAttachmentRegistr
 import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider.Target;
 import cn.dancingsnow.neoecoae.api.me.lifecycle.ECOCraftingDispatchEvent;
 import cn.dancingsnow.neoecoae.api.me.lifecycle.ECOCraftingJobResult;
-import cn.dancingsnow.neoecoae.compat.gregtech.ECOGregTechMachineStatus;
+import cn.dancingsnow.neoecoae.compat.gto.ECOGtoMachineStatus;
 import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
@@ -56,7 +56,7 @@ public final class ECOProcessingMonitor implements ECOCraftingJobAttachment {
     void dispatched(ECOCraftingDispatchEvent event) {
         try {
             bind(event.job().craftingJobId());
-            var destinations = ECOGregTechMachineStatus.targets(event.provider());
+            var destinations = ECOGtoMachineStatus.targets(event.provider());
             for (var output : event.pattern().getOutputs()) {
                 if (output.amount() <= 0) continue;
                 for (Target target : destinations) observe(output.what(), target);
@@ -81,7 +81,7 @@ public final class ECOProcessingMonitor implements ECOCraftingJobAttachment {
         var survey = surveys.computeIfAbsent(output, Survey::new);
         survey.requestedTick = tick;
         if (survey.scan == null && tick >= survey.nextTick) {
-            survey.scan = new ECOGregTechMachineStatus.Scan(destinations, output);
+            survey.scan = new ECOGtoMachineStatus.Scan(destinations, output);
         }
         if (survey.scan != null && !survey.queued) {
             pending.addLast(survey);
@@ -204,7 +204,7 @@ public final class ECOProcessingMonitor implements ECOCraftingJobAttachment {
 
     private static final class Survey {
         final AEKey output;
-        ECOGregTechMachineStatus.Scan scan;
+        ECOGtoMachineStatus.Scan scan;
         ECOProcessingProgress published = ECOProcessingProgress.EMPTY;
         List<Target> machineTargets = List.of();
         long nextTick, requestedTick;

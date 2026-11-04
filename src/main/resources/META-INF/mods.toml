@@ -12,14 +12,14 @@ description='''An Applied Energistics 2 addon providing ECO crafting, storage an
 [[dependencies.neoecoae]]
 modId="gtocore"
 mandatory=true
-versionRange="[26.10.9,)"
+versionRange="[26.10.26,)"
 ordering="AFTER"
 side="BOTH"
 
 [[dependencies.neoecoae]]
 modId="gtceu"
-mandatory=false
-versionRange="*"
+mandatory=true
+versionRange="[26.10.70,)"
 ordering="AFTER"
 side="BOTH"
 
@@ -55,7 +55,7 @@ side="BOTH"
 modId="ae2"
 mandatory=true
 # GTO branch: the native crafting and inventory contracts require the GTO AE2 fork.
-versionRange="[15.2610.31,16)"
+versionRange="[15.2610.47,16)"
 ordering="AFTER"
 side="BOTH"
     [dependencies.neoecoae.mc-publish]
