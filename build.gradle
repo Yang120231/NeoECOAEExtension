@@ -39,6 +39,7 @@ repositories {
         url = 'https://gtodyssey.com/maven/releases'
         content {
             includeGroup 'com.gto'
+            includeGroup 'dev.emi'
         }
     }
     ivy {
@@ -78,6 +79,7 @@ dependencies {
         transitive = false
         attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
     }
+    modImplementation('dev.emi:emi-forge-1.20.1:1.1.1034') { transitive = false }
     modApi "com.tterrag.registrate:Registrate:${registrate_version}"
     jarJar "com.tterrag.registrate:Registrate:${registrate_version}"
     implementation "io.github.llamalad7:mixinextras-forge:${mixinextras_version}"
