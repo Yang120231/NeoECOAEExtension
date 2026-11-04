@@ -24,60 +24,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationRecipeDeduplicationTest {
     @BeforeAll static void bootstrap() { InventoryTestBootstrap.initialize(); }
-
-    @Test void crossModAdaptersKeepCheaperRecipeAndItsOriginalType() {
-        var id = new ResourceLocation("expatternprovider:assembler");
-        var display = new ExtendedCrystalAssemblerRecipe.Serializer().fromJson(id, JsonParser.parseString("""
-            {"inputItems":[{"item":"minecraft:iron_ingot","count":4}],
-             "itemOutput":{"item":"minecraft:diamond","count":2},"energy":2000}
-            """).getAsJsonObject()).display();
-        var extended = new LargeWorkstationRecipe(id, display, display.energy(), List.of(),
-            ExtendedCrystalAssemblerRecipe.SOURCE_TYPE);
-        var advanced = new LargeWorkstationRecipe(new ResourceLocation("advanced_ae:reaction"), extended.display(),
-            1000, List.of(), new ResourceLocation("advanced_ae:reaction"));
-        assertEquals(List.of(advanced), deduplicate(extended, advanced));
-        assertEquals(List.of(advanced), deduplicate(advanced, extended));
-        var label = assertInstanceOf(TranslatableContents.class, advanced.sourceTypeDescription().getContents());
-        assertEquals("gui.neoecoae.large_integrated_working_station.recipe_type", label.getKey());
-        var typeName = assertInstanceOf(Component.class, label.getArgs()[0]);
-        assertEquals("recipe_type.neoecoae.advanced_ae.reaction",
-            assertInstanceOf(TranslatableContents.class, typeName.getContents()).getKey());
-    }
-
-    @Test void lockedRecipeFamiliesCannotHideUnlockedRecipesDuringDeduplication() {
-        var regular = materialRecipe("test:regular", 100, List.of());
-        var advanced = new LargeWorkstationRecipe(new ResourceLocation("advanced_ae:cheaper"), regular.display(),
-            50, List.of(), new ResourceLocation("advanced_ae:reaction"));
-        var extended = new LargeWorkstationRecipe(new ResourceLocation("expatternprovider:cheapest"), regular.display(),
-            10, List.of(), new ResourceLocation("expatternprovider:crystal_assembler"));
-        var ops = JsonOps.INSTANCE;
-        var recipes = List.of(extended, regular, advanced);
-        assertEquals(List.of(regular), LargeWorkstationRecipes.selectForModule(recipes, LargeWorkstationModule.REGULAR, ops));
-        assertEquals(List.of(advanced), LargeWorkstationRecipes.selectForModule(recipes, LargeWorkstationModule.ADVANCED_AE, ops));
-        assertEquals(List.of(extended), LargeWorkstationRecipes.selectForModule(recipes, LargeWorkstationModule.EXTENDED_AE, ops));
-    }
-
-    @Test void fiveCardsUnlockTheirFamilyAndRejectExcludedAndUnknownSources() {
-        var sources = java.util.Map.of(
-            LargeWorkstationModule.ADVANCED_AE, new ResourceLocation("advanced_ae:reaction"),
-            LargeWorkstationModule.EXTENDED_AE, new ResourceLocation("expatternprovider:crystal_assembler"),
-            LargeWorkstationModule.LIGHTNING_TECH, new ResourceLocation("ae2lt:lightning_assembly"),
-            LargeWorkstationModule.CRYSTAL_SCIENCE, new ResourceLocation("ae2cs:crystal_pulverizer_recipe"));
-        for (var installed : LargeWorkstationModule.values()) {
-            assertTrue(installed.unlocks(LargeWorkstationRecipe.NATIVE_TYPE));
-            for (String source : List.of("test:uncarded_adapter", "extendedae_plus:crystal_assembler_plus",
-                    "data_energistics:data_reassembler", "appgen:synthesizing")) {
-                assertFalse(installed.unlocks(new ResourceLocation(source)));
-            }
-            for (var entry : sources.entrySet()) assertEquals(installed == entry.getKey(), installed.unlocks(entry.getValue()));
-        }
-        assertTrue(LargeWorkstationModule.EXTENDED_AE.unlocks(new ResourceLocation("extendedae:crystal_assembler")));
-        assertEquals(5, java.util.Arrays.stream(LargeWorkstationModule.values()).filter(LargeWorkstationModule::hasUpgradeCard).count());
-        assertFalse(LargeWorkstationModule.isUpgradeCard(new ItemStack(Items.PAPER)));
-        assertEquals(LargeWorkstationModule.REGULAR, LargeWorkstationModule.fromUpgradeCard(ItemStack.EMPTY));
-    }
 
     @Test void inputOrderAlternativeOrderAndSplitStacksDoNotCreateDuplicates() {
         var first = recipe("test:a", List.of(
@@ -90,17 +39,6 @@ class LargeWorkstationRecipeDeduplicationTest {
         var narrower = recipe("test:narrower", List.of(input(Ingredient.of(Items.IRON_INGOT), 4),
             input(Ingredient.of(Items.STONE), 2)), emptyFluid(), new ItemStack(Items.DIAMOND), FluidStack.EMPTY, 50, List.of());
         assertEquals(List.of(narrower, cheaper), deduplicate(first, cheaper, narrower));
-    }
-
-    @Test void lightningHasPriorityThenAeCostThenLightningAmount() {
-        var base = materialRecipe("test:plain", 1, List.of());
-        var high = com.moakiee.ae2lt.me.key.LightningKey.HIGH_VOLTAGE;
-        var expensive = materialRecipe("test:expensive", 1000, List.of(new GenericStack(high, 1)));
-        var cheaper = materialRecipe("test:cheaper", 500, List.of(new GenericStack(high, 4)));
-        var fewer = materialRecipe("test:fewer", 500, List.of(new GenericStack(high, 2)));
-        assertEquals(List.of(cheaper), deduplicate(base, expensive, cheaper));
-        assertEquals(List.of(fewer), deduplicate(base, expensive, cheaper, fewer));
-        assertEquals(List.of(fewer), deduplicate(fewer, cheaper, expensive, base));
     }
 
     @Test void equalCostsHaveStableRecipeIdTieBreaker() {

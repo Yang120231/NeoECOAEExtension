@@ -22,6 +22,7 @@ import java.util.List;
 import net.minecraft.world.item.Items;
 import org.junit.jupiter.api.Test;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class RouteAvailabilityPruningTest {
     @Test void provenMissingLeafDoesNotEnumerate4096UnhelpfulRoutes() throws Exception {
         InventoryTestBootstrap.initialize();

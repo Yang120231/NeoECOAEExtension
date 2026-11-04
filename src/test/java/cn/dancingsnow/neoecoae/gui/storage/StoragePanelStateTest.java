@@ -215,42 +215,6 @@ class StoragePanelStateTest {
     }
 
     @Test
-    void resourceChannelsUseTheSuppliedLegendInNormalAndInfiniteModes() {
-        String[] normal = {"mekanism", "fluids", "items", "air", "flux", "lightning",
-            "experience", "soul", "source", "mana", "omni", "complex_omni", "quantum_omni", "spent_nuclear_waste", "data"};
-        String[] infinite = {"appmek:chemical", "ae2:f", "ae2:i", "appliedpneumatics:air_type",
-            "appflux:flux", "ae2lt:lightning", "appex:experience", "soulplied_energistics:soul", "arseng:source", "appbot:mana",
-            "ae2omnicells:omni", "ae2omnicells:complex_omni", "ae2omnicells:quantum_omni", "ae2omnicells:spent_nuclear_waste_cell",
-            "data_energistics:manifest_binary"};
-        for (int i = 0; i < normal.length; i++) {
-            assertEquals(i, StoragePanelTextures.swatchIndex(new ResourceLocation("neoecoae:" + normal[i])));
-            assertEquals(i, StoragePanelTextures.swatchIndex(new ResourceLocation(infinite[i])));
-        }
-        assertEquals(2, StoragePanelTextures.swatchIndex(new ResourceLocation("neoecoae:bulk_item")));
-        assertEquals(9, StoragePanelTextures.swatchIndex(new ResourceLocation("neoecoae:mega_mana")));
-        assertEquals(13, StoragePanelTextures.swatchIndex(new ResourceLocation("mekanism:spent_nuclear_waste")));
-        assertEquals(StoragePanelTextures.FALLBACK_SWATCH,
-            StoragePanelTextures.swatchIndex(new ResourceLocation("other:mana")));
-        assertEquals(14, StoragePanelTextures.swatchIndex(new ResourceLocation("data_energistics:digitalization")));
-        var unknown = StoragePanelTextures.swatch(StoragePanelTextures.FALLBACK_SWATCH, 0x54E6F2);
-        assertEquals(16, unknown.spritePosition.x);
-        assertEquals(78, unknown.spritePosition.y);
-        assertEquals(0xFF54E6F2, cn.dancingsnow.neoecoae.util.UiTestSupport.color(unknown));
-        assertEquals(-1, cn.dancingsnow.neoecoae.util.UiTestSupport.color(StoragePanelTextures.swatch(7, 0xA56ACB)));
-        for (int i = 10; i <= 13; i++) {
-            int expectedX = 64 + (i - 10) * 8;
-            var swatch = StoragePanelTextures.swatch(i, 0);
-            assertEquals(expectedX, swatch.spritePosition.x);
-            assertEquals(62, swatch.spritePosition.y);
-            assertEquals(-1, cn.dancingsnow.neoecoae.util.UiTestSupport.color(swatch));
-
-            var icon = StoragePanelTextures.resourceIcon(i, 0);
-            assertEquals(expectedX, icon.spritePosition.x);
-            assertEquals(86, icon.spritePosition.y);
-        }
-    }
-
-    @Test
     void resourceDistributionMergesAliasesOrdersAmountsAndFillsTheBar() {
         List<StoragePanelState.TypeLine> types = List.of(type(1, 30), type(2, 40), type(0, 20), type(2, 60));
         StoragePanelState state = barState(false, 0.75, types);

@@ -80,6 +80,7 @@ class ECOPlanningServiceTest {
 
     private static ECOPlanningResult result(PlanningStatus status, boolean simulation) {
         var plan = mock(CraftingPlan.class);
+        when(plan.patternTimes()).thenReturn(new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>());
         when(plan.simulation()).thenReturn(simulation);
         return new ECOPlanningResult(status, plan, new ECOPlanTrace(), List.of(), 0);
     }

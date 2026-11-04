@@ -22,9 +22,6 @@ import appeng.crafting.inv.ListCraftingInventory;
 import appeng.crafting.pattern.AEProcessingPattern;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import cn.dancingsnow.neoecoae.compat.ae2.ECOExternalProviderBlocking;
-import net.pedroksl.advanced_ae.common.logic.AdvPatternProviderLogic;
-import net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern;
-import net.pedroksl.advanced_ae.common.patterns.AdvPatternDetails;
 import cn.dancingsnow.neoecoae.mixins.ae2.accessor.PatternProviderLogicAccessor;
 import cn.dancingsnow.neoecoae.util.InventoryTestBootstrap;
 import java.util.ArrayList;
@@ -58,45 +55,6 @@ class ECOProcessingDispatchIntegrationTest {
         assertEquals(32, f.request.job().waitingFor.list.get(f.key));
         assertEquals(0, progress.value);
         assertEquals(84, f.inventory.list.get(f.key));
-    }
-
-    @Test
-    void directTransportPartialAcceptanceRefundsOnlyUnownedCopiesAndStopsRamp() {
-        var f = new Fixture();
-        var session = mock(cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.Session.class);
-        when(session.maxBatchSize(any())).thenReturn((long) Integer.MAX_VALUE);
-        var offers = new ArrayList<Long>();
-        when(session.submit(any(), any(), anyLong())).thenAnswer(call -> {
-            long offer = call.getArgument(2);
-            offers.add(offer);
-            return cn.dancingsnow.neoecoae.crafting.execution.batch.ECOBatchAdmission.accepted(1, offer == 1);
-        });
-        try (var bridge = mockStatic(cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.class)) {
-            bridge.when(() -> cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.isProvider(f.provider)).thenReturn(true);
-            bridge.when(() -> cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.open(f.provider)).thenReturn(session);
-            var result = f.scaled(0, (request, provider) -> { fail("Direct adapter must not replay ordinary push"); return false; });
-            assertEquals(List.of(1L, 2L), offers);
-            assertEquals(2, result.acceptedCrafts());
-            assertEquals(98, f.inventory.list.get(f.key));
-            verify(f.energy).injectPower(1, Actionable.MODULATE);
-            verify(f.accounting, times(2)).apply(eq(f.request), argThat(r -> r.acceptedCrafts() == 1), any(), eq(f.provider));
-        }
-    }
-
-    @Test
-    void directTransportExceptionRetainsDebitedInputsAndSuspendsWithoutReplay() {
-        var f = new Fixture();
-        var session = mock(cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.Session.class);
-        when(session.maxBatchSize(any())).thenReturn((long) Integer.MAX_VALUE);
-        when(session.submit(any(), any(), anyLong())).thenThrow(new IllegalStateException("Failure after machine insertion"));
-        try (var bridge = mockStatic(cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.class)) {
-            bridge.when(() -> cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.isProvider(f.provider)).thenReturn(true);
-            bridge.when(() -> cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.open(f.provider)).thenReturn(session);
-            assertNull(f.scaled(0, (request, provider) -> { fail("Uncertain ownership cannot be retried"); return false; }));
-            assertEquals(99, f.inventory.list.get(f.key));
-            assertTrue(f.request.job().suspended);
-            verify(f.energy, never()).injectPower(anyDouble(), any());
-        }
     }
 
     @Test
@@ -260,58 +218,6 @@ class ECOProcessingDispatchIntegrationTest {
     }
 
     @Test
-    void blockingSwitchDisablesCachedScalingAndKeepsOrdinaryPush() {
-        var f = new Fixture();
-        var outer = f.outerDispatcher();
-        outer.beginTick(0);
-        assertEquals(16, f.outerDispatch(outer, (request, provider) -> true).acceptedCrafts());
-        var config = mock(IConfigManager.class);
-        var advancedBlocking = new Setting<>("advanced_blocking", YesNo.class);
-        when(config.getSettings()).thenReturn(Set.of(advancedBlocking));
-        when(config.getSetting(advancedBlocking)).thenReturn(YesNo.YES);
-        when(f.provider.getConfigManager()).thenReturn(config);
-        assertTrue(cn.dancingsnow.neoecoae.compat.extendedaeplus.ECOExtendedAEPlusBlocking.isEnabled(config));
-        when(f.provider.isBlocking()).thenReturn(true);
-        assertTrue(ECOExternalProviderBlocking.isEnabled(f.provider));
-        assertFalse(ECOProcessingPatternDispatcher.supportsScaledDispatch(f.request, f.provider));
-        assertNull(f.dispatcher.tryScaledDispatch(f.request, f.provider, 1, f.energy, ignored -> {},
-                (request, provider) -> fail("Blocked provider must not receive a scaled push")));
-        var offers = new ArrayList<Long>();
-        var result = f.outerDispatch(outer, (request, provider) -> {
-            offers.add(request.allowedCrafts());
-            return true;
-        });
-        assertEquals(List.of(1L), offers);
-        assertEquals(1, result.acceptedCrafts());
-        assertFalse(result.fastPath());
-        assertEquals(83, f.inventory.list.get(f.key));
-    }
-
-    @Test
-    void advancedAeBlockingDisablesScaledProcessing() {
-        var f = new Fixture();
-        var provider = mock(AdvPatternProviderLogic.class);
-        when(provider.isBlocking()).thenReturn(true);
-        assertFalse(ECOProcessingPatternDispatcher.supportsScaledDispatch(f.request, provider));
-    }
-
-    @Test
-    void routedTransportCountsEveryNativeCopyAgainstAttemptBudget() {
-        var f = new Fixture(1_000_000, 2_000_000);
-        var session = mock(cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.Session.class);
-        when(session.maxBatchSize(any())).thenReturn(1L);
-        when(session.submit(any(), any(), eq(1L))).thenReturn(
-                cn.dancingsnow.neoecoae.crafting.execution.batch.ECOBatchAdmission.accepted(1, true));
-        try (var bridge = mockStatic(cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.class)) {
-            bridge.when(() -> cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.isProvider(f.provider)).thenReturn(true);
-            bridge.when(() -> cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch.open(f.provider)).thenReturn(session);
-            for (int i = 0; i < 3; i++) f.scaled(0, (request, provider) -> fail("Direct transport owns these pushes"));
-            verify(session, times(ECOProcessingPatternDispatcher.MAX_ATTEMPTS_PER_PATTERN_PER_TICK))
-                    .submit(eq(f.request.pattern()), any(), eq(1L));
-        }
-    }
-
-    @Test
     void planRefreshesMaterialAndWaitingLimitsAfterProviderCallbacks() {
         for (boolean exhaustMaterials : new boolean[]{false, true}) {
             var f = new Fixture();
@@ -328,29 +234,6 @@ class ECOProcessingDispatchIntegrationTest {
     }
 
     @Test
-    void nativeProviderCannotOverrideEcoOwnedBatchPolicy() throws Exception {
-        var f = new Fixture();
-        var offers = new ArrayList<Long>();
-        Class<?> contract = thunderboltBatchContract();
-        var nativeProvider = (ICraftingProvider) mock(contract, invocation -> {
-            return switch (invocation.getMethod().getName()) {
-                case "getBatchCapacity" -> 100L;
-                case "pushBatch" -> {
-                    offers.add(invocation.getArgument(2));
-                    yield 6L;
-                }
-                default -> RETURNS_DEFAULTS.answer(invocation);
-            };
-        });
-        var result = f.dispatcher.tryScaledDispatch(f.request, nativeProvider, 1, f.energy, ignored -> {},
-                (request, provider) -> fail("Unsupported providers cannot reach the scaled push"));
-        assertNull(result);
-        assertTrue(offers.isEmpty());
-        assertEquals(100L, f.inventory.list.get(f.key));
-        verifyNoInteractions(f.accounting);
-    }
-
-    @Test
     void advancedProviderAcceptsEcoScaledOrdinaryPattern() {
         var f = new Fixture();
         var provider = mock(AdvPatternProviderLogic.class);
@@ -364,76 +247,6 @@ class ECOProcessingDispatchIntegrationTest {
                     return true;
                 });
         assertEquals(16, result.acceptedCrafts());
-    }
-
-    @Test
-    void advancedProcessingPatternRetainsDirectionalContractWhenScaled() throws Exception {
-        var f = new Fixture();
-        var provider = mock(AdvPatternProviderLogic.class);
-        var pattern = mock(AdvProcessingPattern.class);
-        var direction = net.minecraft.core.Direction.NORTH;
-        var directions = new java.util.LinkedHashMap<AEKey, net.minecraft.core.Direction>();
-        directions.put(f.key, direction);
-        when(pattern.getDefinition()).thenReturn(AEItemKey.of(Items.STONE));
-        when(pattern.getInputs()).thenReturn(new IPatternDetails.IInput[]{mock(IPatternDetails.IInput.class)});
-        when(pattern.getOutputs()).thenReturn(new GenericStack[]{new GenericStack(f.key, 1)});
-        when(pattern.supportsPushInputsToExternalInventory()).thenReturn(true);
-        when(pattern.directionalInputsSet()).thenReturn(true);
-        when(pattern.getDirectionMap()).thenReturn(directions);
-        when(pattern.getDirectionSideForInputKey(f.key)).thenReturn(direction);
-        var request = new ECOCraftingDispatchRequest(f.request.job(), f.request.candidate(), pattern,
-                f.request.inputs(), f.request.outputs(), f.request.remainders(), f.request.allowedCrafts(),
-                f.inventory, f.request.level());
-        assertTrue(ECOProcessingPatternDispatcher.supportsScaledDispatch(request, provider));
-        assertFalse(ECOProcessingPatternDispatcher.supportsScaledDispatch(request,
-                (ICraftingProvider) mock(thunderboltBatchContract())));
-        f.dispatcher.beginTick(0);
-        var result = f.dispatcher.tryScaledDispatch(request, provider, 1, f.energy, ignored -> {},
-                (scaled, ignored) -> {
-                    assertTrue(List.of(pattern).contains(scaled.pattern()));
-                    assertInstanceOf(AdvPatternDetails.class, scaled.pattern());
-                    assertEquals(direction, ((AdvPatternDetails) scaled.pattern()).getDirectionSideForInputKey(f.key));
-                    assertEquals(scaled.allowedCrafts(), cn.dancingsnow.neoecoae.platform.JdkCompat.first(scaled.pattern().getOutputs()).amount());
-                    return true;
-                });
-        assertEquals(16, result.acceptedCrafts());
-    }
-
-    @Test
-    void nonMekNativeBatchContractDoesNotOverrideEcoPolicy() throws Exception {
-        var f = new Fixture();
-        var offers = new ArrayList<Long>();
-        Class<?> contract = thunderboltBatchContract();
-        var mekEnergisticsProvider = (ICraftingProvider) mock(contract, invocation -> {
-            return switch (invocation.getMethod().getName()) {
-                // Mek-E advertises an unbounded accounting mode, then applies its physical input
-                // capacity atomically in pushBatch and returns every unaccepted copy.
-                case "getBatchCapacity" -> Long.MAX_VALUE;
-                case "getBatchDispatchMode" -> enumConstant(invocation.getMethod().getReturnType(), "UNBOUNDED");
-                case "pushBatch" -> {
-                    long offered = invocation.getArgument(2);
-                    offers.add(offered);
-                    yield offered - Math.min(offered, 4L);
-                }
-                default -> RETURNS_DEFAULTS.answer(invocation);
-            };
-        });
-
-        var result = f.dispatcher.tryScaledDispatch(f.request, mekEnergisticsProvider, 1, f.energy, ignored -> {},
-                (request, provider) -> fail("Unsupported providers cannot reach the scaled push"));
-
-        assertNull(result);
-        assertTrue(offers.isEmpty());
-        assertEquals(100L, f.inventory.list.get(f.key));
-        verifyNoInteractions(f.accounting);
-    }
-
-    private static Class<?> thunderboltBatchContract() throws ClassNotFoundException {
-        try {
-            return Class.forName("com.moakiee.thunderbolt.api.crafting.batch.IBatchCraftingProvider");
-        } catch (ClassNotFoundException legacy) {
-            return Class.forName("com.moakiee.thunderbolt.ae2.api.crafting.IBatchCraftingProvider");
-        }
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})

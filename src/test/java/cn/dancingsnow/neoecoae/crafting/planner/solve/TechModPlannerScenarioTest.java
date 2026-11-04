@@ -5,6 +5,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /** Proves that each proposed challenge is a real executable order, or a fully closed negative control. */
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class TechModPlannerScenarioTest {
     static Stream<TechModPlannerScenarios.Scenario> scenarios() { return TechModPlannerScenarios.all().stream(); }
 

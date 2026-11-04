@@ -21,15 +21,10 @@ cn/dancingsnow/neoecoae/client/rendering/DriveModelAmbientOcclusionTest.java
 cn/dancingsnow/neoecoae/client/rendering/ForgeModelEmissionTest.java
 cn/dancingsnow/neoecoae/compat/ae2/ECOProviderPatternIntrospectionTest.java
 cn/dancingsnow/neoecoae/compat/ae2/ECORemoteMachineUISideTest.java
-cn/dancingsnow/neoecoae/compat/ae2lt/ECOAe2LtCancellationBridgeTest.java
-cn/dancingsnow/neoecoae/compat/gregtech/ECOGregTechMachineStatusTest.java
-cn/dancingsnow/neoecoae/compat/gregtech/ECOGregTechProcessingDispatchTest.java
-cn/dancingsnow/neoecoae/crafting/execution/ECOAe2LtExistingInteropTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOBigOrderLifecycleTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOCraftingDispatchAccountingTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOCraftingInputCachingTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOCycleBatchDispatchTest.java
-cn/dancingsnow/neoecoae/crafting/execution/ECOEAEPVirtualCraftingTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOExactCycleReservationTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOExactInventoryLifecycleTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOExactOrderTest.java
@@ -39,10 +34,7 @@ cn/dancingsnow/neoecoae/crafting/execution/ECOExternalCpuFastPathTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOExternalCpuOutputRouterTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOExternalCpuSupportTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOFastPathWaitingLimitTest.java
-cn/dancingsnow/neoecoae/crafting/execution/ECOGregTechProcessingDispatchIntegrationTest.java
-cn/dancingsnow/neoecoae/crafting/execution/ECOImportedBatchPlanTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOManyIngredientCpuDispatchTest.java
-cn/dancingsnow/neoecoae/crafting/execution/ECOOverloadAccountingIntegrationTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOProcessingComponentMatchingTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOProcessingDispatchIntegrationTest.java
 cn/dancingsnow/neoecoae/crafting/execution/ECOProcessingMonitorTest.java

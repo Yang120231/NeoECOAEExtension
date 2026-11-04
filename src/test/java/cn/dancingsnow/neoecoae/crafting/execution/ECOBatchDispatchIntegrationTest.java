@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class ECOBatchDispatchIntegrationTest {
     @org.junit.jupiter.api.BeforeAll static void bootstrap() {
         cn.dancingsnow.neoecoae.util.InventoryTestBootstrap.initialize();
@@ -40,8 +41,8 @@ class ECOBatchDispatchIntegrationTest {
     }
     interface WorkstationLike extends Ae2LogicProvider, ECOParallelCraftingProvider {}
 
-    final AEKey input = mock(AEKey.class, RETURNS_DEEP_STUBS);
-    final AEKey output = mock(AEKey.class, RETURNS_DEEP_STUBS);
+    final AEKey input = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
+    final AEKey output = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
     final IPatternDetails pattern = mock(IPatternDetails.class, RETURNS_DEEP_STUBS);
     final IEnergyService energy = mock(IEnergyService.class);
     final ListCraftingInventory inventory = new ListCraftingInventory(ignored -> {});
@@ -55,6 +56,7 @@ class ECOBatchDispatchIntegrationTest {
         var outputs = new KeyCounter(); outputs.add(output, 3);
         when(pattern.getOutputs()).thenReturn(new GenericStack[]{new GenericStack(output, 3)});
         var plan = mock(ICraftingPlan.class);
+        when(plan.patternTimes()).thenReturn(new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>());
         when(plan.finalOutput()).thenReturn(new GenericStack(output, 30));
         when(plan.emittedItems()).thenReturn(new KeyCounter());
         var link = mock(CraftingLink.class);
@@ -155,7 +157,7 @@ class ECOBatchDispatchIntegrationTest {
 
     @Test void manyIngredientProcessingPushGrowsBatchesWithoutChangingSlotOrder() {
         var processingPattern = mock(AEProcessingPattern.class);
-        when(processingPattern.getDefinition()).thenReturn(AEItemKey.of(Items.STONE));
+        doReturn(AEItemKey.of(Items.STONE)).when(processingPattern).getDefinition();
         when(processingPattern.getOutputs()).thenReturn(new GenericStack[]{new GenericStack(output, 3)});
         when(processingPattern.supportsPushInputsToExternalInventory()).thenReturn(true);
         var wide = manyIngredientRequest(81, processingPattern);
@@ -187,7 +189,7 @@ class ECOBatchDispatchIntegrationTest {
         var counters = new KeyCounter[ingredientCount];
         var slots = new IPatternDetails.IInput[ingredientCount];
         for (int slot = 0; slot < ingredientCount; slot++) {
-            var key = mock(AEKey.class, RETURNS_DEEP_STUBS);
+            var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
             when(key.getAmountPerOperation()).thenReturn(1);
             counters[slot] = new KeyCounter();
             counters[slot].add(key, slot + 1);
@@ -236,7 +238,7 @@ class ECOBatchDispatchIntegrationTest {
         when(ordinary.getLogic()).thenReturn(logic);
         when(provider.eco$getAvailableParallelSlots()).thenReturn(4);
         var processingPattern = mock(AEProcessingPattern.class);
-        when(processingPattern.getDefinition()).thenReturn(AEItemKey.of(Items.STONE));
+        doReturn(AEItemKey.of(Items.STONE)).when(processingPattern).getDefinition();
         when(processingPattern.getInputs()).thenReturn(new IPatternDetails.IInput[]{mock(IPatternDetails.IInput.class)});
         when(processingPattern.getOutputs()).thenReturn(new GenericStack[]{new GenericStack(output, 3)});
         when(processingPattern.supportsPushInputsToExternalInventory()).thenReturn(true);

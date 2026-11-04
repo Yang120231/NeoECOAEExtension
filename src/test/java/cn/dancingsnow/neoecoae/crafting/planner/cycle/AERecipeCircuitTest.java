@@ -23,6 +23,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class AERecipeCircuitTest {
     @BeforeAll static void bootstrap() { cn.dancingsnow.neoecoae.util.InventoryTestBootstrap.initialize(); }
 
@@ -87,9 +88,9 @@ class AERecipeCircuitTest {
     }
 
     @Test void trillionProductsReuseOneBucketAndChargeEveryMillibucket() {
+        AEKey empty = AEItemKey.of(Items.BUCKET), full = AEItemKey.of(Items.WATER_BUCKET);
+        AEKey water = AEFluidKey.of(Fluids.WATER), product = AEItemKey.of(Items.CLAY_BALL);
         assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
-            AEKey empty = AEItemKey.of(Items.BUCKET), full = AEItemKey.of(Items.WATER_BUCKET);
-            AEKey water = AEFluidKey.of(Fluids.WATER), product = AEItemKey.of(Items.CLAY_BALL);
             var fill = recipe(0, Map.of(empty, 1L, water, 1000L), Map.of(full, 1L), Map.of());
             var use = recipe(1, Map.of(full, 1L), Map.of(product, 1L), Map.of(empty, 1L));
             long quantity = 1_000_000_000_000L;

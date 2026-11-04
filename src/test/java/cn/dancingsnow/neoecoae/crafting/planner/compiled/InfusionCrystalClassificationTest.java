@@ -33,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 /** Exercises the public AE2 remainder contract used by Mystical Agriculture's infusion recipes. */
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class InfusionCrystalClassificationTest {
     @BeforeAll
     static void bootstrap() { InventoryTestBootstrap.initialize(); }

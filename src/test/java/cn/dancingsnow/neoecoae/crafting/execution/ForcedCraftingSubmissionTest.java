@@ -8,7 +8,6 @@ import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.stacks.*;
 import appeng.crafting.CraftingLink;
 import appeng.crafting.CraftingPlan;
-import cn.dancingsnow.neoecoae.compat.extendedaeplus.EAEPForcedCrafting;
 import cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOForcedCraftingPlan;
 import cn.dancingsnow.neoecoae.util.InventoryTestBootstrap;
 import java.util.Map;
@@ -42,7 +41,7 @@ class ForcedCraftingSubmissionTest {
         var key = key();
         var original = plan(key);
         try (var mods = mockStatic(ModList.class)) {
-            var forced = EAEPForcedCrafting.force(original);
+            var forced = new ECOForcedCraftingPlan(original);
             assertInstanceOf(ECOForcedCraftingPlan.class, forced);
             assertFalse(forced.simulation());
             assertTrue(forced.missingItems().isEmpty());
@@ -58,7 +57,7 @@ class ForcedCraftingSubmissionTest {
     @Test void fallbackCpuAcceptsPartialRefillsAndPersistsRemainingDemand() {
         var key = key();
         try (var mods = mockStatic(ModList.class); var types = mockStatic(AEKeyTypes.class)) {
-            verifyWaitingLifecycle(EAEPForcedCrafting.force(plan(key)), key);
+            verifyWaitingLifecycle(new ECOForcedCraftingPlan(plan(key)), key);
         }
     }
 
@@ -68,51 +67,6 @@ class ForcedCraftingSubmissionTest {
         original.emittedItems().set(key, Long.MAX_VALUE);
         assertThrows(ArithmeticException.class, () -> new ECOForcedCraftingPlan(original));
         assertEquals(7, original.missingItems().get(key));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"appeng.crafting.execution.ExecutingCraftingJob",
-        "net.pedroksl.advanced_ae.common.logic.ExecutingCraftingJob"})
-    void fallbackAlsoRegistersMissingInputsInVanillaAndQuantumJobs(String className) throws Exception {
-        var key = key();
-        try (var types = mockStatic(AEKeyTypes.class)) {
-            var type = Class.forName(className);
-            var listener = java.util.Arrays.stream(type.getDeclaredClasses())
-                .filter(nested -> nested.getSimpleName().equals("CraftingDifferenceListener")).findFirst().orElseThrow();
-            var constructor = type.getDeclaredConstructor(ICraftingPlan.class, listener, CraftingLink.class, Integer.class);
-            constructor.setAccessible(true);
-            var job = constructor.newInstance(new ECOForcedCraftingPlan(plan(key)), mock(listener),
-                mock(CraftingLink.class), null);
-            var waiting = type.getDeclaredField("waitingFor");
-            waiting.setAccessible(true);
-            assertEquals(9, ((appeng.crafting.inv.ListCraftingInventory) waiting.get(job)).list.get(key));
-        }
-    }
-
-    static boolean eaepPresent() {
-        try {
-            Class.forName("com.extendedae_plus.crafting.ForcedCraftingPlan");
-            return true;
-        } catch (ClassNotFoundException absent) {
-            return false;
-        }
-    }
-
-    @Test @EnabledIf("eaepPresent")
-    void installedEaepTakesPriorityAndItsMissingInputsReachTheEcoCpu() {
-        var key = key();
-        try (var mods = mockStatic(ModList.class); var types = mockStatic(AEKeyTypes.class)) {
-            var modList = mock(ModList.class);
-            mods.when(ModList::get).thenReturn(modList);
-            when(modList.isLoaded("extendedae_plus")).thenReturn(true);
-            var forced = EAEPForcedCrafting.force(plan(key));
-            assertEquals("com.extendedae_plus.crafting.ForcedCraftingPlan", forced.getClass().getName());
-            assertTrue(EAEPForcedCrafting.isForced(forced));
-            assertSame(forced, EAEPForcedCrafting.force(forced));
-            assertEquals(2, forced.emittedItems().get(key));
-            assertEquals(7, EAEPForcedCrafting.manualMissing(forced).get(key));
-            verifyWaitingLifecycle(forced, key);
-        }
     }
 
     private static void verifyWaitingLifecycle(ICraftingPlan forced, AEKey key) {

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationThermalTest {
     private static LargeWorkstationThermal.State at(double heat) {
         return new LargeWorkstationThermal.State(heat, false, 0);

@@ -21,6 +21,7 @@ import net.minecraft.world.level.material.Fluids;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationProgressTest {
     @BeforeAll static void bootstrap() throws Exception {
         InventoryTestBootstrap.initialize();
@@ -103,12 +104,12 @@ class LargeWorkstationProgressTest {
         var target = new cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider.Target(
             Level.OVERWORLD.location(), controller.getBlockPos());
         var output = AEItemKey.of(Items.STONE);
-        var unloaded = new cn.dancingsnow.neoecoae.compat.gregtech.ECOGregTechMachineStatus.Scan(List.of(target), output);
+        var unloaded = new cn.dancingsnow.neoecoae.compat.gto.ECOGtoMachineStatus.Scan(List.of(target), output);
         unloaded.step(level);
         verify(level, never()).getBlockEntity(any());
         when(level.hasChunkAt(controller.getBlockPos())).thenReturn(true);
         when(level.getBlockEntity(controller.getBlockPos())).thenReturn(controller);
-        var scan = new cn.dancingsnow.neoecoae.compat.gregtech.ECOGregTechMachineStatus.Scan(List.of(target), output);
+        var scan = new cn.dancingsnow.neoecoae.compat.gto.ECOGtoMachineStatus.Scan(List.of(target), output);
         scan.step(level);
         assertTrue(scan.complete());
         assertEquals(List.of(target), scan.machineTargets());

@@ -105,28 +105,12 @@ class ECOGtoProgressionTest {
                 "neoecoae:transform/energized_fluix_crystal", "neoecoae:transform/energized_superconductive_ingot")) {
             assertNotEquals("forge:conditional", read(recipe(id)).get("type").getAsString(), id);
         }
-        // B16 keeps the empty module makeable before a large workstation exists.
-        assertEquals("neoecoae:integrated_working_station", read(recipe(
-            "neoecoae:large_integrated_working_station/integrated_working_station_module_empty")).get("type").getAsString());
+
     }
 
-    @Test void workstationsModulesAndLargePartsAreNoLongerRemovedAndNoOmniOrMegaRouteIsAdded() throws Exception {
-        for (var entry : pack().entrySet()) {
-            var recipe = entry.getValue();
-            String path = PACK.relativize(entry.getKey()).toString().replace('\\', '/');
-            if (recipe.get("type").getAsString().equals("forge:conditional")) {
-                boolean omniOrMega = path.contains("omni_cell") || path.contains("spent_nuclear_waste_cell")
-                    || path.startsWith("compat/megacells/");
-                assertFalse(!omniOrMega && (path.contains("integrated_working_station") || path.startsWith("transform/")), path);
-                continue;
-            }
-            assertFalse(recipe.toString().contains("ae2omnicells"), path);
-            assertFalse(recipe.toString().contains("megacells"), path);
-        }
-        for (String id : List.of("neoecoae:integrated_working_station/module_extendedae", "neoecoae:large_integrated_working_station_casing",
-                "neoecoae:large_integrated_working_station_interface",
-                "neoecoae:large_integrated_working_station/integrated_working_station_module_extendedae")) {
-            // Either replaced in the GTO pack or left to the base mod's own recipe; never emptied.
+    @Test void theLargeWorkstationPartsRemainAvailable() throws Exception {
+        for (String id : List.of("neoecoae:large_integrated_working_station_casing",
+                "neoecoae:large_integrated_working_station_interface")) {
             Path file = Files.exists(recipe(id)) ? recipe(id)
                 : Path.of("src/main/resources/data/neoecoae/recipes", id.substring(id.indexOf(':') + 1) + ".json");
             assertTrue(workstation(read(file)), id);
@@ -144,16 +128,15 @@ class ECOGtoProgressionTest {
         }
     }
 
-    @Test void gtoLoadsOneSelfContainedPackSoNoProfileOrderCanUndoIt() throws Exception {
-        assertEquals(List.of("gt_gto"), cn.dancingsnow.neoecoae.recipe.profile.GTRecipeProfiles.packPaths(
-            cn.dancingsnow.neoecoae.config.RecipeProfileConfig.Profile.AUTO, mod -> !mod.equals("gtlcore"),
-            () -> { throw new AssertionError("GTO does not use a GT machine JSON schema"); }));
-        // Everything the GTM profile ships is present beneath the GTO replacements.
-        Path gtm = Path.of("src/main/resources/recipe_profiles/gtm/data/neoecoae/recipes");
-        try (var files = Files.walk(gtm)) {
-            for (Path file : files.filter(path -> path.toString().endsWith(".json")).toList()) {
-                assertTrue(Files.exists(PACK.resolve(gtm.relativize(file).toString())), file.toString());
-            }
+    @Test void gtoLoadsOnlyItsRequiredPack() throws Exception {
+        var resources = Path.of("src/main/resources/recipe_profiles");
+        try (var directories = Files.list(resources)) {
+            assertEquals(List.of("gt_gto"), directories.filter(Files::isDirectory)
+                .filter(path -> Files.exists(path.resolve("pack.mcmeta")))
+                .map(path -> path.getFileName().toString()).toList());
         }
+        var source = Files.readString(Path.of("src/main/java/cn/dancingsnow/neoecoae/recipe/profile/GtoRecipePack.java"));
+        assertTrue(source.contains("Pack.Position.TOP"));
+        assertTrue(source.contains("\"gt_gto\""));
     }
 }

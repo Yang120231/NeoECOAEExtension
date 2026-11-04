@@ -24,6 +24,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Permanent regressions from the opt-in audit, including physical execution from the actual reservations. */
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class PlannerStartupAndRemainderRegressionTest {
     static Stream<TechModPlannerScenarios.Scenario> repairedOrders() {
         return TechModPlannerScenarios.all().stream().filter(s -> s.id().contains("_with_makeup")

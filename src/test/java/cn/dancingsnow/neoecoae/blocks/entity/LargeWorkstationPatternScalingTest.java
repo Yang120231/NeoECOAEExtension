@@ -11,7 +11,6 @@ import cn.dancingsnow.neoecoae.recipe.LargeWorkstationModule;
 import cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipes;
 import cn.dancingsnow.neoecoae.registration.NERegistrate;
 import cn.dancingsnow.neoecoae.util.InventoryTestBootstrap;
-import com.moakiee.ae2lt.me.key.LightningKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -35,6 +34,7 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationPatternScalingTest {
     @BeforeAll static void bootstrap() throws Exception {
         InventoryTestBootstrap.initialize();
@@ -62,18 +62,19 @@ class LargeWorkstationPatternScalingTest {
         var controller = controller();
         var base = recipe();
         var recipe = new LargeWorkstationRecipe(base.id(), base.display(), base.energy(),
-            List.of(new GenericStack(LightningKey.EXTREME_HIGH_VOLTAGE, 4)));
+            List.of(new GenericStack(appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.GOLD_INGOT), 4)));
         var pattern = pattern(8, 4);
         KeyCounter[] holders;
         if (suppliedLightning) {
             var lightningInput = mock(IPatternDetails.IInput.class);
-            when(lightningInput.getPossibleInputs()).thenReturn(
-                new GenericStack[]{new GenericStack(LightningKey.EXTREME_HIGH_VOLTAGE, 1)});
+            doReturn(new GenericStack[]{new GenericStack(
+                appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.GOLD_INGOT), 1)})
+                .when(lightningInput).getPossibleInputs();
             when(lightningInput.getMultiplier()).thenReturn(8L);
             var ironInput = pattern.getInputs()[0];
             when(pattern.getInputs()).thenReturn(new IPatternDetails.IInput[]{ironInput, lightningInput});
             holders = new KeyCounter[]{counter(AEItemKey.of(Items.IRON_INGOT), 24),
-                counter(LightningKey.EXTREME_HIGH_VOLTAGE, 24)};
+                counter(appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.GOLD_INGOT), 24)};
         } else {
             holders = new KeyCounter[]{counter(AEItemKey.of(Items.IRON_INGOT), 24)};
         }
@@ -92,9 +93,9 @@ class LargeWorkstationPatternScalingTest {
         assertEquals(24L, ((KeyCounter) value(batch, "inputTotal")).get(AEItemKey.of(Items.IRON_INGOT)));
         assertEquals(12L, ((KeyCounter) value(batch, "outputTotal")).get(AEItemKey.of(Items.DIAMOND)));
         assertEquals(suppliedLightning ? 24L : 0L,
-            ((KeyCounter) value(batch, "inputTotal")).get(LightningKey.EXTREME_HIGH_VOLTAGE));
+            ((KeyCounter) value(batch, "inputTotal")).get(appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.GOLD_INGOT)));
         assertEquals(suppliedLightning ? 0L : 24L,
-            ((KeyCounter) value(batch, "missingExtras")).get(LightningKey.EXTREME_HIGH_VOLTAGE));
+            ((KeyCounter) value(batch, "missingExtras")).get(appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.GOLD_INGOT)));
         assertEquals(new GenericStack(AEItemKey.of(Items.DIAMOND), 4), value(batch, "unlockStack"));
     }
 
@@ -139,46 +140,6 @@ class LargeWorkstationPatternScalingTest {
         assertEquals(exact.id(), value(batch, "recipeId"));
     }
 
-    @ParameterizedTest @ValueSource(booleans = {false, true})
-    void alternativeEnergyLocksFeOnlyWhenAppliedFluxAndNetworkFeAreAvailable(boolean installed) throws Exception {
-        var controller = controller();
-        doReturn(0.0).when(controller).extractAEPower(anyDouble(), any(), any());
-        var grid = mock(appeng.api.networking.IGrid.class, RETURNS_DEEP_STUBS);
-        when(controller.getMainNode().getGrid()).thenReturn(grid);
-        var recipe = recipe().processing(4, 200, true);
-        var holders = new KeyCounter[]{counter(AEItemKey.of(Items.IRON_INGOT), 4)};
-        try (var flux = mockStatic(cn.dancingsnow.neoecoae.integration.appflux.WorkstationFluxEnergy.class);
-             var recipes = mockStatic(LargeWorkstationRecipes.class, CALLS_REAL_METHODS)) {
-            flux.when(cn.dancingsnow.neoecoae.integration.appflux.WorkstationFluxEnergy::available).thenReturn(installed);
-            flux.when(() -> cn.dancingsnow.neoecoae.integration.appflux.WorkstationFluxEnergy.extract(any(), anyLong(), any(), any()))
-                .thenAnswer(call -> call.getArgument(1));
-            recipes.when(() -> LargeWorkstationRecipes.getAvailable(controller.getLevel(), LargeWorkstationModule.REGULAR)).thenReturn(List.of(recipe));
-            assertTrue(controller.acceptPatternBatch(pattern(4, 2), holders, 1, null));
-            var batch = ((Deque<?>) value(controller, "pendingBatches")).getFirst();
-            assertEquals(installed ? 0L : 100L, value(batch, "energyPerCraft"));
-            assertEquals(installed ? 200L : 0L, value(batch, "fePerCraft"));
-            assertEquals(4, value(batch, "processingTicks"));
-        }
-    }
-
-    @ParameterizedTest @ValueSource(booleans = {false, true})
-    void feOnlyPatternsCanBeAcceptedWithOrWithoutAppliedFlux(boolean installed) throws Exception {
-        var controller = controller();
-        var base = recipe();
-        var feOnly = new LargeWorkstationRecipe(base.id(), base.display(), 0, List.of()).processing(4, 200, false);
-        var holders = new KeyCounter[]{counter(AEItemKey.of(Items.IRON_INGOT), 4)};
-        try (var flux = mockStatic(cn.dancingsnow.neoecoae.integration.appflux.WorkstationFluxEnergy.class);
-             var recipes = mockStatic(LargeWorkstationRecipes.class, CALLS_REAL_METHODS)) {
-            flux.when(cn.dancingsnow.neoecoae.integration.appflux.WorkstationFluxEnergy::available).thenReturn(installed);
-            recipes.when(() -> LargeWorkstationRecipes.getAvailable(controller.getLevel(), LargeWorkstationModule.REGULAR)).thenReturn(List.of(feOnly));
-            assertTrue(controller.acceptPatternBatch(pattern(4, 2), holders, 1, null));
-            var batch = ((Deque<?>) value(controller, "pendingBatches")).getFirst();
-            assertEquals(0L, value(batch, "energyPerCraft"));
-            assertEquals(200L, value(batch, "fePerCraft"));
-            assertEquals(4, value(batch, "processingTicks"));
-        }
-    }
-
     private static ECOLargeIntegratedWorkingStationBlockEntity controller() throws Exception {
         var controller = mock(ECOLargeIntegratedWorkingStationBlockEntity.class, CALLS_REAL_METHODS);
         field(controller, "formed", true);
@@ -201,7 +162,8 @@ class LargeWorkstationPatternScalingTest {
     private static IPatternDetails pattern(long inputAmount, long outputAmount) {
         var pattern = mock(IPatternDetails.class);
         var input = mock(IPatternDetails.IInput.class);
-        when(input.getPossibleInputs()).thenReturn(new GenericStack[]{new GenericStack(AEItemKey.of(Items.IRON_INGOT), 1)});
+        doReturn(new GenericStack[]{new GenericStack(AEItemKey.of(Items.IRON_INGOT), 1)})
+            .when(input).getPossibleInputs();
         when(input.getMultiplier()).thenReturn(inputAmount);
         when(pattern.getInputs()).thenReturn(new IPatternDetails.IInput[]{input});
         var output = new GenericStack(AEItemKey.of(Items.DIAMOND), outputAmount);

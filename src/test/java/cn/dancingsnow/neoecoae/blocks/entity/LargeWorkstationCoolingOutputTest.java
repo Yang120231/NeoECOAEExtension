@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationCoolingOutputTest {
     private static final ResourceLocation FIRST = new ResourceLocation("test:first_coolant");
     private static final ResourceLocation SECOND = new ResourceLocation("test:second_coolant");
