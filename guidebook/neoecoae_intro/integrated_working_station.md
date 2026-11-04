@@ -34,7 +34,6 @@ The Integrated Working Station is crafted using components from various AE2 mach
 
 ## Large Workstation Modules
 
-The large workstation retains four variants: Regular, AdvancedAE, ExtendedAE and AE2LT. AE2LT's overload processing, lightning assembly and lightning simulation recipes share one AE2LT workstation. Other ExtendedAE Plus integrations remain; it adds no separate large-workstation recipe family.
 
 For structure assembly, refer to the multiblock preview in the recipe viewer.
 
@@ -53,7 +52,6 @@ The Integrated Working Station is used to craft many important items:
 ### Crystal Ingot
 
 <ItemGrid>
-  <ItemIcon id="neoecoae:crystal_ingot" />
 </ItemGrid>
 
 <RecipeFor id="neoecoae:crystal_ingot" />
@@ -63,7 +61,6 @@ The Integrated Working Station is used to craft many important items:
 ### Energized Superconductive Ingot
 
 <ItemGrid>
-  <ItemIcon id="neoecoae:energized_superconductive_ingot" />
 </ItemGrid>
 
 <RecipeFor id="neoecoae:energized_superconductive_ingot" />

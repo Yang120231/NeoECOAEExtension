@@ -185,7 +185,6 @@ Enable overclocking to increase batch capacity per task slot at the cost of high
 #### Active Cooling
 Enable active cooling to further enhance performance and eliminate extra energy costs from overclocking.
 - Requires coolant fluids in the input hatch
-- Coolant recipes can be viewed in JEI
 - The system stores coolant as a buffer. Ordinary finite batches, including x2/x8 exchange batches, are charged per craft when work starts. Virtual mode uses the flat physical-lane tick cost described above.
 - If the output hatch is full, coolant cannot be converted and the buffer cannot be replenished
 

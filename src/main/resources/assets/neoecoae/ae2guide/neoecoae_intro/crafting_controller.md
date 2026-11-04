@@ -18,7 +18,7 @@ For structure assembly, see [ECO Crafting System](crafting_system.md).
 1. **Worker row**: one column per physical FX Worker, with upper and lower FT markers and task outputs when work is present.
 2. **Mode switches**: active cooling on the left; overclocking on the right. A blue upper indicator means enabled.
 3. **Queue**: accepted craft count, batch capacity, and utilization. Hover for full numbers.
-4. **Parallel capacity**: FT capacity, current actual batch capacity (the same Limit as the queue's capacity), and overflow. Exchange multiplies both FT capacity and batch capacity by the same network multiplier. Hover for processing time and effective overclock.
+4. **Parallel capacity**: FT capacity, base FX capacity, and overflow. Hover for processing time and effective overclock.
 5. **Power and fluids**: energy use, converted coolant buffer, and fluid in the output hatch.
 6. **Status summary**: active / total FX, FT capacity, coolant tier, exchange modules, and network multiplier.
 
@@ -53,7 +53,6 @@ Click the **left-hand cooling switch** so that both switches have blue upper ind
 
 The summary reads **water / OC limit 2**, meaning that water supports at most two overclock levels. The coolant gauge shows converted coolant buffer, not the remaining fluid in the input hatch. Open the input hatch to check its fluid supply.
 
-Mekanism is installed in this example, so cooling with water produces steam in the output gauge. Check JEI for the products of other cooling recipes.
 
 ## Step 4: Read the effective speed
 

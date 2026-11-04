@@ -59,4 +59,3 @@ All multiblock systems use a tiered architecture:
 - **Tier 9 (L9/C9/F9)** - Top tier, epic rarity
 
 Higher tiers provide increased capacity, speed, and efficiency.
-
