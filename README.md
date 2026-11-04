@@ -67,8 +67,8 @@ $env:NEOECOAE_JAVA17_HOME = 'C:\path\to\jdk-17'
 # First checkout: download and verify pinned dependencies and generate the local lock
 python tools/compat/bootstrap.py --gto
 
-# Build the mod and sources archives, and run the focused GTO regression tests
-.\build-local.ps1 jar sourcesJar gtoCompatibilityTest --console=plain
+# Build the mod and sources archives
+.\build-local.ps1 jar sourcesJar --console=plain
 
 # Check the release archive contents
 python tools/compat/check_artifacts.py --release-only
@@ -95,8 +95,6 @@ src/main/java/cn/dancingsnow/neoecoae/
   gui/                      Host pages and construction windows
   platform/                 Forge 1.20.1 platform adapters
 src/main/resources/         Mod metadata, assets and recipes
-src/test/java/              Business and platform tests
-src/gtoTest/java/           Focused GTO regression tests
 guidebook/                  GuideME guides and structure scenes
 docs/compat/                GTO adaptation records and dependency lock
 docs/releases/              Chinese and English release notes
@@ -107,9 +105,7 @@ tools/compat/               Pinned dependency restoration and artifact checks
 
 ## Validation status and issue reports
 
-Historical test results for `20.5.4-gto.1` are recorded in its [release notes](docs/releases/20.5.4-gto.1.md). For current source, run `gtoCompatibilityTest craftingRegressionTest jar` and the artifact checker. Minecraft client/server startup and real interactions require separate acceptance.
-
-Some legacy tests reference vanilla AE2 classes removed by GTO. The independent GTO and crafting regression tasks do not imply that the full `test` or `build` task passes.
+Historical test results for `20.5.4-gto.1` are recorded in its [release notes](docs/releases/20.5.4-gto.1.md). Automated test sources and custom Gradle test tasks have been removed. Use `jar sourcesJar` and the artifact checker for build validation; Minecraft client/server startup and real interactions require separate acceptance.
 
 When reporting an issue, include the ECO version, GTO modpack version, installed GTOCore/GTM/AE2 versions, reproduction steps, and `logs/latest.log` or the relevant crash report.
 

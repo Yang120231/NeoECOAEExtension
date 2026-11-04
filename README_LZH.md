@@ -67,8 +67,8 @@ $env:NEOECOAE_JAVA17_HOME = 'C:\path\to\jdk-17'
 # 初次取碼，先下載驗明固定依賴，並生本機依賴鎖
 python tools/compat/bootstrap.py --gto
 
-# 製安裝包、原始碼包，且行 GTO 專題迴歸檢驗
-.\build-local.ps1 jar sourcesJar gtoCompatibilityTest --console=plain
+# 打包安裝包與原始碼包
+.\build-local.ps1 jar sourcesJar --console=plain
 
 # 驗發佈包之內容
 python tools/compat/check_artifacts.py --release-only
@@ -95,8 +95,6 @@ src/main/java/cn/dancingsnow/neoecoae/
   gui/                      主機頁面與搭建子窗
   platform/                 Forge 1.20.1 平台適配
 src/main/resources/         Mod 中繼資料、資源與配方
-src/test/java/              業務與平台檢驗
-src/gtoTest/java/           GTO 專題迴歸檢驗
 guidebook/                  GuideME 指南與結構場景
 docs/compat/                GTO 適配記與依賴鎖
 docs/releases/              中英雙語發佈記
@@ -107,9 +105,7 @@ tools/compat/               固定依賴還原與產物檢驗工具
 
 ## 驗證與報錯
 
-舊版 `20.5.4-gto.1` 測試之錄，見其 [發佈記](docs/releases/20.5.4-gto.1.md)。今原始碼以 `gtoCompatibilityTest craftingRegressionTest jar` 及產物檢查驗之；客戶端、專服之啟動與實際互動，仍須另驗。
-
-然完整舊測試套件、全部附屬組合、獨立專服，尚未盡驗。舊測試有仍用 GTO 已刪之原版 AE2 類別者，故上列建置令用獨立之 `gtoCompatibilityTest`；此項既過，未可遂謂完整 `test` 或 `build` 皆過。
+舊版 `20.5.4-gto.1` 測試之錄，見其 [發佈記](docs/releases/20.5.4-gto.1.md)。今已移除自動測試原始碼與自訂 Gradle 測試工作，建置以 `jar sourcesJar` 及產物檢查驗之；客戶端、專服之啟動與實際互動，仍須另驗。
 
 報錯之時，請具 ECO 版本、GTO 整合包版本、實裝 GTOCore／GTM／AE2 版本、重現步驟，並附 `logs/latest.log` 或相應崩潰報告。
 

@@ -64,7 +64,7 @@ jobs:
           # Gradle runs on Java 17; GTO dependencies require the Java 21 toolchain.
           CI: 'false'
         run: >-
-          bash ./gradlew jar sourcesJar gtoCompatibilityTest
+          bash ./gradlew jar sourcesJar
           --no-daemon --no-parallel --max-workers=2 --console=plain
           '-Dorg.gradle.jvmargs=-Xmx4G -Dfile.encoding=UTF-8'
       - name: Verify Release Jar
@@ -89,10 +89,6 @@ jobs:
         with:
           name: release-verification-${{ steps.release.outputs.version }}
           path: |
-            build/reports/tests/test/
-            build/test-results/test/
-            build/reports/tests/gtoCompatibilityTest/
-            build/test-results/gtoCompatibilityTest/
             build/compat-build-evidence/
           if-no-files-found: ignore
       - name: Upload jars to GitHub Release

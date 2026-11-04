@@ -67,8 +67,8 @@ $env:NEOECOAE_JAVA17_HOME = 'C:\path\to\jdk-17'
 # 首次检出：下载并校验固定依赖，生成本地依赖锁
 python tools/compat/bootstrap.py --gto
 
-# 打包安装包、源码包，并运行 GTO 专题回归
-.\build-local.ps1 jar sourcesJar gtoCompatibilityTest --console=plain
+# 打包安装包与源码包
+.\build-local.ps1 jar sourcesJar --console=plain
 
 # 检查发布包内容
 python tools/compat/check_artifacts.py --release-only
@@ -95,8 +95,6 @@ src/main/java/cn/dancingsnow/neoecoae/
   gui/                      主机页面与搭建窗口
   platform/                 Forge 1.20.1 平台适配
 src/main/resources/         Mod 元信息、资源与配方
-src/test/java/              业务与平台测试
-src/gtoTest/java/           GTO 专题回归测试
 guidebook/                  GuideME 指南与结构场景
 docs/compat/                GTO 适配记录与依赖锁
 docs/releases/              中英双语发布说明
@@ -107,9 +105,7 @@ tools/compat/               固定依赖恢复与产物检查工具
 
 ## 验证状态与反馈
 
-旧版 `20.5.4-gto.1` 的测试记录见其 [发布说明](docs/releases/20.5.4-gto.1.md)。当前源码使用 `gtoCompatibilityTest craftingRegressionTest jar` 和产物检查脚本验证；客户端、专服启动与真实交互需要单独验收。
-
-部分旧测试依赖 GTO 已删除的原版 AE2 类，因此独立的 GTO 专题与合成回归结果不代表完整 `test` 或 `build` 已通过。
+旧版 `20.5.4-gto.1` 的测试记录见其 [发布说明](docs/releases/20.5.4-gto.1.md)。当前工程已移除自动化测试源码与自定义 Gradle 测试任务，构建检查使用 `jar sourcesJar` 和产物检查脚本；客户端、专服启动与真实交互需要单独验收。
 
 反馈问题时，请附上 ECO 版本、GTO 整合包版本、实际安装的 GTOCore／GTM／AE2 版本、复现步骤，以及 `logs/latest.log` 或对应崩溃报告。
 
