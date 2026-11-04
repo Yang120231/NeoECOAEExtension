@@ -40,7 +40,7 @@ class ECOInfiniteStorageDurabilityTest {
         @Override
         public AEKey decode(CompoundTag tag) {
             return BuiltInRegistries.ITEM.getOptional(new ResourceLocation(tag.getString("item")))
-                    .map(AEItemKey::of).orElse(null);
+                    .map(cn.dancingsnow.neoecoae.util.GtoKeyTestFactory::item).orElse(null);
         }
     };
 
@@ -83,7 +83,7 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void transfersStayInMemoryUntilTheVanillaSave(@TempDir Path directory) throws Exception {
-        var key = AEItemKey.of(Items.STONE);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var snapshot = directory.resolve("domain.dat");
         var live = fresh();
         var engine = new SavedDataInfiniteStorageEngine(live);
@@ -104,8 +104,8 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void quantityChangesDoNotAdvanceRevisionButNewKeysDo() {
-        var stone = AEItemKey.of(Items.STONE);
-        var dirt = AEItemKey.of(Items.DIRT);
+        var stone = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
+        var dirt = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.DIRT);
         var live = fresh();
         var engine = new SavedDataInfiniteStorageEngine(live);
 
@@ -127,7 +127,7 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void longOverflowSurvivesTheSnapshot(@TempDir Path directory) throws Exception {
-        var key = AEItemKey.of(Items.STONE);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var snapshot = directory.resolve("domain.dat");
         var live = fresh();
         var engine = new SavedDataInfiniteStorageEngine(live);
@@ -140,8 +140,8 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void legacyJournalIsFoldedIntoTheNextSnapshotOnce(@TempDir Path directory) throws Exception {
-        var stone = AEItemKey.of(Items.STONE);
-        var dirt = AEItemKey.of(Items.DIRT);
+        var stone = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
+        var dirt = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.DIRT);
         var snapshot = directory.resolve("domain.dat");
         var journal = directory.resolve("domain.dat.journal");
         appendLegacyRecord(journal, 1, stone, 100, true);
@@ -166,7 +166,7 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void interruptedLegacyJournalTailKeepsCompleteRecords(@TempDir Path directory) throws Exception {
-        var key = AEItemKey.of(Items.STONE);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var snapshot = directory.resolve("domain.dat");
         var journal = directory.resolve("domain.dat.journal");
         appendLegacyRecord(journal, 1, key, 10, true);
@@ -187,7 +187,7 @@ class ECOInfiniteStorageDurabilityTest {
         // Vanilla falls back to the constructor when it cannot read an existing file.
         var data = ECOInfiniteStorageData.factory(snapshot, ECOInfiniteStorageData::createNew).constructor().get();
         assertEquals(ECOInfiniteStorageData.DomainStatus.UNAVAILABLE, data.status());
-        assertEquals(0, new SavedDataInfiniteStorageEngine(data).insert(AEItemKey.of(Items.STONE), 1, Actionable.MODULATE));
+        assertEquals(0, new SavedDataInfiniteStorageEngine(data).insert(cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE), 1, Actionable.MODULATE));
         data.setDirty();
         data.save(snapshot.toFile());
         assertArrayEquals(damaged, Files.readAllBytes(snapshot));
@@ -195,7 +195,7 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void failedWriteIsReportedAndRetriedOnTheNextSave(@TempDir Path directory) throws Exception {
-        var key = AEItemKey.of(Items.STONE);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var live = fresh();
         var engine = new SavedDataInfiniteStorageEngine(live);
         assertEquals(100, engine.insert(key, 100, Actionable.MODULATE));
@@ -215,8 +215,8 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void pendingRestoreHidesOnlyItsKey() {
-        var stone = AEItemKey.of(Items.STONE);
-        var dirt = AEItemKey.of(Items.DIRT);
+        var stone = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
+        var dirt = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.DIRT);
         var live = fresh();
         var engine = new SavedDataInfiniteStorageEngine(live);
         engine.insert(stone, 10, Actionable.MODULATE);
@@ -235,7 +235,7 @@ class ECOInfiniteStorageDurabilityTest {
 
     @Test
     void hugeRestoreFinishesInLongSizedSegments() {
-        var key = AEItemKey.of(Items.STONE);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var data = ECOInfiniteStorageData.createNew();
         data.amounts.set(key, HugeAmount.of(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.valueOf(5L))));
         UUID transaction = UUID.randomUUID();

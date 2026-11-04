@@ -171,7 +171,10 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     public int getUnusedItemCount() {
         int amountPerByte = Math.max(1, keyType.getAmountPerByte());
         if (getStoredItemCount() == Long.MAX_VALUE) {
-            int remainder = getStoredItemCountExact().mod(BigInteger.valueOf(amountPerByte)).intValue();
+            var total = storageTotalAmount();
+            var wide = total.toU126();
+            int remainder = wide != null ? (int) wide.remainder(amountPerByte)
+                : total.toBigInteger().mod(BigInteger.valueOf(amountPerByte)).intValue();
             return remainder == 0 ? 0 : amountPerByte - remainder;
         }
         final int div = (int) (this.getStoredItemCount() % amountPerByte);
@@ -188,7 +191,16 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     }
 
     public long getUsedBytes() {
-        if (getStoredItemCount() == Long.MAX_VALUE) return exactUsedBytes(getStoredItemTypes(), getStoredItemCountExact()).min(MAX_LONG).longValue();
+        if (getStoredItemCount() == Long.MAX_VALUE) {
+            var total = storageTotalAmount();
+            var wide = total.toU126();
+            if (wide == null) return Long.MAX_VALUE;
+            long perByte = Math.max(1L, keyType.getAmountPerByte());
+            var quotient = wide.divide(perByte);
+            if (!quotient.fitsLong()) return Long.MAX_VALUE;
+            long bytes = NEMath.saturatingAdd(quotient.longValue(), wide.remainder(perByte) == 0 ? 0 : 1);
+            return NEMath.saturatingAdd(NEMath.saturatingMultiply(getStoredItemTypes(), getBytesPerType()), bytes);
+        }
         long storedAmount = Math.max(0L, getStoredItemCount());
         long amountPerByte = Math.max(1L, keyType.getAmountPerByte());
         long bytesForItems = ceilDivide(storedAmount, amountPerByte);
@@ -198,6 +210,11 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     public long getTotalBytes() {
         return cellType.getBytes();
+    }
+
+    private HugeAmount storageTotalAmount() {
+        return storageAccess.session() == null && ECOCellReference.id(cellStack) != null
+            ? HugeAmount.of(getStoredItemCountExact()) : storageData().amounts().totalAmount();
     }
 
     public long getTotalItemTypes() {
@@ -427,7 +444,6 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     }
 
     private long innerInsert(AEKey what, long amount, Actionable mode) {
-        if (getStoredItemCount() == Long.MAX_VALUE) return insertExact(what, BigInteger.valueOf(amount), mode).longValueExact();
         var currentAmount = this.getCellItems().getLong(what);
         long remainingItemCount = this.getRemainingItemCount();
 
@@ -447,7 +463,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
             }
         }
 
-        remainingItemCount = Math.max(0, Math.min(Long.MAX_VALUE - currentAmount, remainingItemCount));
+        remainingItemCount = Math.max(0, remainingItemCount);
 
         if (amount > remainingItemCount) {
             amount = remainingItemCount;
@@ -457,8 +473,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         }
 
         if (mode == Actionable.MODULATE) {
-            long newAmount = currentAmount + amount;
-            storageData().amounts().setLong(what, newAmount);
+            storageData().amounts().add(what, amount);
             this.saveChanges();
         }
 
@@ -467,31 +482,12 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     @Override
     public long extract(AEKey what, long amount, Actionable mode, IActionSource source) {
-        if (!storageWritable() || amount <= 0L || cn.dancingsnow.neoecoae.impl.storage.infinite.ECOInfiniteStorageMember.isSealed(cellStack)) return 0L;
-        if (storageData().amounts().isBig(what)) {
-            if (mode == Actionable.MODULATE) { storageData().amounts().subtract(what, amount); saveChanges(); }
-            return amount;
-        }
-        var currentAmount = getCellItems().getLong(what);
-        if (currentAmount > 0) {
-            if (amount >= currentAmount) {
-                if (mode == Actionable.MODULATE) {
-                    storageData().amounts().setLong(what, 0);
-                    this.saveChanges();
-                }
-
-                return currentAmount;
-            } else {
-                if (mode == Actionable.MODULATE) {
-                    storageData().amounts().setLong(what, currentAmount - amount);
-                    this.saveChanges();
-                }
-
-                return amount;
-            }
-        }
-
-        return 0;
+        if (what == null || !storageWritable() || amount <= 0L || cn.dancingsnow.neoecoae.impl.storage.infinite.ECOInfiniteStorageMember.isSealed(cellStack)) return 0L;
+        var quantities = storageData().amounts();
+        if (mode == Actionable.SIMULATE) return Math.min(amount, quantities.visible(what));
+        long extracted = quantities.extract(what, amount);
+        if (extracted > 0) saveChanges();
+        return extracted;
     }
 
     @Override

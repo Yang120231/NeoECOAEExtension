@@ -50,7 +50,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
             Set<UUID> aliases = compatibility.get(key);
             if (aliases != null && aliases.stream().anyMatch(data::hasMigrationReceipt)) return;
             if (amount.isBig()) change(key, amount.toBigInteger());
-            else insertAmount(key, data.amounts.visible(key), amount.toLongSaturated());
+            else insertAmount(key, amount.toLongSaturated());
         });
         data.addMigrationReceipt(transaction);
         return true;
@@ -68,7 +68,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
     @Override
     public long insert(AEKey key, long amount, Actionable mode) {
         if (key == null || amount <= 0 || !data.canWrite(key)) return 0;
-        if (mode == Actionable.MODULATE) insertAmount(key, data.amounts.visible(key), amount);
+        if (mode == Actionable.MODULATE) insertAmount(key, amount);
         return amount;
     }
 
@@ -88,7 +88,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
         if (transaction == null) return insert(key, amount, Actionable.MODULATE);
         if (data.hasMigrationReceipt(transaction)) return amount;
         if (!data.canWrite(key)) return 0;
-        insertAmount(key, data.amounts.visible(key), amount);
+        insertAmount(key, amount);
         // Quantity and receipt share an atomic snapshot; a sealed source can safely retry after a restart.
         data.addMigrationReceipt(transaction);
         return amount;
@@ -100,7 +100,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
         if (transactions == null || transactions.isEmpty()) return insert(key, amount, Actionable.MODULATE);
         if (transactions.stream().anyMatch(data::hasMigrationReceipt)) return amount;
         if (!data.canWrite(key)) return 0;
-        insertAmount(key, data.amounts.visible(key), amount);
+        insertAmount(key, amount);
         data.addMigrationReceipts(transactions);
         return amount;
     }
@@ -108,15 +108,15 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
     @Override
     public long extract(AEKey key, long amount, Actionable mode) {
         if (key == null || amount <= 0 || !data.canRead(key)) return 0;
-        long current = data.amounts.visible(key);
-        long extracted = Math.min(amount, current);
-        if (mode == Actionable.SIMULATE || extracted == 0) return extracted;
+        if (mode == Actionable.SIMULATE) return Math.min(amount, data.amounts.visible(key));
         // canRead(key) already checked the restore lock; only the global write state remains.
         if (!data.canWrite()) return 0;
+        int beforeSize = data.amounts.size();
+        long extracted = data.amounts.extract(key, amount);
+        if (extracted == 0) return 0;
         MutableTypeStats stats = statsFor(key.getType());
-        long remaining = data.amounts.subtract(key, current, extracted);
         stats.total.subtract(extracted);
-        if (remaining == 0) {
+        if (data.amounts.size() < beforeSize) {
             if (--stats.types == 0) removeStats(key.getType());
             data.setDirty();
         } else data.setDirty(true);
@@ -150,11 +150,12 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
         if (lastType == type) lastStats = null;
     }
 
-    private void insertAmount(AEKey key, long current, long amount) {
+    private void insertAmount(AEKey key, long amount) {
         MutableTypeStats stats = statsFor(key.getType());
-        data.amounts.add(key, current, amount);
+        int beforeSize = data.amounts.size();
+        data.amounts.add(key, amount);
         stats.total.add(amount);
-        if (current == 0) {
+        if (data.amounts.size() > beforeSize) {
             stats.types++;
             data.setDirty();
         } else data.setDirty(true);
@@ -260,7 +261,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
 
     @Override
     public boolean hasHugeStacks() {
-        return data.amounts.hasOverflow();
+        return data.amounts.hasWideAmounts();
     }
 
     @Override

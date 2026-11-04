@@ -31,7 +31,7 @@ class ECOInfiniteStorageHotPathTest {
 
     @Test void primitiveAndOverflowTransfersMatchExactReferenceAndImmutableStatistics() {
         var engine = new SavedDataInfiniteStorageEngine(ECOInfiniteStorageData.createNew());
-        AEKey[] keys = {AEItemKey.of(Items.STONE), AEItemKey.of(Items.DIRT), AEItemKey.of(Items.COBBLESTONE)};
+        AEKey[] keys = {cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE), cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.DIRT), cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.COBBLESTONE)};
         BigInteger[] amounts = {BigInteger.ZERO, BigInteger.ZERO, BigInteger.ZERO};
         Random random = new Random(741852);
         for (int i = 0; i < 2_000; i++) {
@@ -87,7 +87,7 @@ class ECOInfiniteStorageHotPathTest {
     @Test void simulationsDoNotChangeInventoryStatisticsDirtyFlagOrRevision() {
         var data = ECOInfiniteStorageData.createNew();
         var engine = new SavedDataInfiniteStorageEngine(data);
-        AEKey key = AEItemKey.of(Items.STONE);
+        AEKey key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         engine.insert(key, 7, Actionable.MODULATE);
         var stats = engine.getTypeStats();
         long revision = engine.revision();
@@ -105,7 +105,7 @@ class ECOInfiniteStorageHotPathTest {
     @Test void exactListingAndCombinedCollectionKeepAllKeysAndSaturateVisibleTotals() {
         var engine = new SavedDataInfiniteStorageEngine(ECOInfiniteStorageData.createNew());
         var storage = new ECOInfiniteStorage(engine, Component.empty(), () -> true);
-        AEKey stone = AEItemKey.of(Items.STONE), dirt = AEItemKey.of(Items.DIRT);
+        AEKey stone = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE), dirt = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.DIRT);
         engine.insert(stone, MAX.add(BigInteger.TEN), Actionable.MODULATE);
         engine.insert(dirt, 7, Actionable.MODULATE);
         Map<AEKey, ExactAmount> exact = new HashMap<>();
@@ -127,7 +127,7 @@ class ECOInfiniteStorageHotPathTest {
 
     @Test void restoreAvailabilityUpdatesImmediatelyAndStatisticsFollowRestoration() {
         var engine = new SavedDataInfiniteStorageEngine(ECOInfiniteStorageData.createNew());
-        AEKey stone = AEItemKey.of(Items.STONE), dirt = AEItemKey.of(Items.DIRT);
+        AEKey stone = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE), dirt = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.DIRT);
         engine.insert(stone, 10, Actionable.MODULATE);
         engine.insert(dirt, 3, Actionable.MODULATE);
         UUID transaction = UUID.randomUUID(), target = UUID.randomUUID();
@@ -148,7 +148,7 @@ class ECOInfiniteStorageHotPathTest {
     @Test void recoveryReadOnlyKeepsReadsButRejectsRealWrites() {
         var data = ECOInfiniteStorageData.createNew();
         var engine = new SavedDataInfiniteStorageEngine(data);
-        AEKey key = AEItemKey.of(Items.STONE);
+        AEKey key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         engine.insert(key, 10, Actionable.MODULATE);
         data.markIncompleteLegacy(java.util.List.of("fixture"));
         assertFalse(engine.canUseMountedStorage());
@@ -162,7 +162,7 @@ class ECOInfiniteStorageHotPathTest {
     }
 
     @Test void combinedLongSourcesAggregateExactlyWithOrdinaryStorageInEitherOrder() {
-        AEKey key = AEItemKey.of(Items.STONE);
+        AEKey key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var engine = new SavedDataInfiniteStorageEngine(ECOInfiniteStorageData.createNew());
         engine.insert(key, Long.MAX_VALUE, Actionable.MODULATE);
         var storage = new ECOInfiniteStorage(engine, Component.empty(), () -> true);
@@ -181,7 +181,7 @@ class ECOInfiniteStorageHotPathTest {
     }
 
     @Test void stableAdmissionIsCachedButExternalInventoryStateIsRechecked() {
-        AEItemKey key = AEItemKey.of(Items.STONE);
+        AEItemKey key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(Items.STONE);
         var source = IActionSource.empty();
         var engine = new SavedDataInfiniteStorageEngine(ECOInfiniteStorageData.createNew());
         var storage = new ECOInfiniteStorage(engine, Component.empty(), () -> true);
