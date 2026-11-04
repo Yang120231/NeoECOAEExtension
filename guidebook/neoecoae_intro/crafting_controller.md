@@ -53,7 +53,6 @@ Click the **left-hand cooling switch** so that both switches have blue upper ind
 
 The summary reads **water / OC limit 2**, meaning that water supports at most two overclock levels. The coolant gauge shows converted coolant buffer, not the remaining fluid in the input hatch. Open the input hatch to check its fluid supply.
 
-Mekanism is installed in this example, so cooling with water produces steam in the output gauge. Check JEI for the products of other cooling recipes.
 
 ## Step 4: Read the effective speed
 

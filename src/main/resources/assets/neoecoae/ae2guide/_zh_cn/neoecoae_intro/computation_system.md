@@ -47,22 +47,6 @@ ECO 计算系统在 ME 网络中承担合成 CPU 的工作，为任务提供线�
 ## 沿传输总线搭出计算机组
 
 <ItemGrid>
-  <ItemIcon id="neoecoae:computation_system_l4" />
-  <ItemIcon id="neoecoae:computation_system_l6" />
-  <ItemIcon id="neoecoae:computation_system_l9" />
-  <ItemIcon id="neoecoae:computation_drive" />
-  <ItemIcon id="neoecoae:computation_transmitter" />
-  <ItemIcon id="neoecoae:computation_threading_core_l4" />
-  <ItemIcon id="neoecoae:computation_threading_core_l6" />
-  <ItemIcon id="neoecoae:computation_threading_core_l9" />
-  <ItemIcon id="neoecoae:computation_parallel_core_l4" />
-  <ItemIcon id="neoecoae:computation_parallel_core_l6" />
-  <ItemIcon id="neoecoae:computation_parallel_core_l9" />
-  <ItemIcon id="neoecoae:computation_cooling_controller_l4" />
-  <ItemIcon id="neoecoae:computation_cooling_controller_l6" />
-  <ItemIcon id="neoecoae:computation_cooling_controller_l9" />
-  <ItemIcon id="neoecoae:computation_interface" />
-  <ItemIcon id="neoecoae:computation_casing" />
 </ItemGrid>
 
 主机决定等级并管理合成操作。<ItemLink id="neoecoae:computation_transmitter" /> 连接驱动器和处理核心，<ItemLink id="neoecoae:computation_drive" /> 则装入计算单元，为任务提供存储。
@@ -94,9 +78,6 @@ ECO 计算系统在 ME 网络中承担合成 CPU 的工作，为任务提供线�
 将闪存晶阵装进驱动器：
 
 <ItemGrid>
-  <ItemIcon id="neoecoae:eco_computation_cell_l4" />
-  <ItemIcon id="neoecoae:eco_computation_cell_l6" />
-  <ItemIcon id="neoecoae:eco_computation_cell_l9" />
 </ItemGrid>
 
 - <ItemLink id="neoecoae:eco_computation_cell_l4" /> - CE4 闪存晶阵，64MB

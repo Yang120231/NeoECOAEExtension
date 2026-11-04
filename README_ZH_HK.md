@@ -4,43 +4,43 @@
 
 Neo ECO AE Extension 是 Applied Energistics 2 的擴充模組，為 ME 網絡提供可擴展的合成、儲存和運算系統，以及用於加工進階組件的整合工作站。
 
-本分支 `1.20.1-GTO` 以 `1.20.1` 分支為基礎，專門適配 **GregTech Odyssey（GTO）** 的 AE2 與 GregTech 介面。目前版本為 **`20.5.4-gto.1`**，面向 **GTO `0.6.0-dev25`（Dev25）**，以預發佈版提供。一般 AE2 模組整合包請使用本倉庫的 `1.20.1` 分支及其對應版本。
+本分支 `1.20.1-GTO` 以 `1.20.1` 為基礎，僅面向 **GregTech Odyssey（GTO）**。目前原始碼版本為 **`20.5.5-GTO`**，以 **GTO `0.6.26`** 為參考實例。一般 AE2 整合包請使用 `1.20.1` 分支。
 
 ## 主要功能
 
 | 系統 | 用途 |
 | --- | --- |
 | ECO 合成系統 | 透過樣板匯流排、工作核心與並行核心執行自動合成，支援批次處理、超頻與主動冷卻。 |
-| ECO 儲存系統 | 透過儲存主機、驅動器和儲存矩陣擴展 ME 網絡容量，支援物品、流體及可選資源類型。 |
+| ECO 儲存系統 | 透過儲存主機、驅動器和儲存矩陣擴展 ME 網絡容量，支援物品與流體。 |
 | ECO 運算系統 | 為自動合成提供 CPU、任務執行緒、協同處理器和任務儲存空間，可隨結構擴展。 |
 | 整合工作站 | 加工盈能材料、處理器、儲存組件和三套系統所需的進階部件。 |
-| 大型整合工作站 | 提供批次加工、樣板自動化、超頻與冷卻，並接入受支援附屬模組的加工配方。 |
+| 大型整合工作站 | 提供批次加工、樣板自動化、超頻與冷卻，使用本工程與 GTO 加工配方。 |
 
 合成、儲存和運算主機均提供自動搭建子視窗，可設定長度與鏡像。結構終端物品保留，開啟後提示使用對應主機 UI 內的搭建按鈕。
 
-大型整合工作站保留**常規、AdvancedAE、ExtendedAE、AE2LT** 四類；AE2LT 的過載加工、閃電組裝與閃電模擬共用同一類工作站。對應升級模組按附屬 Mod 的實際載入狀態註冊。ExtendedAE Plus 的其他聯動保留，不另設 Plus 大型整合工作站類別。
+大型整合工作站使用本工程與 GTO 配方，無需附屬升級模組。
 
 ## 適配環境
 
-以下為 `20.5.2-gto.1` 發佈說明記錄的目標實例組合，並非一般 AE2 的通用相容範圍：
+下表記錄目前 GTO 參考實例的版本，用於實際 JAR 介面核對，並不代表已完成遊戲內驗收：
 
 | 項目 | 目標版本 |
 | --- | --- |
 | Minecraft | `1.20.1` |
-| GregTech Odyssey | `0.6.0-dev25`（Dev25） |
+| GregTech Odyssey | `0.6.26` |
 | Forge | 實例使用 `47.4.20`；原始碼建置使用 `47.4.28` |
 | Java | 遊戲執行使用 **Java 21** |
-| GTOCore | `26.10.18` |
-| GTO GTM | `26.10.80` |
-| GTO AE2 | `15.2610.40` |
+| GTOCore | `26.10.26` |
+| GTO GTM | `26.11.03` |
+| GTO AE2 | `15.2610.47` |
 
-GuideME 與 LDLib 為必要依賴，具體宣告見 [Mod 中繼資料](src/main/resources/META-INF/mods.toml)。安裝時沿用目標 GTO 整合包的依賴組合；AdvancedAE、ExtendedAE、ExtendedAE Plus 和 AE2LT 為可選聯動，使用相應功能時還需安裝各自前置。
+GuideME 與 LDLib 為必要基礎依賴，具體宣告見 [Mod 中繼資料](src/main/resources/META-INF/mods.toml)。本專版僅保留 GTO 聯動。
 
-GTO 專版適配了原生合成 CPU、樣板派發、合成確認、精確數量同步和巢狀網絡儲存介面，並支援 GTO 樣板修改器 Pro 修改大型整合工作站通訊介面內的樣板。工作站配方支援重新載入，並提供 EMI 分類。
+GTO 專版適配原生合成 CPU、樣板快取批次投料、容量檢查、程式電路、加工狀態、CPU 列表同步、精確數量及巢狀網絡儲存。GTO 樣板修改器 Pro 可修改通訊介面內的樣板，工作站配方支援重新載入。
 
 ## 安裝與使用
 
-1. 在本倉庫 GitHub Releases 中選擇 **`20.5.4-gto.1`**，下載 `neoecoae-20.5.4-gto.1.jar`。
+1. 從 GitHub Releases 下載對應版本，或按下文從目前原始碼建置 `neoecoae-20.5.5-GTO.jar`。
 2. 將該 JAR 放入目標 GTO 實例的 `mods` 目錄，並移除舊版 NeoECOAE JAR。`-sources.jar` 是原始碼封存檔，不用於安裝。
 3. 連線遊玩時，用戶端與伺服器均安裝相同版本。ECO 網絡握手要求兩端版本完全一致。
 4. 使用 Java 21 啟動目標實例，在配方檢視器中查詢材料與機器配方。
@@ -50,7 +50,6 @@ GTO 專版適配了原生合成 CPU、樣板派發、合成確認、精確數量
 - [入門與系統概覽](guidebook/_zh_cn/neoecoae_intro/index.md)
 - [整合工作站](guidebook/_zh_cn/neoecoae_intro/integrated_working_station.md)與[大型整合工作站](guidebook/_zh_cn/neoecoae_intro/large_integrated_working_station.md)
 - [合成系統](guidebook/_zh_cn/neoecoae_intro/crafting_system.md)與[合成控制器圖文教學](guidebook/_zh_cn/neoecoae_intro/crafting_controller.md)
-- [儲存系統](guidebook/_zh_cn/neoecoae_intro/storage_system.md)與[相容儲存矩陣](guidebook/_zh_cn/neoecoae_intro/compat_storage_matrices.md)
 - [運算系統](guidebook/_zh_cn/neoecoae_intro/computation_system.md)
 
 指南中的互動結構場景和物品、配方組件需在遊戲內檢視。
@@ -79,10 +78,10 @@ JDK 21 需能被 Gradle 工具鏈偵測；未自動識別時，可透過 Gradle 
 
 建置產物位於 `build/libs/`：
 
-- `neoecoae-20.5.4-gto.1.jar`：安裝包。
-- `neoecoae-20.5.4-gto.1-sources.jar`：原始碼封存檔。
+- `neoecoae-20.5.5-GTO.jar`：安裝包。
+- `neoecoae-20.5.5-GTO-sources.jar`：原始碼封存檔。
 
-編譯依賴目前固定為 GTO AE2 **`15.2610.31`**，見 [GTO 依賴鎖](porting/gto-dependencies.json)；Dev25 實例使用的 **`15.2610.40`** 屬於執行時適配目標，兩者分別記錄。`bootstrap.py --gto` 會還原建置所需依賴，不會自動安裝完整 GTO 整合包。
+編譯與實際 JAR 核對使用 GTO AE2 **`15.2610.47`**，見 [GTO 依賴鎖](porting/gto-dependencies.json)。`bootstrap.py --gto` 會還原建置依賴，不會自動安裝完整 GTO 整合包。
 
 ## 目錄結構
 
@@ -108,9 +107,9 @@ tools/compat/               固定依賴還原與產物檢查工具
 
 ## 驗證狀態與問題回報
 
-本次本機 `jar sourcesJar gtoCompatibilityTest` 與 JAR 檢查通過：**86 項專題測試，83 項通過、3 項跳過、0 失敗**；另有 **34 項循環規劃專項迴歸全部通過**。跳過項需要提供實際安裝的 AE2/GTOCore JAR；本次未重新執行完整客戶端實例和獨立專用伺服器。詳見 [20.5.4-gto.1 發佈說明](docs/releases/20.5.4-gto.1.md)。
+舊版 `20.5.4-gto.1` 的測試記錄見其 [發佈說明](docs/releases/20.5.4-gto.1.md)。目前原始碼使用 `gtoCompatibilityTest craftingRegressionTest jar` 及產物檢查腳本驗證；客戶端、專服啟動與實際互動需要單獨驗收。
 
-完整舊測試套件、全部附屬組合和獨立專用伺服器尚未完成驗收。部分舊測試仍依賴 GTO 已刪除的原版 AE2 類別，因此上面的建置指令使用獨立的 `gtoCompatibilityTest`，其結果不代表完整 `test` 或 `build` 已通過。
+部分舊測試依賴 GTO 已刪除的原版 AE2 類別，因此獨立的 GTO 專題與合成回歸結果不代表完整 `test` 或 `build` 已通過。
 
 回報問題時，請附上 ECO 版本、GTO 整合包版本、實際安裝的 GTOCore／GTM／AE2 版本、重現步驟，以及 `logs/latest.log` 或對應崩潰報告。
 

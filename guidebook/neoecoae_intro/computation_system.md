@@ -169,9 +169,6 @@ The structure is extensible - add more threading cores, parallel cores, drives, 
 ## Computation Cells
 
 <ItemGrid>
-  <ItemIcon id="neoecoae:eco_computation_cell_l4" />
-  <ItemIcon id="neoecoae:eco_computation_cell_l6" />
-  <ItemIcon id="neoecoae:eco_computation_cell_l9" />
 </ItemGrid>
 
 The following computation cells provide storage for crafting jobs:

@@ -35,19 +35,6 @@ ECO 合成系统负责存放和执行样板。把样板装进总线，工作核�
 ## 围绕工作核心搭建
 
 <ItemGrid>
-  <ItemIcon id="neoecoae:crafting_system_l4" />
-  <ItemIcon id="neoecoae:crafting_system_l6" />
-  <ItemIcon id="neoecoae:crafting_system_l9" />
-  <ItemIcon id="neoecoae:crafting_worker" />
-  <ItemIcon id="neoecoae:crafting_pattern_bus" />
-  <ItemIcon id="neoecoae:crafting_parallel_core_l4" />
-  <ItemIcon id="neoecoae:crafting_parallel_core_l6" />
-  <ItemIcon id="neoecoae:crafting_parallel_core_l9" />
-  <ItemIcon id="neoecoae:crafting_interface" />
-  <ItemIcon id="neoecoae:input_hatch" />
-  <ItemIcon id="neoecoae:output_hatch" />
-  <ItemIcon id="neoecoae:crafting_vent" />
-  <ItemIcon id="neoecoae:crafting_casing" />
 </ItemGrid>
 
 主机决定等级并管理样板处理。每个 <ItemLink id="neoecoae:crafting_worker" /> 提供一条独立的物理执行通道；<ItemLink id="neoecoae:crafting_pattern_bus" /> 存放样板，需要容纳更多样板时可以增加总线。
@@ -89,7 +76,6 @@ ECO 合成系统负责存放和执行样板。把样板装进总线，工作核�
 
 ## 为超频准备冷却液
 
-在界面启用主动冷却，并向输入仓送入冷却剂，可以进一步增强性能并消除超频带来的额外能耗。冷却剂配方可以在 JEI 中查看；使用过的冷却剂从输出仓排出。输出仓满时无法继续转换冷却剂，也就无法补充冷却值。
 
 系统先把冷却剂转换成冷却值缓冲。普通有限批量在接收时按合成次数消耗冷却值，x2/x8 网络交换也遵循这条规则；八主机虚拟合成的消耗方式见后文。
 

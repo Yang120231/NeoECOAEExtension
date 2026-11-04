@@ -19,46 +19,6 @@ Each communication block starts with **4 rows / 36 pattern slots**. Insert up to
 
 The viewport shows up to 7 rows and scrolls smoothly with the mouse wheel and draggable scrollbar, clipping partial rows at both edges. Empty the last row before removing a capacity card. Existing patterns outside the currently unlocked capacity remain retrievable when loading older saves; reinstall capacity cards to insert patterns into those rows again.
 
-## Upgrade cards and recipe compatibility
-
-Supported compatible recipes load by default. The **Upgrade module** slot accepts one card for AdvancedAE, ExtendedAE, or AE2LT. The blank card keeps native recipes available. These are the four workstation families retained in this Forge port; ExtendedAE Plus retains its other integrations without adding a workstation recipe family.
-
-
-Changing cards refreshes the communication interface's available patterns. Accepted tasks retain their materials and progress and can finish after a card is removed.
-
-The server option `largeWorkstationIgnoreUpgradeCards` defaults to `false`. Set it to `true` and reopen the world or restart the server to unlock all supported compatible recipes without a card. This replaces the old recipe compatibility switch.
-
-<GameScene interactive={true} fullWidth={true} zoom="3">
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="0" y="0" z="0"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="1" y="0" z="0"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="2" y="0" z="0"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="0" y="1" z="0"></Block>
-  <Block id="neoecoae:integrated_working_station" p:formed="true" x="1" y="1" z="0"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="2" y="1" z="0"></Block>
-  <Block id="neoecoae:large_integrated_working_station_input_hatch" p:formed="true" x="0" y="0" z="1"></Block>
-  <Block id="neoecoae:large_integrated_working_station_interface" p:formed="true" x="1" y="0" z="1"></Block>
-  <Block id="neoecoae:large_integrated_working_station_output_hatch" p:formed="true" x="2" y="0" z="1"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="0" y="1" z="1"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="1" y="1" z="1"></Block>
-  <Block id="neoecoae:large_integrated_working_station_casing" p:formed="true" p:invisible="true" x="2" y="1" z="1"></Block>
-</GameScene>
-
-## Processing time and network FE
-
-Base recipes longer than 200 ticks (10 seconds) are capped at 200 ticks; shorter recipes and total costs stay unchanged. Parallelism increases simultaneous operations. Native recipes default to 100 ticks and support the processingTicks JSON field. Existing AdvancedAE and ExtendedAE routes keep their 100-tick reference. Crystal Science uses a 200 AE/t source reference before the cap. Lightning overload processing defaults to 400,000 FE/t with a four-tick minimum; assembly and simulation use a 200 FE/t source reference, also capped at 200 ticks.
-
-Multiplied patterns scale time and costs proportionally. Energy or cooling shortages preserve progress. Completed tasks waiting for output space do not charge more processing energy. Previously accepted tasks retain their original contract.
-
-**Applied Flux enables FE extraction from ME storage; missing FE can be paid with equivalent AE, including when Applied Flux is absent.** Only the deficit is substituted, using AE2's current conversion ratio and power multiplier. Lightning and other additional resources remain separate requirements. AE network operation and preheating still require AE.
-
-AdvancedAE reaction routes may use their supported AE or FE payment. A new task prefers AE; when AE cannot pay the first processing tick and network FE can, it selects FE. The FE path also allows AE substitution later; processing pauses when the required energy cannot be paid.
-
-JEI / EMI show energy, processing time and any additional resources. FE recipes prefer FE values when Applied Flux is installed and equivalent AE otherwise. AE units are purple and FE units dark green. Tooltips use separate sections with each mod's theme color, and a shared FE supply notice at the bottom. Different batch sizes remain explicit; ordinary tooltips omit long recipe IDs. Upgrade cards stay on the right and show only their supported routes.
-
-Large-workstation JEI item counts use a 70% font scale and SI abbreviations from 1,000, such as 1K or 8.19K. Item tooltips retain exact comma-grouped quantities. Existing route permissions and minimum batches remain in force.
-
-Machine tooltips show AE/t, FE/t, reserved FE and actual processing ticks. In coolant mode, overclocked tasks consume 100 mB per actual processing tick, so longer recipes need more coolant per batch. This update retains the existing 1.20.1 integration scope.
-
 ## Parallelism and energy
 
 Temperature-band labels 4 / 6 / 9 correspond to coolant recipe tiers 2 / 6 / 9; the first labels differ.
@@ -88,7 +48,7 @@ The server setting `largeWorkstationTemperatureEnabled` defaults to `true`. Set 
 | --- | ---: | ---: |
 | No coolant, or overclock / active cooling disabled | 256 | 1× |
 | Water (tier 2) | 16,384 | 1× |
-| Sodium (tier 6) | 65,536 | 1× |
+| Custom tier-6 coolant | 65,536 | 1× |
 | Cryotheum Solution (tier 9) | 262,144 | 1× |
 
 Coolant mode provides higher parallelism only while **Overclock** and **Active Cooling** are both enabled and the coolant meets the batch requirement. Coolant tier directly determines the limit for new batches; temperature thresholds do not apply. An overclocked batch consumes **100 mB per processing tick that actually advances work**. Idle, unpowered and paused machines consume none. Insufficient coolant, a coolant tier below the accepted batch's requirement or blocked byproducts pause the batch without losing inputs or progress. Higher-tier coolant can keep an existing lower-tier batch running.
@@ -125,8 +85,7 @@ Active cooling works independently of the overclock switch and consumes **100 mB
 
 | Coolant | Temperature removed per second | Byproduct |
 | --- | ---: | --- |
-| Water | 0.1 percentage points | Steam with Mekanism installed; otherwise none |
-| Sodium | 0.3 percentage points | Superheated sodium (Mekanism) |
+| Water | 0.1 percentage points | None |
 | Cryotheum Solution | 0.6 percentage points | None |
 
 Stronger coolant can lower temperature. At 80%, full-load heating adds **0.784 percentage points/s**; Cryotheum Solution removes 0.6, leaving a net gain of **0.184 percentage points/s**. Continuous full load with Cryotheum takes about **4 minutes 10 seconds** to go from 80% to 100%. At half load, heating drops to **0.392 percentage points/s**, producing a net loss of **0.208 percentage points/s** with the same cooling. Falling below the highest-tier requirement switches the existing task to 256-craft portions, while new batches follow the current temperature band.
@@ -141,7 +100,7 @@ At **100%**, the machine locks processing and new batch admission, stops preheat
 
 Recovery requires active cooling to be enabled, **Cryotheum Solution** in the input hatch, continuous coolant delivery and unobstructed byproduct output. A full recovery consumes **30,000 mB (30 B)** over **15 seconds (300 server ticks)** of uninterrupted cooling. Hover over the information button to check recovery status. Forced recovery brings temperature to **0%**; the machine stays locked until it finishes. Existing high-tier tasks initially resume in 256-craft portions and automatically regain their original parallelism once reheated to their original threshold.
 
-Recovery requires **uninterrupted successful Cryotheum Solution consumption**. Disabled cooling, interrupted delivery, blocked output, disassembly or reloading clears progress and returns temperature to 100%, requiring a fresh 15 seconds. Water, sodium, custom high-tier coolants, toggling overclocking and simply waiting cannot clear the latch.
+Recovery requires **uninterrupted successful Cryotheum Solution consumption**. Disabled cooling, interrupted delivery, blocked output, disassembly or reloading clears progress and returns temperature to 100%, requiring a fresh 15 seconds. Water, custom high-tier coolants, toggling overclocking and simply waiting cannot clear the latch.
 
 ## Operating states
 
@@ -153,16 +112,7 @@ Recovery requires **uninterrupted successful Cryotheum Solution consumption**. D
 | Temperature still rises with cooling enabled | Cooling only slows the rise when heating exceeds cooling; hover over cooling information to check its state, amount, recipe and byproduct output capacity |
 | Recovery does not advance or resets | Supply real Cryotheum Solution continuously, allow successful cooling every tick and avoid interruptions or reloading |
 
-## Additional machine recipes
 
-A formed Large Integrated Working Station also processes the following recipe types from installed mods:
+## GTO recipes and energy
 
-- AE2 Lightning Tech Reborn: all Overload Processing Factory, Lightning Assembly Chamber, and Lightning Simulation Chamber recipes.
-- AdvancedAE: Reaction Chamber recipes, including fluid products.
-- ExtendedAE: supported crystal assembler recipes.
-
-Encode a processing pattern with the complete item/fluid inputs and outputs, and place it in the large workstation's communication interface. JEI and EMI list these recipes under **Large Integrated Working Station**. The single-block workstation cannot process these additional recipes. The recipes follow the active datapacks, including additions, replacements, and removals on reload.
-
-AE2LT recipes retain their original lightning tier and quantity. The controller draws the required lightning from the connected ME network; it does not need to be added to the processing pattern. If lightning is missing, the batch pauses until that tier is available. Lightning scales with the number of crafts, without the overclock energy multiplier, and high-voltage lightning does not substitute for extreme-high-voltage lightning. Pending withdrawals survive save/reload, and cancelling an unfinished tracked crafting job returns the resources already withdrawn.
-
-Each route retains its AE or FE payment contract. Network FE requires Applied Flux. Processing time and supply rules are described above; overclock and cooling rules still apply.
+This edition uses the GTO progression. The large workstation needs no addon upgrade card and supports up to 12 item inputs. GTO processing energy follows the recipe duration at 1 EU = 8 AE. Existing tasks retain their materials, progress and payment records.
