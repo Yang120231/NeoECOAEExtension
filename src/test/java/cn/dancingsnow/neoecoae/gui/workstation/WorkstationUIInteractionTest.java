@@ -170,7 +170,8 @@ class WorkstationUIInteractionTest {
 
     @Test
     void largeArtworkKeepsInventoryContentsAndFluidInsideBakedFrames() {
-        try (var ldlib = mockStatic(LDLib.class); var factory = mockStatic(ECOModularUI.class)) {
+        try (var ldlib = mockStatic(LDLib.class); var factory = mockStatic(ECOModularUI.class);
+             var minecraft = cn.dancingsnow.neoecoae.util.UiTestSupport.mockClient()) {
             ldlib.when(LDLib::isRemote).thenReturn(true);
             AtomicReference<UIElement> captured = new AtomicReference<>();
             Player player = mock(Player.class);
@@ -184,8 +185,7 @@ class WorkstationUIInteractionTest {
             when(fluids.getFluidInTank(anyInt())).thenReturn(FluidStack.EMPTY);
             when(fluids.getTankCapacity(anyInt())).thenReturn(1_000);
             LargeWorkstationUI.create(new LargeWorkstationUI.Config(fluids,
-                offset -> new CompoundTag(), () -> null, ignored -> {}, () -> {}, () -> {}, () -> {},
-                new ItemStackHandler(1)), player);
+                offset -> new CompoundTag(), () -> null, ignored -> {}, () -> {}, () -> {}, () -> {}), player);
             UIElement root = captured.get();
             ModularUI ui = cn.dancingsnow.neoecoae.util.UiTestSupport.createUI(UI.of(root));
             for (int width : List.of(640, 800)) {
@@ -193,7 +193,7 @@ class WorkstationUIInteractionTest {
                 assertEquals(253, root.getSizeWidth());
                 assertEquals(214, root.getSizeHeight());
                 List<ItemSlot> allSlots = collect(root, ItemSlot.class);
-                assertEquals(37, allSlots.size());
+                assertEquals(36, allSlots.size());
                 List<ItemSlot> slots = allSlots.stream().filter(slot -> !(slot.getSlot() instanceof ItemHandlerSlot)).toList();
                 assertEquals(36, slots.size());
                 for (ItemSlot slot : slots) {
@@ -246,7 +246,7 @@ class WorkstationUIInteractionTest {
                     hover.target = hit;
                     hover.target.dispatchEvent(hover);
                     assertNotNull(hover.hoverTooltips, id);
-                    assertFalse(hover.hoverTooltips.tooltips().isEmpty(), id);
+                    assertTrue(!hover.hoverTooltips.tooltips().isEmpty() || hover.hoverTooltips.image() != null, id);
                 }
                 for (FluidSlot tank : tanks) {
                     var hit = root.hitTest(tank.getPositionX() + 2, tank.getPositionY() + 2);
@@ -274,12 +274,8 @@ class WorkstationUIInteractionTest {
                         }
                     }
                 }
-                ItemSlot module = allSlots.stream().filter(slot -> slot.getSlot() instanceof ItemHandlerSlot).findFirst().orElseThrow();
-                assertEquals(root.getPositionX() + 227, module.getContentX());
-                assertEquals(root.getPositionY() + 42, module.getContentY());
-                assertEquals(16, module.getContentWidth());
-                assertEquals(16, module.getContentHeight());
-                assertSame(module, root.hitTest(module.getPositionX() + 3, module.getPositionY() + 3));
+                assertTrue(allSlots.stream().noneMatch(slot -> slot.getSlot() instanceof ItemHandlerSlot),
+                    "The GTO workstation has no addon upgrade-card slot");
             }
         }
     }
@@ -404,8 +400,7 @@ class WorkstationUIInteractionTest {
 
     private static LargeWorkstationPanel taskPanel(CompoundTag snapshot) {
         return new LargeWorkstationPanel(new LargeWorkstationUI.Config(new FluidTank(1_000),
-            offset -> snapshot.copy(), () -> null, ignored -> {}, () -> {}, () -> {}, () -> {},
-            new ItemStackHandler(1)), mock(Player.class));
+            offset -> snapshot.copy(), () -> null, ignored -> {}, () -> {}, () -> {}, () -> {}), mock(Player.class));
     }
 
     private static UIElement taskRegion(UIElement panel, String id) {
@@ -443,7 +438,7 @@ class WorkstationUIInteractionTest {
             var cooling = new java.util.concurrent.atomic.AtomicInteger();
             var panel = new LargeWorkstationPanel(new LargeWorkstationUI.Config(new FluidTank(1000),
                 offset -> new CompoundTag(), () -> null, ignored -> {}, overclock::incrementAndGet,
-                cooling::incrementAndGet, preheat::incrementAndGet, new ItemStackHandler(1)), mock(Player.class));
+                cooling::incrementAndGet, preheat::incrementAndGet), mock(Player.class));
             Button control = collect(panel, Button.class).stream()
                 .filter(button -> "large-workstation-overclock".equals(button.getId())).findFirst().orElseThrow();
             for (int button : List.of(0, 1, 2)) {
@@ -458,8 +453,9 @@ class WorkstationUIInteractionTest {
     }
 
     @Test
-    void coolingHoverDistinguishesModpackRecipeCapabilityFromTheEffectiveWorkstationBand() {
-        try (var ldlib = mockStatic(LDLib.class)) {
+    void coolingHoverUsesTheEffectiveWorkstationBandForModpackCoolants() {
+        try (var ldlib = mockStatic(LDLib.class);
+             var minecraft = cn.dancingsnow.neoecoae.util.UiTestSupport.mockClient()) {
             ldlib.when(LDLib::isRemote).thenReturn(true);
             for (boolean thermal : List.of(true, false)) {
                 var snapshot = new CompoundTag();
@@ -471,56 +467,73 @@ class WorkstationUIInteractionTest {
                 UIEvent hover = UIEvent.create(UIEvents.HOVER_TOOLTIPS);
                 hover.target = taskRegion(panel, "cooling-info");
                 hover.target.dispatchEvent(hover);
-                var lines = hover.hoverTooltips.tooltips().stream()
-                    .map(line -> line.getContents())
-                    .filter(net.minecraft.network.chat.contents.TranslatableContents.class::isInstance)
-                    .map(net.minecraft.network.chat.contents.TranslatableContents.class::cast).toList();
-                var raw = lines.stream().filter(line -> line.getKey().equals(
-                    "gui.neoecoae.workstation.coolant_recipe_max_overclock")).findFirst().orElseThrow();
-                var effective = lines.stream().filter(line -> line.getKey().equals(
-                    "gui.neoecoae.workstation.coolant_effective_tier")).findFirst().orElseThrow();
-                assertEquals(15, raw.getArgs()[0]);
-                assertEquals(9, effective.getArgs()[0]);
+                assertNotNull(hover.hoverTooltips.image());
+                var lines = panel.coolingCardBuilder(false).texts();
+                assertTrue(lines.stream().anyMatch(line -> line.getContents()
+                    instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                    && text.getKey().equals("gui.neoecoae.large_integrated_working_station.tier.cryotheum")));
+                if (thermal) {
+                    var capacity = textAfter(lines, "gui.neoecoae.workstation.card.cooling_capacity");
+                    var rate = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class, capacity.getContents());
+                    assertEquals(String.format(java.util.Locale.ROOT, "%.2f",
+                        cn.dancingsnow.neoecoae.blocks.entity.LargeWorkstationThermal.coolingPerSecond(9)), rate.getArgs()[0]);
+                } else {
+                    assertTrue(lines.stream().noneMatch(line -> line.getContents()
+                        instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                        && text.getKey().equals("gui.neoecoae.workstation.card.cooling_capacity")));
+                }
             }
         }
     }
 
     @Test
     void temperatureHoverShowsActualSignedRatesAndHidesThemInCoolantMode() {
-        try (var ldlib = mockStatic(LDLib.class)) {
+        try (var ldlib = mockStatic(LDLib.class);
+             var minecraft = cn.dancingsnow.neoecoae.util.UiTestSupport.mockClient()) {
             ldlib.when(LDLib::isRemote).thenReturn(true);
             var snapshot = new CompoundTag();
             snapshot.putDouble("temperature", 15.5);
             snapshot.putDouble("temperatureChangePerSecond", 0.123);
             snapshot.putDouble("naturalCoolingPerSecond", 0.1);
             var panel = new LargeWorkstationPanel(new LargeWorkstationUI.Config(new FluidTank(1000),
-                offset -> snapshot.copy(), () -> null, ignored -> {}, () -> {}, () -> {}, () -> {},
-                new ItemStackHandler(1)), mock(Player.class));
+                offset -> snapshot.copy(), () -> null, ignored -> {}, () -> {}, () -> {}, () -> {}), mock(Player.class));
             UIElement region = collect(panel, UIElement.class).stream()
                 .filter(element -> "large-workstation-temperature-info".equals(element.getId())).findFirst().orElseThrow();
             UIEvent hover = UIEvent.create(UIEvents.HOVER_TOOLTIPS);
             hover.target = region;
             hover.target.dispatchEvent(hover);
-            var lines = hover.hoverTooltips.tooltips();
-            var temperature = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class, lines.get(1).getContents());
-            assertEquals("15.50", temperature.getArgs()[0]);
-            var net = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class, lines.get(3).getContents());
-            assertEquals("gui.neoecoae.workstation.temperature_net_rate", net.getKey());
+            assertNotNull(hover.hoverTooltips.image());
+            var lines = panel.temperatureCardBuilder().texts();
+            assertEquals("15.50%", textAfter(lines, "gui.neoecoae.workstation.card.current_temperature").getString());
+            var net = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class,
+                textAfter(lines, "gui.neoecoae.workstation.card.net_change").getContents());
+            assertEquals("gui.neoecoae.workstation.card.rate", net.getKey());
             assertEquals("+0.12", net.getArgs()[0]);
-            var processing = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class, lines.get(4).getContents());
-            assertEquals("gui.neoecoae.workstation.temperature_processing_rate", processing.getKey());
-            assertEquals("0.00", processing.getArgs()[0], "Idle telemetry must not substitute theoretical full-load heating");
+            var processing = assertInstanceOf(net.minecraft.network.chat.contents.TranslatableContents.class,
+                textAfter(lines, "gui.neoecoae.workstation.card.processing").getContents());
+            assertEquals("gui.neoecoae.workstation.card.rate_short", processing.getKey());
+            assertEquals("+0.00", processing.getArgs()[0], "Idle telemetry must not substitute theoretical full-load heating");
             assertFalse(lines.stream().anyMatch(line -> line.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text
-                && "gui.neoecoae.workstation.temperature_preheat_rate".equals(text.getKey())));
+                && "gui.neoecoae.workstation.card.preheat".equals(text.getKey())));
             snapshot.putBoolean("temperatureEnabled", false);
             panel.setValue(snapshot.copy());
             hover = UIEvent.create(UIEvents.HOVER_TOOLTIPS);
             hover.target = region;
             hover.target.dispatchEvent(hover);
-            assertEquals(3, hover.hoverTooltips.tooltips().size());
-            assertTrue(hover.hoverTooltips.tooltips().stream().noneMatch(line -> line.getContents()
-                instanceof net.minecraft.network.chat.contents.TranslatableContents text && text.getKey().endsWith("_rate")));
+            var disabled = panel.temperatureCardBuilder().texts();
+            assertEquals(3, disabled.size());
+            assertTrue(disabled.stream().noneMatch(line -> line.getContents()
+                instanceof net.minecraft.network.chat.contents.TranslatableContents text && text.getKey().contains(".rate")));
         }
+    }
+
+    private static net.minecraft.network.chat.Component textAfter(List<net.minecraft.network.chat.Component> lines,
+            String key) {
+        for (int index = 0; index + 1 < lines.size(); index++) {
+            if (lines.get(index).getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents text
+                    && text.getKey().equals(key)) return lines.get(index + 1);
+        }
+        throw new AssertionError("Missing card row " + key);
     }
 
     @Test
