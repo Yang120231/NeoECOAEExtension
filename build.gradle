@@ -15,6 +15,16 @@ java.withSourcesJar()
 def dependencyLock = new groovy.json.JsonSlurper().parse(file('porting/dependencies.lock.json'))
 // The GTO branch compiles against the exact fork installed in the acceptance instance.
 def gtoDependencyLock = new groovy.json.JsonSlurper().parse(file('porting/gto-dependencies.json'))
+if (gtocore_version != gtoDependencyLock.gtocore.version) {
+    throw new GradleException('GTOCore version must match the binary API lock in porting/gto-dependencies.json.')
+}
+
+// Inspect the original release bytes, before ModDevGradle remaps Minecraft references.
+configurations.create('gtoRuntimeArtifact') {
+    canBeConsumed = false
+    transitive = false
+    attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
+}
 dependencyLock.artifacts.removeAll { it.mod_id == 'ae2' }
 dependencyLock.artifacts.add(gtoDependencyLock.ae2)
 def releaseJars = dependencyLock.artifacts.collectEntries { artifact ->
@@ -73,6 +83,7 @@ repositories {
 }
 
 dependencies {
+    gtoRuntimeArtifact "com.gto:gtocore-forge-1.20.1:${gtocore_version}"
     modCompileOnly('maven.modrinth:embeddium:0.3.31+mc1.20.1') { transitive = false }
     ['ae2', 'guideme', 'ldlib'].each { modImplementation pinned(it) }
     // Like the pinned GTO AE2 fork, GTO runs on Java 21 while this addon's output targets Java 17.
@@ -94,6 +105,20 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.36'
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
+
+def verifyGtoRuntime = tasks.register('verifyGtoRuntime') {
+    inputs.files(configurations.gtoRuntimeArtifact)
+    inputs.property('sha256', gtoDependencyLock.gtocore.sha256)
+    doLast {
+        def runtimeJar = configurations.gtoRuntimeArtifact.singleFile
+        def actualHash = java.security.MessageDigest.getInstance('SHA-256')
+            .digest(runtimeJar.bytes).encodeHex().toString()
+        if (actualHash != gtoDependencyLock.gtocore.sha256) {
+            throw new GradleException('GTOCore checksum changed; recheck GtoRuntimeApi against the installed release before building.')
+        }
+    }
+}
+tasks.named('compileJava') { dependsOn verifyGtoRuntime }
 
 legacyForge {
     version = "${minecraft_version}-${forge_version}"
