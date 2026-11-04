@@ -147,6 +147,10 @@ class ExactAmountCollectorTest {
             return counter;
         });
         doAnswer(call -> {
+            ((KeyCounter) call.getArgument(0)).addAll(source.getAvailableStacks());
+            return null;
+        }).when(source).getAvailableStacks(any(KeyCounter.class));
+        doAnswer(call -> {
             java.util.function.BiConsumer<AEKey, ExactAmount> visitor = call.getArgument(0);
             visitor.accept(key, ExactAmount.unbounded());
             visitor.accept(hidden, ExactAmount.unbounded());

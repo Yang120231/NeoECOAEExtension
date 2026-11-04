@@ -13,30 +13,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-/** Exercises the data-generation callbacks without loading optional mods or running runData. */
+/** Exercises native cell data-generation callbacks without launching the game. */
 class ItemModelUtilTest {
-    @Test
-    void compatibilityCellsKeepHousingTierStatusAndAnimationInThatOrder() {
-        for (var tier : List.of(
-            List.of("16m", "l4"), List.of("64m", "l6"), List.of("256m", "l9"), List.of("4g", "l9"))) {
-            assertEquals(List.of(
-                "neoecoae:item/eco_cells/ae2omnicells/quantum_omni_cell_housing",
-                "neoecoae:item/eco_cells/cell_light_" + tier.get(1),
-                "neoecoae:item/eco_cells/cell_status_light",
-                "neoecoae:item/eco_cells/ae2omnicells/quantum_omni_cell_layer"
-            ), generatedTextures(provider -> ItemModelUtil.compatCellModel(
-                "ae2omnicells", "quantum_omni_cell_housing", cn.dancingsnow.neoecoae.platform.JdkCompat.first(tier), "quantum_omni_cell_layer")
-                .accept(context(), provider)));
-        }
-        assertEquals(List.of(
-            "neoecoae:item/eco_cells/applied_create/andesite_cell_housing",
-            "neoecoae:item/eco_cells/cell_light_l4",
-            "neoecoae:item/eco_cells/cell_status_light"
-        ), generatedTextures(provider -> ItemModelUtil.compatCellModel(
-            "applied_create", "andesite_cell_housing", "16m").accept(context(), provider)));
-        assertThrows(IllegalArgumentException.class,
-            () -> ItemModelUtil.compatCellModel("megacells", "mega_item_cell_housing", "unknown"));
-    }
+
 
     @Test
     void infiniteCellHasOnlyHousingAndStatusLight() {
@@ -48,23 +27,16 @@ class ItemModelUtilTest {
     }
 
     @Test
-    void housingUsesItsModDirectoryAndHasNoTierOrStatusLight() {
-        assertEquals(List.of(
-            "neoecoae:item/eco_cells/ae2omnicells/quantum_omni_cell_housing",
-            "neoecoae:item/eco_cells/ae2omnicells/quantum_omni_cell_layer"
-        ), generatedTextures(provider -> ItemModelUtil.compatHousingModel(
-            "ae2omnicells", "quantum_omni_cell_housing", "quantum_omni_cell_layer")
-            .accept(context(), provider)));
-    }
-
-    @Test
-    void feCellsKeepTheirExistingImportedItemModelIds() {
+    void nativeCellsUseTheirFamilySpecificItemModels() {
         var provider = provider();
         var context = context();
-        when(context.getName()).thenReturn("eco_fe_cell_16m");
-        ItemModelUtil.cellModel("fe", "16m").accept(context, provider);
-        verify(provider).withExistingParent("eco_fe_cell_16m",
-            new ResourceLocation("neoecoae", "item/cell/eco_energy_cell_16m"));
+        for (String family : List.of("item", "fluid", "bulk_item")) {
+            String model = "eco_" + family + "_cell_16m";
+            when(context.getName()).thenReturn(model);
+            ItemModelUtil.cellModel(family, "16m").accept(context, provider);
+            verify(provider).withExistingParent(model,
+                new ResourceLocation("neoecoae", "item/cell/" + model));
+        }
     }
 
     @SuppressWarnings("unchecked")

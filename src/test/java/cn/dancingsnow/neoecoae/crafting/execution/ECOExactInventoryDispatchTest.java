@@ -26,8 +26,8 @@ class ECOExactInventoryDispatchTest {
     }
 
     private static final BigInteger MAX = BigInteger.valueOf(Long.MAX_VALUE);
-    private final AEKey input = mock(AEKey.class, RETURNS_DEEP_STUBS);
-    private final AEKey output = mock(AEKey.class, RETURNS_DEEP_STUBS);
+    private final AEKey input = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
+    private final AEKey output = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
     private final ECOExactInventory inventory = new ECOExactInventory(ignored -> {});
     private final IEnergyService energy = mock(IEnergyService.class);
     interface Provider extends ICraftingProvider, ECOFastPathDispatchProvider {}

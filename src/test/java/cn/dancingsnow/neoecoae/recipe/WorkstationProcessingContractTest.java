@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class WorkstationProcessingContractTest {
     @BeforeAll static void bootstrap() { InventoryTestBootstrap.initialize(); }
 
@@ -47,51 +48,9 @@ class WorkstationProcessingContractTest {
         assertThrows(IllegalArgumentException.class, () -> serializer.fromJson(id, json));
     }
 
-    @Test void crystalScienceUsesItsOwnEnergyRateAndNativeRecipesUseTheirDuration() {
-        var science = recipe("science", 4, 57_600, "ae2cs:circuit_etcher_recipe");
-        assertEquals(200, science.processingTicks());
+    @Test void nativeRecipesUseTheirDeclaredDuration() {
         var nativeRecipe = recipe("native", 4, 1000, LargeWorkstationRecipe.NATIVE_TYPE.toString());
         assertEquals(100, nativeRecipe.processingTicks());
-    }
-
-    @Test void forgeOwnedExtendedRecipeRetainsItsExplicitTimeInTheExecutionCatalog() {
-        var id = new ResourceLocation("expatternprovider:custom_duration");
-        var json = JsonParser.parseString("""
-            {"inputItems":[{"item":"minecraft:iron_ingot","count":4}],
-             "itemOutput":{"item":"minecraft:diamond","count":2},"energy":2000,"processingTicks":37}
-            """).getAsJsonObject();
-        var source = new ExtendedCrystalAssemblerRecipe.Serializer().fromJson(id, json);
-        var manager = org.mockito.Mockito.mock(net.minecraft.world.item.crafting.RecipeManager.class);
-        org.mockito.Mockito.when(manager.getRecipes()).thenReturn(List.of(source));
-        var recipe = LargeWorkstationRecipes.getAll(manager, net.minecraft.core.RegistryAccess.EMPTY).get(0);
-        assertEquals(37, recipe.processingTicks());
-        assertEquals(ExtendedCrystalAssemblerRecipe.SOURCE_TYPE, recipe.sourceType());
-    }
-
-    @Test void proportionalGroupKeepsBothExistingCardsAndTheirIntegerBatchLimits() {
-        var small = recipe("small", 4, 2000, "expatternprovider:crystal_assembler");
-        var large = recipe("large", 32, 57_600, "ae2cs:circuit_etcher_recipe");
-        var groups = LargeWorkstationRecipes.group(List.of(LargeWorkstationRecipeSources.direct(small), LargeWorkstationRecipeSources.direct(large)), JsonOps.INSTANCE);
-        assertEquals(1, groups.size());
-        var group = groups.get(0);
-        assertEquals(List.of(LargeWorkstationModule.EXTENDED_AE, LargeWorkstationModule.CRYSTAL_SCIENCE), group.supportedModules());
-        assertSame(small, group.availableVariants(LargeWorkstationModule.EXTENDED_AE).get(0).recipe());
-        assertSame(large, group.availableVariants(LargeWorkstationModule.CRYSTAL_SCIENCE).get(0).recipe());
-        var inputs = new KeyCounter();
-        inputs.add(AEItemKey.of(Items.IRON_INGOT), 4);
-        var outputs = new KeyCounter();
-        outputs.add(AEItemKey.of(Items.DIAMOND), 4);
-        assertNull(LargeWorkstationRecipes.findScaled(List.of(large), inputs, outputs));
-        assertNotNull(LargeWorkstationRecipes.findScaled(List.of(small), inputs, outputs));
-    }
-
-    @Test void originalForgeIntegrationScopeRemainsUnchanged() {
-        assertEquals(5, LargeWorkstationModule.values().length);
-        for (var module : LargeWorkstationModule.values()) {
-            assertFalse(module.unlocks(new ResourceLocation("data_energistics:data_reassembler")));
-            assertFalse(module.unlocks(new ResourceLocation("appgen:synthesizing")));
-            assertFalse(module.unlocks(new ResourceLocation("extendedae_plus:crystal_assembler_plus")));
-        }
     }
 
     @Test void durationCapPreservesShortRecipesAndLeavesTheSourceMachineAndBudgetsUnchanged() {

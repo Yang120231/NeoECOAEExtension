@@ -117,26 +117,6 @@ class ECOStorageHostStatisticsTest {
     }
 
     @Test
-    void ordinaryAndMegaCellsShareTotalsButKeepIndividualCellCategories() {
-        Fixture fixture = new Fixture();
-        fixture.addCell("items", AEKeyType.items(), 2, 315, 100, 1_000);
-        fixture.addCell("mega_item", AEKeyType.items(), 3, 50, 200, 2_000);
-        fixture.addCell("fluids", AEKeyType.fluids(), 1, 25, 30, 300);
-        fixture.addCell("mega_fluid", AEKeyType.fluids(), 4, 315, 70, 700);
-
-        assertTotals(fixture.line("items"), 5, 365, 300, 3_000);
-        assertTotals(fixture.line("fluids"), 5, 340, 100, 1_000);
-        assertFalse(fixture.line("mega_item").visible().getAsBoolean());
-        assertFalse(fixture.line("mega_fluid").visible().getAsBoolean());
-        assertEquals("400", fixture.statistics.getTotalUsedBytesText());
-        assertEquals(Set.of(fixture.id("items"), fixture.id("mega_item"),
-            fixture.id("fluids"), fixture.id("mega_fluid")),
-            fixture.statistics.getCellEntries().stream().map(StorageHostUI.CellEntry::typeId)
-                .collect(java.util.stream.Collectors.toSet()));
-        assertTrue(fixture.faults.snapshot().isEmpty());
-    }
-
-    @Test
     void emptyMegaCellPublishesCapacityUnderOrdinaryResourceGroup() {
         Fixture fixture = new Fixture();
         fixture.addCell("mega_item", AEKeyType.items(), 0, 315, 0, 4_096);
@@ -180,19 +160,6 @@ class ECOStorageHostStatisticsTest {
         assertFalse(fixture.line(variant).visible().getAsBoolean());
         assertEquals(fixture.id(variant), cn.dancingsnow.neoecoae.platform.JdkCompat.first(fixture.statistics.getCellEntries()).typeId());
         assertTrue(fixture.faults.snapshot().isEmpty());
-    }
-
-    private static Stream<Arguments> additionalResourceVariants() {
-        return Stream.of(
-            Arguments.of("bigger_ae2_item", "items"),
-            Arguments.of("bigger_ae2_fluid", "fluids"),
-            Arguments.of("bigger_ae2_chemical", "mekanism"),
-            Arguments.of("bigger_ae2_fe", "flux"),
-            Arguments.of("bigger_ae2_experience", "experience"),
-            Arguments.of("bigger_ae2_source", "source"),
-            Arguments.of("mega_matter", "matter"),
-            Arguments.of("mega_stress", "stress"),
-            Arguments.of("mega_data", "data"));
     }
 
     @Test

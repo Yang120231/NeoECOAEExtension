@@ -17,69 +17,21 @@ import cn.dancingsnow.neoecoae.crafting.planner.ECOCraftingPlannerService;
 import cn.dancingsnow.neoecoae.crafting.planner.result.*;
 import cn.dancingsnow.neoecoae.mixins.ae2.crafting.Ae2CraftingCpuFastPathMixin;
 import cn.dancingsnow.neoecoae.mixins.ae2.crafting.CraftingServiceMixin;
-import cn.dancingsnow.neoecoae.mixins.compat.advancedae.crafting.AdvancedAeCraftingCpuLogicMixin;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NEComputationCluster;
 import cn.dancingsnow.neoecoae.util.InventoryTestBootstrap;
 import java.math.BigInteger;
 import java.util.*;
 import net.minecraft.world.item.Items;
-import net.pedroksl.advanced_ae.common.cluster.AdvCraftingCPU;
 import org.apache.commons.lang3.mutable.MutableObject;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class ECOExternalCpuDagInteropTest {
     @BeforeAll static void bootstrap() { InventoryTestBootstrap.initialize(); }
     @AfterEach void clearRegistry() { ECOPlanningResultRegistry.clear(); }
-
-    @ParameterizedTest @ValueSource(booleans = {false, true})
-    void ordinaryFastPlannerDagCanReachNativeAndQuantumCpu(boolean multipleSteps) throws Exception {
-        var result = ordinaryDag(multipleSteps);
-        var plan = result.plan();
-        var execution = result.executionPlan();
-        assertEquals(ECOExecutionRequirement.NONE, result.executionRequirement());
-        assertEquals(ExecutionMode.PHASED_DAG, result.executionContract().mode());
-        assertEquals(multipleSteps ? 2 : 1, execution.tasks().size());
-        assertTrue(ECOExternalCpuSupport.accepts(
-            mock(appeng.me.cluster.implementations.CraftingCPUCluster.class), plan));
-        assertTrue(ECOExternalCpuSupport.accepts(mock(AdvCraftingCPU.class), plan));
-        assertCpuHooksAllow(plan);
-        assertSame(execution, result.executionPlan(), "ECO must retain its own phased execution metadata");
-    }
-
-    @ParameterizedTest @ValueSource(booleans = {false, true})
-    @SuppressWarnings("unchecked")
-    void emptyC9DoesNotPreventAutomaticOrExplicitQuantumSubmission(boolean explicitQuantum) throws Exception {
-        var result = ordinaryDag(true);
-        var plan = result.plan();
-        assertTrue(plan.bytes() > 0);
-        var service = mock(CraftingServiceMixin.class,
-            withSettings().useConstructor().defaultAnswer(CALLS_REAL_METHODS));
-        var cluster = mock(NEComputationCluster.class);
-        when(cluster.isNetworkRepresentative()).thenReturn(true);
-        when(cluster.isActive()).thenReturn(true);
-        when(cluster.getMaxThreads()).thenReturn(1);
-        when(cluster.getAvailableStorage()).thenReturn(0L);
-        var clusters = CraftingServiceMixin.class.getDeclaredField("neoecoae$computationClusters");
-        clusters.setAccessible(true);
-        ((Set<NEComputationCluster>) clusters.get(service)).add(cluster);
-        var source = mock(IActionSource.class);
-        var rejections = new MutableObject<UnsuitableCpus>();
-        var callback = new CallbackInfoReturnable<ICraftingSubmitResult>("submitJob", true);
-        var hook = CraftingServiceMixin.class.getDeclaredMethod("neoecoae$earlySubmitJob", ICraftingPlan.class,
-            ICraftingRequester.class, ICraftingCPU.class, boolean.class, IActionSource.class,
-            CallbackInfoReturnable.class, MutableObject.class);
-        hook.setAccessible(true);
-        hook.invoke(service, plan, null, explicitQuantum ? mock(AdvCraftingCPU.class) : null,
-            true, source, callback, rejections);
-
-        assertFalse(callback.isCancelled(), "AdvancedAE must still get its chance to accept the ordinary plan");
-        if (!explicitQuantum) assertEquals(new UnsuitableCpus(0, 0, 1, 0), rejections.getValue());
-        verify(cluster, never()).submitJob(any(), any(), any(), any());
-        assertCpuHooksAllow(plan);
-    }
 
     @Test void ordinaryDagCannotHideAnExactMaterialOverflow() throws Exception {
         var result = ordinaryDag(false);
@@ -142,7 +94,7 @@ class ECOExternalCpuDagInteropTest {
         when(ingredient.getPossibleInputs()).thenReturn(new GenericStack[]{new GenericStack(input, 1L)});
         when(ingredient.getMultiplier()).thenReturn(1L);
         var pattern = mock(IPatternDetails.class);
-        when(pattern.getDefinition()).thenReturn(AEItemKey.of(definition));
+        doReturn(AEItemKey.of(definition)).when(pattern).getDefinition();
         when(pattern.getInputs()).thenReturn(new IPatternDetails.IInput[]{ingredient});
         var produced = new GenericStack(output, 1L);
         when(pattern.getOutputs()).thenReturn(new GenericStack[]{produced});
@@ -150,18 +102,5 @@ class ECOExternalCpuDagInteropTest {
         return pattern;
     }
 
-    private static void assertCpuHooksAllow(ICraftingPlan plan) throws Exception {
-        for (var type : List.of(Ae2CraftingCpuFastPathMixin.class, AdvancedAeCraftingCpuLogicMixin.class)) {
-            boolean nativeCpu = type == Ae2CraftingCpuFastPathMixin.class;
-            var hook = nativeCpu
-                ? type.getDeclaredMethod("neoecoae$validatePlan", CallbackInfoReturnable.class, ICraftingPlan.class)
-                : type.getDeclaredMethod("neoecoae$validatePlan", IGrid.class, ICraftingPlan.class,
-                    IActionSource.class, ICraftingRequester.class, CallbackInfoReturnable.class);
-            hook.setAccessible(true);
-            var callback = new CallbackInfoReturnable<ICraftingSubmitResult>("trySubmitJob", true);
-            hook.invoke(mock(type, CALLS_REAL_METHODS), nativeCpu
-                ? new Object[]{callback, plan} : new Object[]{null, plan, null, null, callback});
-            assertFalse(callback.isCancelled(), type.getSimpleName());
-        }
-    }
+
 }

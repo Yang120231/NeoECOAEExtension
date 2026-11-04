@@ -3,6 +3,7 @@ package cn.dancingsnow.neoecoae.blocks.entity;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationProcessingTest {
     @Test void fractionalFeIsCarriedAndTheCompleteBatchPaysExactlyOnce() {
         long paid = 0, remainder = 0;

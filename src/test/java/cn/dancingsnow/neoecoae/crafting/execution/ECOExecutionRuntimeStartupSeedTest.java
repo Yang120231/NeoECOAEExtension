@@ -21,6 +21,7 @@ import net.minecraft.world.level.material.Fluids;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class ECOExecutionRuntimeStartupSeedTest {
     @BeforeAll
     static void bootstrap() {

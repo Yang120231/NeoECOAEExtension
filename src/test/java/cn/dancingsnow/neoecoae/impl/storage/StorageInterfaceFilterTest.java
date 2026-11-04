@@ -5,7 +5,6 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKeyTypesInternal;
 import cn.dancingsnow.neoecoae.util.InventoryTestBootstrap;
 import cn.dancingsnow.neoecoae.util.LargeWorkstationTestKeys;
-import com.moakiee.ae2lt.me.key.LightningKey;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -30,7 +29,7 @@ class StorageInterfaceFilterTest {
             named.setHoverName(Component.literal("Exact sample"));
             var item = AEItemKey.of(named);
             var water = AEFluidKey.of(Fluids.WATER);
-            var lightning = LightningKey.EXTREME_HIGH_VOLTAGE;
+            var lightning = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.GOLD_INGOT);
             CompoundTag empty = new CompoundTag();
             CompoundTag saved = StorageInterfaceFilter.with(empty, 0, item);
             saved = StorageInterfaceFilter.with(saved, 13, water);

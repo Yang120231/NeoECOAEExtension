@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+@org.junit.jupiter.api.extension.ExtendWith(cn.dancingsnow.neoecoae.util.GtoNativeKeyExtension.class)
 class LargeWorkstationThermalUsageTest {
     @Test
     void allSourcesAndNetTemperatureUseTheSameActualOneSecondWindow() {

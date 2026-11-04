@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 class ECOBigOrderPlannerTest {
     private ECOPlanningResult result(PlanningStatus status, long bytes) {
         var plan = mock(CraftingPlan.class);
+        when(plan.patternTimes()).thenReturn(new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>());
         when(plan.bytes()).thenReturn(bytes);
         return new ECOPlanningResult(status, plan, new ECOPlanTrace(), List.of(), 0);
     }

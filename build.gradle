@@ -279,8 +279,17 @@ sourceSets {
         java.include 'com/gregtechceu/gtceu/api/transfer/key/KeyInventory.java'
         java.include 'cn/dancingsnow/neoecoae/compat/ae2/ECORemoteMachineUISideTest.java'
         java.include 'cn/dancingsnow/neoecoae/network/ECONetworkVersionTest.java'
+        java.include 'cn/dancingsnow/neoecoae/client/rendering/CellModelResourceTest.java'
+        java.include 'cn/dancingsnow/neoecoae/mixins/client/ae2/CpuFormattingOwnershipTest.java'
+        java.include 'cn/dancingsnow/neoecoae/recipe/**'
+        java.include 'cn/dancingsnow/neoecoae/blocks/entity/LargeWorkstation*Test.java'
         java.include 'cn/dancingsnow/neoecoae/util/InventoryTestBootstrap.java'
         java.include 'cn/dancingsnow/neoecoae/util/LargeWorkstationTestKeys.java'
+        java.include 'cn/dancingsnow/neoecoae/util/RecipeTestSupport.java'
+        java.include 'cn/dancingsnow/neoecoae/util/GtoKeyTestFactory.java'
+        java.include 'cn/dancingsnow/neoecoae/util/GtoNativeKeyExtension.java'
+        java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOExactInventoryLifecycleTest.java'
+        java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOExactInventoryDispatchTest.java'
         java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOStickyDispatchIntegrationTest.java'
         // Processing submissions are budgeted by calls; GTO buffers take whole ready batches.
         java.include 'cn/dancingsnow/neoecoae/crafting/execution/ECOProcessingSubmissionBudgetTest.java'
@@ -300,6 +309,7 @@ configurations.gtoCompatibilityTestImplementation.extendsFrom configurations.tes
 configurations.gtoCompatibilityTestRuntimeOnly.extendsFrom configurations.testRuntimeOnly
 tasks.register('gtoCompatibilityTest', Test) {
     description = 'Checks GTO callback accounting, recursive storage listing and inventory bridges.'
+    systemProperty 'neoecoae.buildDirectory', layout.buildDirectory.get().asFile.absolutePath
     def installedAe2Jar = providers.environmentVariable('NEOECOAE_GTO_AE2_JAR').getOrElse('')
     inputs.property('installedAe2Jar', installedAe2Jar)
     if (!installedAe2Jar.isBlank()) inputs.file(installedAe2Jar)

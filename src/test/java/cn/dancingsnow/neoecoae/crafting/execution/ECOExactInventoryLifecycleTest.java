@@ -24,8 +24,8 @@ class ECOExactInventoryLifecycleTest {
         when(cpu.getActionSource()).thenReturn(IActionSource.empty());
         when(grid.getStorageService().getInventory()).thenReturn(storage);
         var logic = new ECOCraftingCPULogic(cpu);
-        var input = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.IRON_INGOT);
-        var output = appeng.api.stacks.AEItemKey.of(net.minecraft.world.item.Items.DIAMOND);
+        var input = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(net.minecraft.world.item.Items.IRON_INGOT);
+        var output = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.item(net.minecraft.world.item.Items.DIAMOND);
         var amount = BigInteger.TEN.pow(28).add(BigInteger.valueOf(17));
         var id = java.util.UUID.randomUUID();
         var link = mock(appeng.crafting.CraftingLink.class);
@@ -33,7 +33,7 @@ class ECOExactInventoryLifecycleTest {
         var plan = mock(appeng.api.networking.crafting.ICraftingPlan.class);
         when(plan.finalOutput()).thenReturn(new appeng.api.stacks.GenericStack(output, 1));
         when(plan.emittedItems()).thenReturn(new appeng.api.stacks.KeyCounter());
-        when(plan.patternTimes()).thenReturn(java.util.Map.of());
+        when(plan.patternTimes()).thenReturn(it.unimi.dsi.fastutil.objects.Object2LongMaps.emptyMap());
         ExecutingCraftingJob job;
         try (var trackers = mockConstruction(ElapsedTimeTracker.class)) {
             job = new ExecutingCraftingJob(plan, ignored -> {}, link, null);
@@ -69,7 +69,7 @@ class ECOExactInventoryLifecycleTest {
         when(cpu.getActionSource()).thenReturn(IActionSource.empty());
         when(grid.getStorageService().getInventory()).thenReturn(storage);
         var logic = new ECOCraftingCPULogic(cpu);
-        var key = mock(AEKey.class, RETURNS_DEEP_STUBS);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
         var total = BigInteger.TEN.pow(28).add(BigInteger.valueOf(17));
         logic.exactInventory().setEnabled(true);
         logic.exactInventory().restore(java.util.Map.of(key, total));
@@ -97,7 +97,7 @@ class ECOExactInventoryLifecycleTest {
         when(cpu.getActionSource()).thenReturn(IActionSource.empty());
         when(grid.getStorageService().getInventory()).thenReturn(storage);
         var logic = new ECOCraftingCPULogic(cpu);
-        var key = mock(AEKey.class, RETURNS_DEEP_STUBS);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
         logic.exactInventory().setEnabled(true);
         logic.exactInventory().restore(java.util.Map.of(key, BigInteger.valueOf(64)));
         when(storage.insert(eq(key), eq(64L), eq(Actionable.MODULATE), any())).thenReturn(64L);
@@ -115,7 +115,7 @@ class ECOExactInventoryLifecycleTest {
         when(cpu.getActionSource()).thenReturn(IActionSource.empty());
         when(grid.getStorageService().getInventory()).thenReturn(storage);
         var logic = new ECOCraftingCPULogic(cpu);
-        var key = mock(AEKey.class, RETURNS_DEEP_STUBS);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
         var total = BigInteger.TEN.pow(28);
         logic.exactInventory().setEnabled(true);
         logic.exactInventory().restore(java.util.Map.of(key, total));
@@ -149,7 +149,7 @@ class ECOExactInventoryLifecycleTest {
         when(cpu.getGrid()).thenReturn(grid);
         when(cpu.getActionSource()).thenReturn(IActionSource.empty());
         var logic = new ECOCraftingCPULogic(cpu);
-        var key = mock(AEKey.class, RETURNS_DEEP_STUBS);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
         var registry = mock(HolderLookup.Provider.class);
         when(key.toTagGeneric()).thenAnswer(call -> new CompoundTag());
         logic.exactInventory().setEnabled(true);
@@ -176,7 +176,7 @@ class ECOExactInventoryLifecycleTest {
     }
     @Test void dismantledExactInventoryTravelsOnCoreItemWithoutChangingOrdinarySlots() throws Exception {
         cn.dancingsnow.neoecoae.util.InventoryTestBootstrap.initialize();
-        var key = mock(AEKey.class, RETURNS_DEEP_STUBS);
+        var key = cn.dancingsnow.neoecoae.util.GtoKeyTestFactory.mockKey();
         var registry = mock(net.minecraft.core.RegistryAccess.class);
         when(key.toTagGeneric()).thenAnswer(call -> new CompoundTag());
         var cpu = mock(ECOCraftingCPU.class);

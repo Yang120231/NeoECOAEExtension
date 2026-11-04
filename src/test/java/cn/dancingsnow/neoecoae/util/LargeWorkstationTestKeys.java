@@ -2,7 +2,6 @@ package cn.dancingsnow.neoecoae.util;
 
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.AEKey;
-import com.moakiee.ae2lt.me.key.LightningKeyType;
 import com.mojang.serialization.Lifecycle;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
@@ -23,7 +22,6 @@ public final class LargeWorkstationTestKeys {
             var registry = (net.minecraftforge.registries.ForgeRegistry<AEKeyType>) create.invoke(builder);
             registry.register(AEKeyType.items().getId(), AEKeyType.items());
             registry.register(AEKeyType.fluids().getId(), AEKeyType.fluids());
-            registry.register(LightningKeyType.INSTANCE.getId(), LightningKeyType.INSTANCE);
             return registry;
         } catch (ReflectiveOperationException failure) {
             throw new IllegalStateException("Cannot initialize target AE key registry", failure);
