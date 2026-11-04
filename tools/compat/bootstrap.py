@@ -10,11 +10,14 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def restore(root=ROOT, gto=False):
+def restore(root=ROOT):
     lock = json.loads((root / "tools/compat/build-dependencies.json").read_text())
     generated = root / "porting/dependencies.lock.json"
-    if generated.exists() and json.loads(generated.read_text()) != lock:
-        raise ValueError("Existing porting/dependencies.lock.json differs; use a clean CI checkout")
+    if generated.exists():
+        previous = {row['mod_id']: row for row in json.loads(generated.read_text())['artifacts']}
+        for row in lock['artifacts']:
+            if row['mod_id'] in previous and previous[row['mod_id']]['sha256'] != row['sha256']:
+                raise ValueError(f"Existing dependency hash differs: {row['mod_id']}")
     destination = root / "libs/pinned"
     destination.mkdir(parents=True, exist_ok=True)
     by_id = {row["mod_id"]: row for row in lock["artifacts"]}
@@ -42,9 +45,8 @@ def restore(root=ROOT, gto=False):
     for row in lock["artifacts"]:
         if "embedded" in row:
             obtain(row)
-    if gto:
-        gto_lock = json.loads((root / "porting/gto-dependencies.json").read_text())
-        obtain(gto_lock["ae2"])
+    gto_lock = json.loads((root / "porting/gto-dependencies.json").read_text())
+    obtain(gto_lock["ae2"])
     porting = root / "porting"
     porting.mkdir(exist_ok=True)
     generated.write_text(json.dumps(lock, indent=2) + "\n")
@@ -54,11 +56,11 @@ def restore(root=ROOT, gto=False):
     if not selection.exists():
         selection.write_text("\n".join(str(path.relative_to(root / "src/test/java"))
                             for path in sorted((root / "src/test/java").rglob("*.java"))) + "\n")
-    print(f"Verified {len(lock['artifacts'])} compile dependencies")
+    print(f"Verified {len(lock['artifacts'])} infrastructure dependencies and GTO AE2")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--gto', action='store_true', help='Also restore the hash-pinned GTO AE2 fork')
-    args = parser.parse_args()
-    restore(gto=args.gto)
+    parser.add_argument('--gto', action='store_true', help='Compatibility flag; GTO AE2 is always restored')
+    parser.parse_args()
+    restore()

@@ -168,9 +168,7 @@ final class ECOCraftingOutputDelivery {
         var max = java.math.BigInteger.valueOf(Long.MAX_VALUE);
         if (amount.bitLength() <= 63 || !current.exactOrder
                 || !(current.waitingFor instanceof cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory waiting)
-                || waiting.amount(key).compareTo(max) <= 0
-                || cn.dancingsnow.neoecoae.compat.thunderbolt.ECOOverloadCpuAccountingBridge
-                        .strictMatch(host, key, Long.MAX_VALUE, Long.MAX_VALUE) != Long.MAX_VALUE) {
+                || waiting.amount(key).compareTo(max) <= 0) {
             return java.math.BigInteger.valueOf(insertForJob(jobId, key, amount.min(max).longValueExact(), mode));
         }
         if (mode == Actionable.SIMULATE) return amount;

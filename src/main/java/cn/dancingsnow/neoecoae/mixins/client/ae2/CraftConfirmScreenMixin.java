@@ -41,8 +41,7 @@ public abstract class CraftConfirmScreenMixin extends AEBaseScreen<CraftConfirmM
         }
     }
 
-    // Carry the intent and submission together, before EAEP sends its separate flag packet.
-    // The server selects EAEP's implementation when installed, including from the ECO report screen.
+    // The ECO packet carries both force-start intent and submission for the native GTO confirmation page.
     @Override
     @org.spongepowered.asm.mixin.Unique
     public void neoecoae$submitWithForceIntent(CallbackInfo ci) {

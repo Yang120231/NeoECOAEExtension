@@ -4,10 +4,9 @@ import appeng.api.config.Actionable;
 import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.api.stacks.AEKey;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
-import cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtCraftingAdapter;
 import java.util.UUID;
 
-/** Job-directed output routing for AE2/Omni CPUs and the optional AE2LT time-wheel engine. */
+/** Job-directed output routing for the GTO AE2 CPU. */
 public final class ECOExternalCpuOutputRouter {
     private ECOExternalCpuOutputRouter() {}
 
@@ -29,6 +28,6 @@ public final class ECOExternalCpuOutputRouter {
             }
             return amount;
         }
-        return ECOAe2LtCraftingAdapter.insertCpuOutput(cpu, jobId, key, amount, mode);
+        return 0;
     }
 }

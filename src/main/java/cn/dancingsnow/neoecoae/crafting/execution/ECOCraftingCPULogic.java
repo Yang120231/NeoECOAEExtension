@@ -191,7 +191,6 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
 
         int operationLimit = dispatchStrategy.beginTick(cpu.getCoProcessors(), NEConfig.ecoCpuPushTickLimit);
         int acceptedNormalPushes = 0;
-        // Thunderbolt 会包装此处的 executeCrafting 调用；快速路径的批量操作不消耗此慢速路径额度。
         taskScheduler.beginSharedProbeBudget(operationLimit);
         try {
             while (job != null) {
@@ -241,19 +240,9 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
      */
     public int executeCrafting(
             int maxPatterns, CraftingService craftingService, IEnergyService energyService, Level level) {
-        // Mixin 二进制兼容锚点：Thunderbolt 会包装本方法中的这一调用，必须保留其调用位置。
-        // 实际调度实现拆分到下方各策略对应的方法中；此处的守卫条件在运行时刻意保持为假。
-        // 这里仅用于提供兼容锚点，绝不会访问合成提供者。
-        if (thunderboltMixinAnchorEnabled()) {
-            ICraftingProvider anchorProvider = null;
-            anchorProvider.pushPattern(null, null);
-        }
         return executeNormalCrafting(maxPatterns, craftingService, energyService, level);
     }
 
-    private static boolean thunderboltMixinAnchorEnabled() {
-        return false;
-    }
 
     /** 执行一轮调度。 */
     public int executeNormalCrafting(
@@ -276,7 +265,6 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
 
     /**
      * 普通合成提供者调用的兼容适配器。候选项和提供者的顺序由调度器管理；
-     * 此处将各提供者特有的 AE2、Thunderbolt 和 Useless 调用行为保留在所属 CPU 中。
      */
     private boolean invokeNormalProvider(ECOCraftingDispatchRequest request, ICraftingProvider provider) {
         if (provider instanceof ECOCraftingPatternBusBlockEntity) {
@@ -298,7 +286,6 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
 
         // 兼容性约定：
         // 必须在 ECOCraftingCPULogic 中原样保留此 ICraftingProvider.pushPattern 调用。
-        // Useless 和 Thunderbolt 的集成可能针对其所属类、方法描述符或调用点进行包装。
         return provider.pushPattern(request.pattern(), request.inputs());
     }
 
@@ -312,14 +299,10 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
         // AE2 Utility 通过此方法中的真实调用点重定向带 NBT 物品的等待库存匹配；
         // 结果继续交给输出交付组件，避免破坏当前的任务校验、记账和完成流程。
         long accepted = current.waitingFor.extract(what, amount, Actionable.SIMULATE);
-        accepted = cn.dancingsnow.neoecoae.compat.thunderbolt.ECOOverloadCpuAccountingBridge
-                .strictMatch(this, what, accepted, current.waitingFor.list.get(what));
         // AE2 Utility 还会重定向此方法中的真实 matches 调用，用于判断最终产物交付阶段。
         boolean matchesFinalOutput = current.finalOutput != null && what.matches(current.finalOutput);
         long strict = outputDelivery.insert(what, amount, type, accepted, matchesFinalOutput);
-        if (job != current || strict >= amount) return strict;
-        return strict + cn.dancingsnow.neoecoae.compat.thunderbolt.ECOOverloadCpuAccountingBridge
-                .claim(this, current.link.getCraftingID(), what, amount - strict, type);
+        return strict;
     }
 
     /**

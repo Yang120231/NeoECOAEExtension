@@ -766,7 +766,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
      * <p>Only a plan ECO produced may be rechecked here. Another planner can describe its stored/missing split with
      * different semantics, so re-extracting it from storage can report phantom shortages and reject submission.</p>
      *
-     * <p>The wildcard includes Cosmolite's boolean overload; a bare method name selects only its no-argument delegate.</p>
+     * <p>The wildcard includes GTO's boolean overload; a bare method name selects only its no-argument delegate.</p>
      */
     @Inject(
         method = "startJob*",
@@ -778,7 +778,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     )
     private void neoecoae$refreshMissingIngredientsBeforeStart(CallbackInfo ci) {
         if (!neoecoae$ownsPlan(result) || result.simulation()
-                || cn.dancingsnow.neoecoae.compat.extendedaeplus.EAEPForcedCrafting.isForced(result)
+                || (result instanceof cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOForcedCraftingPlan)
                 || ((Object) this instanceof cn.dancingsnow.neoecoae.api.me.menu.ECOForceCraftStartSync force
                     && force.neoecoae$isForceCraftStartActive())) {
             return;
@@ -883,7 +883,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
                 submittedPlan.finalOutput().what(), submittedPlan.finalOutput().amount(), neoecoae$describeCpu(target));
         }
         if (!submitResult.successful() && (NEConfig.ecoCraftSubmissionDebug
-                || cn.dancingsnow.neoecoae.compat.extendedaeplus.EAEPForcedCrafting.isForced(submittedPlan))) {
+                || (submittedPlan instanceof cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOForcedCraftingPlan))) {
             String cpuDetails = service instanceof ECOCraftingServiceDiagnostics diagnostics
                 ? diagnostics.neoecoae$describeCpuSelection(submittedPlan, source)
                 : "crafting service diagnostics unavailable";

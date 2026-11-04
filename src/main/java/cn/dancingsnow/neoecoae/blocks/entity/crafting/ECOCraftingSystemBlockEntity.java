@@ -308,7 +308,7 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
     /**
      * Craft slots this worker may hold in flight. A fully virtualized endgame network reports the accounting
      * headroom instead of a hardware-derived number, so one batch can absorb an entire remaining task - that
-     * is what "unlimited processing capacity" means, and it is the same number the UI and Jade display.
+     * is what "unlimited processing capacity" means, and it is the same number the UI displays.
      *
      * <p>The override is still gated on real hardware: a host without parallel cores has a per-worker craft
      * count of zero and must keep rejecting every dispatch.
@@ -649,7 +649,7 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
 
     /**
      * The single predicate every "unlimited" claim goes through - dispatch limits, the panel readout, the
-     * statistics tooltip and the Jade overlay all read it, so the display can never promise a capacity the
+     * statistics tooltip both read it, so the display can never promise a capacity the
      * dispatch path does not actually grant.
      *
      * <p>FT parallel capacity is deliberately absent from this predicate: virtual eligibility is physical FX
@@ -663,7 +663,7 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
         return getStandaloneCapabilityCapacitySnapshot().virtualMode();
     }
 
-    /** Authoritative server-side capability state consumed by dispatch, GUI, tooltips and Jade. */
+    /** Authoritative server-side capability state consumed by dispatch, GUI and tooltips. */
     public CraftingCapabilitySnapshot getCapabilitySnapshot() {
         NECraftingNetworkCluster network = refreshCapabilityNetworkAssociation();
         if (network != null) {

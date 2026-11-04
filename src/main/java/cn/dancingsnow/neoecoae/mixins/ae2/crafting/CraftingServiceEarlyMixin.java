@@ -26,7 +26,7 @@ public abstract class CraftingServiceEarlyMixin {
 
     // Run before automatic selectors: multiple INVOKE_ASSIGN callbacks can be inserted in reverse
     // execution order, letting another addon return before an explicitly selected ECO CPU is handled.
-    // Capture shared arguments independently of Cosmolite's additional notification flag.
+    // Capture shared arguments independently of GTO's additional notification flag.
     @Inject(method = "submitJob", at = @At(value = "INVOKE", target = "Lappeng/me/service/CraftingService;findSuitableCraftingCPU(Lappeng/api/networking/crafting/ICraftingPlan;ZLappeng/api/networking/security/IActionSource;Lorg/apache/commons/lang3/mutable/MutableObject;)Lappeng/me/cluster/implementations/CraftingCPUCluster;"), cancellable = true)
     private void neoecoae$submit(CallbackInfoReturnable<ICraftingSubmitResult> result,
             @Local(argsOnly = true) ICraftingPlan job,

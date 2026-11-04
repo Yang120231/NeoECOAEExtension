@@ -64,7 +64,7 @@ final class ECOStorageHostStatistics {
                     cellType,
                     id,
                     cellType::desc,
-                    () -> !host.isFormedInfiniteMode() && cellType.visible() && normalUiTypeId(id) == id,
+                    () -> !host.isFormedInfiniteMode() && cellType.visible(),
                     () -> getStorageValue(id, StorageValue.USED_TYPES),
                     () -> getStorageValue(id, StorageValue.TOTAL_TYPES),
                     () -> getStorageValue(id, StorageValue.USED_BYTES),
@@ -171,7 +171,6 @@ final class ECOStorageHostStatistics {
         long energyConsumePerTick = 256L + (1L << (1 + 4 * host.getTier().getTier()));
         Map<Integer, StorageTypeTotals> storageTypes = new Int2ObjectOpenHashMap<>();
         List<StorageHostUI.CellEntry> cellEntries = new ArrayList<>();
-        boolean hasSingularity = false;
         driveUiSnapshots.keySet().retainAll(host.getCluster().getDrives());
         for (ECODriveBlockEntity drive : host.getStorageUiDrives()) {
             if (drive == null) {
@@ -188,8 +187,6 @@ final class ECOStorageHostStatistics {
             int cellTypeId = view.type();
             boolean supported = view.inventory() != null && host.getTier().compareTo(view.inventory().getTier()) >= 0;
             if (supported) {
-                hasSingularity |= cn.dancingsnow.neoecoae.integration.biggerae2.BiggerAE2SingularityPowerService
-                    .isSingularity(stack);
                 energyConsumePerTick = NEMath.saturatingAdd(
                     energyConsumePerTick,
                     Math.max(0L, Math.round(view.inventory().getIdleDrain()))
@@ -220,17 +217,11 @@ final class ECOStorageHostStatistics {
             long totalBytes = view.totalBytes();
             if (cellTypeId >= 0) {
                 storageTypes.merge(
-                    normalUiTypeId(cellTypeId),
+                    cellTypeId,
                     new StorageTypeTotals(usedTypes, totalTypes, usedBytes, totalBytes),
                     StorageTypeTotals::add
                 );
             }
-        }
-        if (hasSingularity && host.getMainNode().getGrid() != null) {
-            double surcharge = host.getMainNode().getGrid().getService(
-                cn.dancingsnow.neoecoae.integration.biggerae2.BiggerAE2SingularityPowerService.class)
-                .getAdditionalIdleDrain(host);
-            energyConsumePerTick = NEMath.saturatingAdd(energyConsumePerTick, Math.max(0L, Math.round(surcharge)));
         }
         if (host.isFormedInfiniteMode()) {
             addInfiniteStorageTypes(storageTypes);
@@ -287,29 +278,6 @@ final class ECOStorageHostStatistics {
         }
     }
 
-    private int normalUiTypeId(int cellTypeId) {
-        ResourceLocation key = cellTypes.getKey(cellTypes.byId(cellTypeId));
-        if (key == null || !key.getNamespace().equals("neoecoae")) return cellTypeId;
-        String baseType = switch (key.getPath()) {
-            case "mega_item", "bigger_ae2_item" -> "items";
-            case "mega_fluid", "bigger_ae2_fluid" -> "fluids";
-            case "mega_energy", "bigger_ae2_fe" -> "flux";
-            case "mega_chemical", "bigger_ae2_chemical" -> "mekanism";
-            case "mega_air" -> "air";
-            case "mega_experience", "bigger_ae2_experience" -> "experience";
-            case "mega_soul" -> "soul";
-            case "mega_mana" -> "mana";
-            case "mega_source", "bigger_ae2_source" -> "source";
-            case "mega_matter" -> "matter";
-            case "mega_stress" -> "stress";
-            case "mega_data" -> "data";
-            default -> null;
-        };
-        if (baseType == null) return cellTypeId;
-        ECOCellType base = cellTypes.get(new ResourceLocation("neoecoae", baseType));
-        // Keep the original group if an optional channel's ordinary cell type is unavailable.
-        return base == null ? cellTypeId : cellTypes.getId(base);
-    }
 
     private void addInfiniteStorageTypes(Map<Integer, StorageTypeTotals> storageTypes) {
         ECOInfiniteStorageEngine engine = host.getInfiniteEngine();

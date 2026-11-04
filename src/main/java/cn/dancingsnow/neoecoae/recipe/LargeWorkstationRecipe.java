@@ -44,17 +44,8 @@ public record LargeWorkstationRecipe(ResourceLocation id, IntegratedWorkingStati
             additionalFluidInputs, additionalOutputs, ticks, fe, alternative);
     }
 
-    /** FE can always be paid with equivalent AE, so Applied Flux is optional. */
-    public boolean requiresAppliedFlux() { return false; }
-
     private static int referenceTicks(ResourceLocation type, IntegratedWorkingStationRecipe display, long energy) {
-        if (type.equals(NATIVE_TYPE)) return display.processingTicks();
-        if (type.getNamespace().equals("ae2cs")) return (int) Math.max(1, Math.min(Integer.MAX_VALUE, energy / 200 + (energy % 200 == 0 ? 0 : 1)));
-        return switch (type.toString()) {
-            case "expatternprovider:crystal_assembler", "advanced_ae:reaction", "extendedae:crystal_assembler" -> 100;
-            case "ae2lt:overload_processing", "ae2lt:lightning_assembly", "ae2lt:lightning_simulation" -> 4;
-            default -> 200;
-        };
+        return display.processingTicks();
     }
 
     public LargeWorkstationRecipe {

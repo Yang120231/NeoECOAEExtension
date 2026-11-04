@@ -140,18 +140,6 @@ public final class CraftingInterfaceClientUI {
         if (searchFields.isEmpty()) return false;
         clearShortcutCharacter(screen);
         NativeSearchField field = focusedSearchField(screen);
-        var quickQuery = EAEPQuickSearch.query(keyCode, scanCode, modifiers);
-        if (quickQuery.isPresent()) {
-            if (field == null) field = searchFields.stream().filter(NativeSearchField.class::isInstance)
-                    .map(NativeSearchField.class::cast).findFirst().orElse(null);
-            if (field != null) {
-                field.claimNativeFocus(screen);
-                field.setSearchValue(quickQuery.get());
-                // GLFW sends a separate char callback even when the shortcut's key event was canceled.
-                field.suppressShortcutCharacter = true;
-                return true;
-            }
-        }
         if (field != null && keyCode == GLFW.GLFW_KEY_TAB) {
             List<NativeSearchField> fields = searchFields.stream()
                     .filter(NativeSearchField.class::isInstance).map(NativeSearchField.class::cast).toList();

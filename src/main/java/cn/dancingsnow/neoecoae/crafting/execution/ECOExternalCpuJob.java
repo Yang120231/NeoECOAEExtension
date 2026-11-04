@@ -7,7 +7,7 @@ import appeng.crafting.CraftingLink;
 import appeng.crafting.inv.ListCraftingInventory;
 import java.util.Map;
 
-/** Internal ledger bridge shared by native AE2/OmniCell and AdvancedAE CPUs. */
+/** Internal ledger bridge for the native GTO AE2 CPU. */
 public interface ECOExternalCpuJob {
     Map<IPatternDetails, ?> neoecoae$tasks();
     ListCraftingInventory neoecoae$waitingFor();

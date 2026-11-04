@@ -33,8 +33,6 @@ import net.minecraftforge.client.event.ScreenEvent;
 import appeng.menu.implementations.CellWorkbenchMenu;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.IconButton;
-import cn.dancingsnow.neoecoae.integration.xei.RecipeViewerBookmarkAccess;
-import cn.dancingsnow.neoecoae.network.ECOImportJeiBookmarksC2SPacket;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 import cn.dancingsnow.neoecoae.network.ECONetwork;
@@ -46,11 +44,6 @@ public class NeoECOAEClient {
                 || Boolean.getBoolean("neoecoae.gtoAcceptance")) {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(
                 cn.dancingsnow.neoecoae.client.diagnostics.ClientStartupProbe::tick);
-            if (!net.minecraftforge.fml.loading.FMLEnvironment.production) {
-                modBus.addListener(net.minecraftforge.eventbus.api.EventPriority.LOWEST, false,
-                    net.minecraftforge.client.event.ModelEvent.ModifyBakingResult.class,
-                    cn.dancingsnow.neoecoae.client.diagnostics.GtlModelWrapperClientProbe::wrap);
-            }
         }
         NEExtraModels.register();
         modBus.addListener(NeoECOAEClient::onClientSetup);
@@ -75,7 +68,6 @@ public class NeoECOAEClient {
             LargeIntegratedWorkingStationPatternProviderMenu.TYPE,
             LargeIntegratedWorkingStationPatternProviderScreen::new,
             "/screens/large_integrated_working_station_interface.json"));
-        NeoECOAE.getIntegrationManager().loadAllClientIntegrations();
         NEItemColors.clearCache();
         ECOCellModels.runDeferredRegistration();
         ECOComputationModels.runDeferredRegistration();
@@ -91,7 +83,6 @@ public class NeoECOAEClient {
         FixedBlockEntityRenderers.register(NEBlockEntities.COMPUTATION_COOLING_CONTROLLER_L4.get(), coolingRenderer);
         FixedBlockEntityRenderers.register(NEBlockEntities.COMPUTATION_COOLING_CONTROLLER_L6.get(), coolingRenderer);
         FixedBlockEntityRenderers.register(NEBlockEntities.COMPUTATION_COOLING_CONTROLLER_L9.get(), coolingRenderer);
-        cn.dancingsnow.neoecoae.client.rendering.EmbeddiumFixedGeometry.initialize();
     }
 
     @SubscribeEvent
@@ -104,36 +95,6 @@ public class NeoECOAEClient {
     @SubscribeEvent
     public static void onScreenInitPost(ScreenEvent.Init.Post event) {
         ECOCraftConfirmScreenIntegration.onScreenInitPost(event);
-    }
-
-    public static Button createBookmarkButton(CellWorkbenchMenu menu) {
-        Button importButton = new BookmarkButton(
-            Component.translatable("gui.neoecoae.import_jei_bookmarks"), ignored -> {
-                if (!RecipeViewerBookmarkAccess.isAvailable()) return;
-                var keys = RecipeViewerBookmarkAccess.bookmarkedKeys();
-                ECONetwork.sendToServer(new ECOImportJeiBookmarksC2SPacket(menu.containerId, keys));
-            });
-        importButton.active = RecipeViewerBookmarkAccess.isAvailable();
-        importButton.visible = importButton.active;
-        return importButton;
-    }
-
-    /** Use the same 1.20.1 atlas, background and tooltip handling as the neighboring AE2 buttons. */
-    private static final class BookmarkButton extends IconButton {
-        private BookmarkButton(Component message, OnPress onPress) {
-            super(onPress);
-            setMessage(message);
-        }
-
-        @Override
-        protected Icon getIcon() {
-            return Icon.ARROW_UP;
-        }
-
-        @Override
-        public java.util.List<Component> getTooltipMessage() {
-            return java.util.List.of(Component.translatable("gui.neoecoae.import_jei_bookmarks.tooltip"));
-        }
     }
 
     @SubscribeEvent

@@ -95,7 +95,7 @@ public final class WorkstationInterfaceButtonBar extends VerticalButtonBar {
             visibleButtons++;
         }
 
-        // Set up a bounding rectangle for JEI exclusion zones
+        // Track the toolbar bounds.
         if (maxWidth == 0) {
             bounds = new Rect2i(0, 0, 0, 0);
         } else {

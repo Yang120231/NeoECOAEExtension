@@ -17,7 +17,6 @@ import cn.dancingsnow.neoecoae.all.NEMenus;
 import cn.dancingsnow.neoecoae.all.NERecipeTypes;
 import cn.dancingsnow.neoecoae.all.NERegistries;
 import cn.dancingsnow.neoecoae.all.NETooltips;
-import cn.dancingsnow.neoecoae.api.integration.IntegrationManager;
 import cn.dancingsnow.neoecoae.api.storage.ECOStorageCells;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOIntegratedWorkingStationBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationBlockEntity;
@@ -34,7 +33,6 @@ import cn.dancingsnow.neoecoae.menu.LargeIntegratedWorkingStationPatternProvider
 import cn.dancingsnow.neoecoae.registration.NERegistrate;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.factory.BlockUIMenuType;
 import com.tterrag.registrate.util.entry.ItemEntry;
-import lombok.Getter;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
@@ -44,7 +42,6 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.loading.progress.StartupNotificationManager;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import cn.dancingsnow.neoecoae.platform.ForgeBlockCapabilities;
 import net.minecraftforge.common.MinecraftForge;
@@ -61,8 +58,6 @@ import java.util.List;
 @Mod(NeoECOAE.MOD_ID)
 public class NeoECOAE {
     private final Logger logger = LoggerFactory.getLogger(MOD_ID);
-    @Getter
-    private static final IntegrationManager integrationManager = new IntegrationManager();
     public static final String MOD_ID = "neoecoae";
     public static IEventBus MOD_BUS = null;
 
@@ -82,21 +77,13 @@ public class NeoECOAE {
         NEEcoTiers.register();
         NECellTypes.register();
         NERecipeTypes.register(modBus);
-        cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipes.configure(() -> NEConfig.largeWorkstationIgnoreUpgradeCards);
-
-        StartupNotificationManager.addModMessage("[Neo ECO AE Extension] Loading Integrations");
-        integrationManager.compileContent();
-        integrationManager.loadAllIntegrations();
         net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
             () -> () -> cn.dancingsnow.neoecoae.client.NeoECOAEClient.initialize(modBus));
         cn.dancingsnow.neoecoae.compat.ae2.AE2PatternOptimizationIntegration.init();
-        cn.dancingsnow.neoecoae.compat.ECOPatternIntegrations.initialize();
-        StartupNotificationManager.addModMessage("[Neo ECO AE Extension] Integrations Load Complete");
+        cn.dancingsnow.neoecoae.compat.gto.ECOGtoIntegration.initialize();
         // These values govern server-authoritative gameplay and are also read by client-side
         // previews/tooltips. SERVER configs are synchronized to joining clients by Forge.
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, NEConfig.SPEC);
-        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON,
-            cn.dancingsnow.neoecoae.config.RecipeProfileConfig.SPEC, "neoecoae-recipes-common.toml");
 
         modBus.addListener(NeoECOAE::registerCapabilities);
         modBus.addListener(BlockUIMenuType::onCommonSetup);
@@ -104,7 +91,7 @@ public class NeoECOAE {
         modBus.addListener(NeoECOAE::initStorageCells);
         modBus.addListener(NeoECOAE::newRegistry);
         modBus.addListener(NeoECOAE::addClassicPack);
-        modBus.addListener(cn.dancingsnow.neoecoae.recipe.profile.GTRecipeProfiles::addPackFinders);
+        modBus.addListener(cn.dancingsnow.neoecoae.recipe.profile.GtoRecipePack::addPackFinders);
         ECONetwork.register();
         cn.dancingsnow.neoecoae.platform.sync.ManagedRpcNetwork.register(
             net.minecraftforge.fml.ModList.get().getModContainerById(MOD_ID).orElseThrow()
@@ -122,7 +109,6 @@ public class NeoECOAE {
         MinecraftForge.EVENT_BUS.addListener(ECOStorageLifecycleEvents::onServerTick);
         MinecraftForge.EVENT_BUS.addListener(cn.dancingsnow.neoecoae.platform.diagnostics.StorageSavedDataServerProbe::started);
         MinecraftForge.EVENT_BUS.addListener(cn.dancingsnow.neoecoae.platform.diagnostics.Legacy2042ServerProbe::started);
-        MinecraftForge.EVENT_BUS.addListener(cn.dancingsnow.neoecoae.platform.diagnostics.OptionalStorageServerProbe::started);
     }
 
     public static ResourceLocation id(String path) {
