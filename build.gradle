@@ -341,6 +341,38 @@ tasks.register('gtoNativeStorageAllocationTest', Test) {
 
 // Crafting planner/execution regression on the GTO branch: the legacy tests that still compile against the
 // fork. scripts/legacy-test-compile-exclusions.txt lists the ones that reference classes GTO removed.
+// UI contracts run against the same GTO AE2 APIs as the packaged mod.
+sourceSets {
+    gtoUiTest {
+        java.srcDir 'src/test/java'
+        java.srcDir 'src/gtoTest/java'
+        java.include 'cn/dancingsnow/neoecoae/gui/computation/**'
+        java.include 'cn/dancingsnow/neoecoae/gui/crafting/**'
+        java.include 'cn/dancingsnow/neoecoae/gui/workstation/**'
+        java.include 'cn/dancingsnow/neoecoae/gui/common/HostProgressTestSupport.java'
+        java.include 'cn/dancingsnow/neoecoae/gui/common/HostTextTest.java'
+        java.include 'cn/dancingsnow/neoecoae/gui/theme/PanelAtlasTestSupport.java'
+        java.include 'cn/dancingsnow/neoecoae/gui/storage/StoragePriority*'
+        java.include 'cn/dancingsnow/neoecoae/platform/ui/**'
+        java.include 'cn/dancingsnow/neoecoae/util/**'
+        java.include 'cn/dancingsnow/neoecoae/compat/gto/GtoUi*'
+        java.include 'cn/dancingsnow/neoecoae/mixins/ae2/crafting/SmartDoublingNetworkSettingsTest.java'
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += files(layout.buildDirectory.file("moddev/artifacts/client-extra-${minecraft_version}-${forge_version}.jar"))
+    }
+}
+configurations.gtoUiTestImplementation.extendsFrom configurations.testImplementation
+configurations.gtoUiTestRuntimeOnly.extendsFrom configurations.testRuntimeOnly
+
+tasks.register('gtoUiTest', Test) {
+    description = 'Checks retained screens, tooltip cards and GTO UI API contracts.'
+    testClassesDirs = sourceSets.gtoUiTest.output.classesDirs
+    classpath = sourceSets.gtoUiTest.runtimeClasspath
+    useJUnitPlatform()
+    maxHeapSize = '2G'
+}
+
 def legacyTestExclusions = file('scripts/legacy-test-compile-exclusions.txt').readLines().findAll { !it.isBlank() }
 sourceSets {
     craftingRegressionTest {
