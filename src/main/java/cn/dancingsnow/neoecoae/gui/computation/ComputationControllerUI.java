@@ -62,8 +62,37 @@ public final class ComputationControllerUI {
         @Nullable Player player, DriveExtractor driveExtractor, DriveInserter driveInserter,
         LongSupplier gameTime, BooleanSupplier canInteract,
         Supplier<List<ECOCraftingCPU>> cpus, Consumer<ECOCraftingCPU> toggleCpuSuspended, Consumer<ECOCraftingCPU> cancelCpu,
-        Supplier<Component> endgameStatus
+        Supplier<Component> endgameStatus,
+        BooleanSupplier smartDoublingEnabled, Runnable toggleSmartDoubling
     ) {
+        /** Preserves the pre-switch constructor for integrations; smart doubling defaults to enabled. */
+        public Config(
+            BooleanSupplier connected, IntSupplier networkMultiplier, IntSupplier normalSwitchCount, IntSupplier highEnergySwitchCount,
+            LongSupplier usedBytes, LongSupplier totalBytes, LongSupplier availableBytes,
+            IntSupplier usedThreads, IntSupplier totalThreads, IntSupplier parallelCount, IntSupplier fullParallelCount,
+            Supplier<CpuSelectionMode> cpuSelectionMode, IntConsumer adjustCpuSelectionMode,
+            BooleanSupplier ignoringPatternSubstitutions, IntSupplier substitutionPatternCount,
+            Runnable toggleIgnoringPatternSubstitutions,
+            BooleanSupplier cyclePlanningEnabled, Runnable toggleCyclePlanning,
+            BooleanSupplier fastPlannerEnabled, Runnable toggleFastPlanner,
+            IntSupplier networkFrequency, IntConsumer adjustNetworkFrequency,
+            Supplier<ItemStack> hostItem,
+            Supplier<List<ComputationDriveEntry>> upperDrives, Supplier<List<ComputationDriveEntry>> lowerDrives,
+            @Nullable Player player, DriveExtractor driveExtractor, DriveInserter driveInserter,
+            LongSupplier gameTime, BooleanSupplier canInteract,
+            Supplier<List<ECOCraftingCPU>> cpus, Consumer<ECOCraftingCPU> toggleCpuSuspended, Consumer<ECOCraftingCPU> cancelCpu,
+            Supplier<Component> endgameStatus
+        ) {
+            this(connected, networkMultiplier, normalSwitchCount, highEnergySwitchCount, usedBytes,
+                totalBytes, availableBytes, usedThreads, totalThreads, parallelCount,
+                fullParallelCount, cpuSelectionMode, adjustCpuSelectionMode, ignoringPatternSubstitutions, substitutionPatternCount,
+                toggleIgnoringPatternSubstitutions, cyclePlanningEnabled, toggleCyclePlanning, fastPlannerEnabled, toggleFastPlanner,
+                networkFrequency, adjustNetworkFrequency, hostItem, upperDrives, lowerDrives,
+                player, driveExtractor, driveInserter, gameTime, canInteract,
+                cpus, toggleCpuSuspended, cancelCpu, endgameStatus, () -> true,
+                () -> {});
+        }
+
         HolderLookup.Provider registries() {
             return player == null ? RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY)
                 : player.level().registryAccess();
@@ -107,18 +136,24 @@ public final class ComputationControllerUI {
         cpuMode.setId("computation-cpu-mode");
         Button frequency = ComputationControllerInteractions.createNetworkFrequencyButton(config);
         frequency.setId("computation-frequency");
-        var identities = new CpuSelectionState.Identities<ECOCraftingCPU>();
-        ComputationCpuStatusPanel status = new ComputationCpuStatusPanel(config, identities);
+        Button smartDoubling = ComputationControllerInteractions.createSmartDoublingButton(config);
+        var identities = new CpuSelectionState.Identities<appeng.api.networking.crafting.ICraftingCPU>();
+        ComputationCpuStatusPanel status = new ComputationCpuStatusPanel(ComputationCpuStatusPanel.Source.of(config), identities);
         status.setDisplay(false);
         UIElement[] rootRef = new UIElement[1];
         ComputationCpuSelector selector = new ComputationCpuSelector(config, serial -> {
             mainOf(rootRef[0]).setDisplay(false);
             status.setDisplay(true);
             status.open(serial);
-            setViewSize(rootRef[0], 326, 254);
+            setViewSize(rootRef[0], ComputationCpuStatusPanel.WIDTH, status.currentHeight());
             recenter();
         }, identities);
         selector.setDisplay(false);
+        status.setHeightListener(height -> {
+            if (!status.isDisplayed()) return;
+            setViewSize(rootRef[0], ComputationCpuStatusPanel.WIDTH, height);
+            recenter();
+        });
         status.setBackAction(() -> {
             status.setDisplay(false);
             mainOf(rootRef[0]).setDisplay(true);
@@ -161,8 +196,8 @@ public final class ComputationControllerUI {
                     case "computation_switch" -> createSwitch(config,
                         node.has("key") ? node.get("key").getAsString() : "", panelTier, textures);
                     case "computation_toolbar" -> builder == null
-                        ? HostSideButtonBar.left(guideButton, cpuMode, frequency, listToggle)
-                        : HostSideButtonBar.left(guideButton, cpuMode, frequency, listToggle, builder.openButton());
+                        ? HostSideButtonBar.left(guideButton, cpuMode, frequency, smartDoubling, listToggle)
+                        : HostSideButtonBar.left(guideButton, cpuMode, frequency, smartDoubling, listToggle, builder.openButton());
                     case "computation_info" -> info;
                     default -> null;
                 };

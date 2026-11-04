@@ -32,6 +32,8 @@ public final class ECOGtoMachineStatus {
     };
 
     private ECOGtoMachineStatus() {}
+    private static final cn.dancingsnow.neoecoae.crafting.display.processing.ECOFxProcessingStatus FX_STATUS =
+        new cn.dancingsnow.neoecoae.crafting.display.processing.ECOFxProcessingStatus();
 
     public static List<Target> targets(ICraftingProvider provider) {
         Object current = provider;
@@ -60,10 +62,16 @@ public final class ECOGtoMachineStatus {
         private final java.util.LinkedHashMap<String, Machine> machines = new java.util.LinkedHashMap<>();
         private final LinkedHashSet<Target> machineTargets = new LinkedHashSet<>();
         private final AEKey output;
+        private final java.util.UUID jobId;
 
         public Scan(Iterable<Target> roots, AEKey output) {
+            this(roots, output, null);
+        }
+
+        public Scan(Iterable<Target> roots, AEKey output, java.util.UUID jobId) {
             for (var root : roots) pending.add(root);
             this.output = output;
+            this.jobId = jobId;
         }
 
         public boolean complete() { return pending.isEmpty(); }
@@ -86,6 +94,15 @@ public final class ECOGtoMachineStatus {
             if (be instanceof cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationBlockEntity workstation) {
                 machineTargets.add(target);
                 machines.put(location(target), workstation.getProcessingStatus(output));
+                return;
+            }
+            if (FX_STATUS.supports(be)) {
+                var observation = FX_STATUS.read(be,
+                    new cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingStatusReader.Context(output, jobId));
+                if (observation.sample() != null) {
+                    machineTargets.add(target);
+                    machines.put(location(target), observation.sample());
+                }
                 return;
             }
             Object machine = value(be, "getMetaMachine");

@@ -68,6 +68,7 @@ public class NeoECOAE {
         MOD_BUS = modBus;
         NECreativeTabs.register();
         NEMenus.register(modBus);
+        cn.dancingsnow.neoecoae.gui.computation.ECOCraftingStatusUI.register();
         NEItems.register();
         NEBlocks.register();
         NEFluids.register();

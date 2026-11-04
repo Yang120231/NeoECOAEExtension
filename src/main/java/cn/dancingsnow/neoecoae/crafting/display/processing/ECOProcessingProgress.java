@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 public record ECOProcessingProgress(float progress, boolean hasProgress, State state, int machineCount,
         int detailPage, boolean refreshing, List<Machine> machines) {
     public static final int DETAIL_PAGE_SIZE = 3;
+    public static final int SHORT_CYCLE_TICKS = 5;
     public static final ECOProcessingProgress EMPTY = new ECOProcessingProgress(0, false, State.QUEUED, 0, -1, false, List.of());
 
     public ECOProcessingProgress {
@@ -19,15 +20,18 @@ public record ECOProcessingProgress(float progress, boolean hasProgress, State s
 
     public static ECOProcessingProgress summarize(List<Machine> machines) {
         double progress = 0, duration = 0;
-        boolean running = false, waiting = false, paused = false;
+        boolean running = false, waiting = false, paused = false, unavailable = false;
         for (var machine : machines) {
-            progress += machine.progressTicks();
-            duration += machine.durationTicks();
+            double weight = Math.max(1L, machine.parallel());
+            progress += machine.progressTicks() * weight;
+            duration += machine.durationTicks() * weight;
             running |= machine.state() == State.RUNNING;
             waiting |= machine.state() == State.WAITING;
             paused |= machine.state() == State.PAUSED;
+            unavailable |= machine.state() == State.UNAVAILABLE;
         }
-        State state = waiting ? State.WAITING : running ? State.RUNNING : paused ? State.PAUSED : State.QUEUED;
+        State state = waiting ? State.WAITING : running ? State.RUNNING : paused ? State.PAUSED
+            : unavailable ? State.UNAVAILABLE : State.QUEUED;
         return new ECOProcessingProgress(duration == 0 ? 0 : (float) (progress / duration), duration > 0,
             state, machines.size(), 0, false, machines);
     }
@@ -43,6 +47,33 @@ public record ECOProcessingProgress(float progress, boolean hasProgress, State s
         int start = page < 0 ? 0 : page * DETAIL_PAGE_SIZE;
         return new ECOProcessingProgress(progress, hasProgress, state, machineCount, page, refreshing,
             page < 0 ? List.of() : machines.subList(start, Math.min(machines.size(), start + DETAIL_PAGE_SIZE)));
+    }
+
+    /**
+     * Copy for the CPU status sync. Cycles of {@link #SHORT_CYCLE_TICKS} or less finish between samples, so their
+     * tick counters only churn the packet: those machines lose their counters, and the cell loses its fill when the
+     * weighted average cycle is that short.
+     */
+    public ECOProcessingProgress forStatusSync() {
+        double duration = 0, weight = 0;
+        boolean trimmed = false;
+        var kept = new java.util.ArrayList<Machine>(machines.size());
+        for (var machine : machines) {
+            if (machine.durationTicks() > 0) {
+                double w = Math.max(1L, machine.parallel());
+                duration += machine.durationTicks() * w;
+                weight += w;
+            }
+            if (machine.durationTicks() > 0 && machine.durationTicks() <= SHORT_CYCLE_TICKS) {
+                trimmed = true;
+                kept.add(new Machine(machine.name(), machine.location(), machine.recipe(), 0, 0, machine.parallel(),
+                    machine.state(), machine.reason()));
+            } else kept.add(machine);
+        }
+        boolean shortCycle = hasProgress && weight > 0 && duration / weight <= SHORT_CYCLE_TICKS;
+        if (!trimmed && !shortCycle) return this;
+        return new ECOProcessingProgress(shortCycle ? 0 : progress, hasProgress && !shortCycle, state, machineCount,
+            detailPage, refreshing, kept);
     }
 
     public int pages() { return Math.max(1, (machineCount + DETAIL_PAGE_SIZE - 1) / DETAIL_PAGE_SIZE); }
