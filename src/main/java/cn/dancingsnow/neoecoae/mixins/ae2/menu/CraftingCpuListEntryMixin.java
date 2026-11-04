@@ -13,9 +13,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-// Apply both suffix hooks before GTLCore's cancellable read callback can return early.
-// Matching write/read order also keeps every following CPU entry aligned in the packet.
-@Mixin(value = CraftingStatusMenu.CraftingCpuListEntry.class, remap = false, priority = 900)
+// Keep the ECO icon and CPU marker in the same order on both sides of GTO's CPU list packet.
+@Mixin(value = CraftingStatusMenu.CraftingCpuListEntry.class, remap = false)
 public class CraftingCpuListEntryMixin implements IOverlayTextureHolder, ECOCraftingCpuListEntry {
 
     @Unique

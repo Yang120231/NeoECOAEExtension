@@ -11,13 +11,10 @@ import appeng.helpers.patternprovider.PatternProviderLogic;
 import cn.dancingsnow.neoecoae.mixins.ae2.accessor.PatternProviderLogicAccessor;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOBatchCraftingHelper;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOFastPathStacks;
-import cn.dancingsnow.neoecoae.compat.thunderbolt.ECOOverloadCpuAccountingBridge;
 import cn.dancingsnow.neoecoae.compat.ae2.ECOProviderPatternIntrospection;
-import cn.dancingsnow.neoecoae.compat.ae2lt.ECOAe2LtDirectDispatch;
 import cn.dancingsnow.neoecoae.compat.ae2.ECOProcessingExecutionPattern;
 import cn.dancingsnow.neoecoae.compat.ae2.ECOExternalProviderBlocking;
-import cn.dancingsnow.neoecoae.compat.gregtech.ECOGregTechProcessingDispatch;
-import cn.dancingsnow.neoecoae.compat.advanced_ae.ECOAdvancedAEPatternScaling;
+import cn.dancingsnow.neoecoae.compat.gto.ECOGtoProcessingDispatch;
 import cn.dancingsnow.neoecoae.api.me.provider.ECOParallelCraftingProvider;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -27,7 +24,7 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * ECO owns processing batch growth; optional adapters only transport the selected batch.
+ * ECO owns processing batch growth; GTO and native AE2 providers transport the selected batch.
  *
  * <p>The per-tick budget counts provider submissions, never crafts: one negotiated-capacity GT buffer push carrying
  * a billion copies costs one attempt. Batch size comes from the task, materials, energy, cycle seeds, the target's
@@ -80,8 +77,8 @@ final class ECOProcessingPatternDispatcher {
         var byPattern = eligibility.get(provider);
         var cached = byPattern == null ? null : byPattern.get(pattern);
         if (cached != null && tick - cached.tick() < ELIGIBILITY_CACHE_TICKS) return cached.supported();
-        return ECOGregTechProcessingDispatch.isBuffer(provider) || ECOAe2LtDirectDispatch.isProvider(provider)
-                || provider instanceof PatternProviderLogic || ECOAdvancedAEPatternScaling.isProvider(provider)
+        return ECOGtoProcessingDispatch.isBuffer(provider)
+                || provider instanceof PatternProviderLogic
                 || HAS_LOGIC.get(provider.getClass());
     }
 
@@ -123,19 +120,11 @@ final class ECOProcessingPatternDispatcher {
         if (ECOExternalProviderBlocking.isEnabled(provider)
                 || isScaledAttemptBudgetExhausted(request.pattern()) || isScaledDispatchDeferred(request, provider)
                 || !supportsScaledDispatchCached(request, provider)) return null;
-        var direct = ECOAe2LtDirectDispatch.open(provider);
-        boolean gtBuffer = direct == null && ECOGregTechProcessingDispatch.isBuffer(provider);
-        Object logic = direct == null ? providerLogic(provider) : null;
+        boolean gtBuffer = ECOGtoProcessingDispatch.isBuffer(provider);
+        Object logic = providerLogic(provider);
         Object gtTarget = logic == null ? provider : logic;
-        var inputScaling = direct == null ? ECOGregTechProcessingDispatch.inputScaling(gtTarget)
-                : ECOBatchInputScaling.LINEAR;
-        boolean negotiatedCapacity = gtBuffer || ECOGregTechProcessingDispatch.hasCapacityContract(gtTarget);
-        boolean advancedPattern = direct == null && ECOAdvancedAEPatternScaling.isAdvancedPattern(request.pattern());
-        long transportLimit = direct == null ? Long.MAX_VALUE : direct.maxBatchSize(request.pattern());
-        var overload = ECOOverloadCpuAccountingBridge.prepare(owner, request.pattern(),
-                request.job().link.getCraftingID(),
-                request.job().finalOutput == null ? null : request.job().finalOutput.what(), request.job().waitingFor.list);
-        if (!overload.canDispatch()) return null;
+        var inputScaling = ECOGtoProcessingDispatch.inputScaling(gtTarget);
+        boolean negotiatedCapacity = gtBuffer;
         ProbeState state = states.computeIfAbsent(provider, x -> new Reference2ObjectOpenHashMap<>())
                 .computeIfAbsent(request.pattern(), x -> new ProbeState());
         // Negotiated-capacity targets take the whole remainder; their capacity contract below bounds the chunk.
@@ -149,15 +138,15 @@ final class ECOProcessingPatternDispatcher {
                 && visitAttempts < MAX_ATTEMPTS_PER_VISIT && !provider.isBusy()) {
             claimAttempt(request.pattern());
             visitAttempts++;
-            long offer = Math.min(negotiatedCapacity && !ramp.backingOff
-                    ? limit - ramp.owned : ramp.offer(limit - ramp.owned), transportLimit);
+            long offer = negotiatedCapacity && !ramp.backingOff
+                    ? limit - ramp.owned : ramp.offer(limit - ramp.owned);
             var plan = planning.plan(offer, limit - ramp.owned, onePower, service, ECOBatchMode.LINEAR);
             if (plan == null) {
                 state.nextDispatchTick = tick + 1;
                 break;
             }
             if (negotiatedCapacity) {
-                long capacity = ECOGregTechProcessingDispatch.maxOperations(gtTarget, request.pattern(),
+                long capacity = ECOGtoProcessingDispatch.maxOperations(gtTarget, request.pattern(),
                         request.inputs(), plan.craftCount());
                 if (capacity == 0) {
                     state.nextDispatchTick = state.nextFallbackTick = tick + 1;
@@ -169,9 +158,8 @@ final class ECOProcessingPatternDispatcher {
                 }
             }
             offer = plan.craftCount();
-            if (direct == null && cachedCopies != offer) {
+            if (cachedCopies != offer) {
                 cachedExecutionPattern = offer == 1 ? request.pattern()
-                        : advancedPattern ? ECOAdvancedAEPatternScaling.scale(request.pattern(), offer)
                         : new ECOProcessingExecutionPattern(request.pattern(), offer, inputScaling);
                 cachedCopies = offer;
             }
@@ -183,9 +171,8 @@ final class ECOProcessingPatternDispatcher {
                         request.inventory(), request.level(), request.job().link.getCraftingID(),
                         () -> energy.reserve(service, onePower, dispatchPlan.craftCount()), batch -> {
                             mark.accept(provider);
-                            if (direct != null) return direct.submit(request.pattern(), request.inputs(), batch.craftCount());
                             if (gtBuffer) {
-                                return ECOGregTechProcessingDispatch.pushBuffer(provider, request.pattern(),
+                                return ECOGtoProcessingDispatch.pushBuffer(provider, request.pattern(),
                                         executionPattern, batch.inputCounters())
                                         ? ECOBatchAdmission.accepted(batch.craftCount(), true)
                                         : ECOBatchAdmission.rejected();
@@ -212,7 +199,6 @@ final class ECOProcessingPatternDispatcher {
                 break;
             }
             try {
-                overload.registerAccepted(admission.acceptedCrafts());
                 accounting.apply(request, scaledResult(request, admission.acceptedCrafts()), () -> {}, provider);
             } catch (RuntimeException failure) {
                 request.job().failPermanently("POST_ACCEPT_PROCESSING_ACCOUNTING_FAILURE");
@@ -230,16 +216,15 @@ final class ECOProcessingPatternDispatcher {
     }
 
     private static boolean fullyInserted(Object logic) {
-        if (ECOAdvancedAEPatternScaling.isProvider(logic)) return !((ICraftingProvider) logic).isBusy();
         return logic instanceof PatternProviderLogicAccessor accessor && accessor.neoecoae$getSendList().isEmpty();
     }
 
     private static boolean isProcessingPattern(Object pattern) {
-        return pattern instanceof AEProcessingPattern || ECOAdvancedAEPatternScaling.isAdvancedPattern(pattern);
+        return pattern instanceof AEProcessingPattern;
     }
 
     private static Object providerLogic(ICraftingProvider provider) {
-        if (provider instanceof PatternProviderLogic || ECOAdvancedAEPatternScaling.isProvider(provider)) return provider;
+        if (provider instanceof PatternProviderLogic) return provider;
         try {
             return provider.getClass().getMethod("getLogic").invoke(provider);
         } catch (ReflectiveOperationException | RuntimeException unavailable) {
@@ -248,33 +233,26 @@ final class ECOProcessingPatternDispatcher {
     }
 
     /**
-     * Selects providers for ECO-owned aggregate submission. AE2LT uses a direct counted
-     * transport; ordinary providers receive an execution view preserving sparse input order.
+     * Selects GTO buffers and AE2 providers for ECO-owned aggregate submission.
+     * Public buffer routing retains its catalog identity; only physical emission is scaled.
      * Acceptance transfers the entire chunk; the send buffer separately determines capacity proof.
      */
     static boolean supportsScaledDispatch(ECOCraftingDispatchRequest request, ICraftingProvider provider) {
         if (ECOExternalProviderBlocking.isEnabled(provider)) return false;
         if (provider instanceof ECOParallelCraftingProvider) return false;
-        if (ECOGregTechProcessingDispatch.isBuffer(provider)) {
-            return request.pattern().supportsPushInputsToExternalInventory()
+        if (ECOGtoProcessingDispatch.isBuffer(provider)) {
+            return request.pattern() instanceof AEProcessingPattern
+                    && request.pattern().supportsPushInputsToExternalInventory()
                     && request.pattern().getInputs().length > 0 && request.pattern().getOutputs().length > 0
-                    && ECOGregTechProcessingDispatch.supportsInputs(request.inputs());
+                    && ECOGtoProcessingDispatch.supportsInputs(request.inputs());
         }
         // A successful push can still own overflow. Require a live observation of AE2's send buffer.
-        if (ECOAe2LtDirectDispatch.isProvider(provider)) {
-            return ECOAe2LtDirectDispatch.open(provider) != null
-                    && isProcessingPattern(ECOProviderPatternIntrospection.unwrap(request.pattern()))
-                    && request.pattern().getInputs().length > 0 && request.pattern().getOutputs().length > 0
-                    && request.pattern().supportsPushInputsToExternalInventory();
-        }
         Object providerLogic = providerLogic(provider);
         boolean ae2Logic = providerLogic instanceof PatternProviderLogic
                 && providerLogic instanceof PatternProviderLogicAccessor;
-        boolean advancedLogic = ECOAdvancedAEPatternScaling.isProvider(providerLogic);
-        if (!ae2Logic && !advancedLogic) return false;
+        if (!ae2Logic) return false;
         IPatternDetails base = ECOProviderPatternIntrospection.unwrap(request.pattern());
         if (!isProcessingPattern(base)
-                || (ECOAdvancedAEPatternScaling.isAdvancedPattern(base) && !advancedLogic)
                 || base != request.pattern()
                 || request.pattern().getInputs().length == 0
                 || request.pattern().getOutputs().length == 0

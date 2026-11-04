@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.UUID;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
-import org.gtlcore.gtlcore.common.machine.multiblock.part.ae.MEPatternBufferPartMachineBase;
+import com.gtocore.testing.GtoPatternBuffer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -153,6 +153,11 @@ class ECOProcessingSubmissionBudgetTest {
             inventory.insert(ore, 3 * crafts, Actionable.MODULATE);
             when(pattern.getDefinition()).thenReturn(mock(AEItemKey.class, RETURNS_DEEP_STUBS));
             when(pattern.getInputs()).thenReturn(new IPatternDetails.IInput[]{input});
+            doAnswer(invocation -> {
+                IPatternDetails.PatternInputSink sink = invocation.getArgument(1);
+                sink.pushInput(ore, 3);
+                return null;
+            }).when(pattern).pushInputsToExternalInventory(any(), any());
             when(pattern.getOutputs()).thenReturn(new GenericStack[]{new GenericStack(output, 2)});
             when(pattern.supportsPushInputsToExternalInventory()).thenReturn(true);
             doAnswer(call -> {
@@ -192,9 +197,9 @@ class ECOProcessingSubmissionBudgetTest {
             return key;
         }
 
-        MEPatternBufferPartMachineBase buffer() {
-            var buffer = new MEPatternBufferPartMachineBase();
-            buffer.pattern = pattern;
+        GtoPatternBuffer buffer() {
+            var buffer = new GtoPatternBuffer();
+            buffer.bind(pattern);
             return buffer;
         }
 

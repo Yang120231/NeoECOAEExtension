@@ -14,6 +14,7 @@
     "ae2.accessor.PatternProviderLogicAccessor",
     "ae2.crafting.CraftingCalculationMixin",
     "ae2.crafting.AEProcessingPatternComponentMixin",
+    "ae2.crafting.GtoPatternBufferInputMixin",
     "ae2.crafting.Ae2CpuTimeTrackerAccessor",
     "ae2.crafting.Ae2CraftingCpuFastPathMixin",
     "ae2.crafting.CraftingPlanMixin",

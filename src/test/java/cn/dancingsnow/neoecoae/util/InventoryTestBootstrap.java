@@ -47,7 +47,7 @@ public final class InventoryTestBootstrap {
                 appeng.api.stacks.AEKeyTypesInternal.setRegistry(() -> LargeWorkstationTestKeys.REGISTRY);
                 keyRegistryInitialized = true;
             }
-            cn.dancingsnow.neoecoae.compat.ECOPatternIntegrations.initialize();
+            cn.dancingsnow.neoecoae.compat.gto.ECOGtoIntegration.initialize();
         }
     }
 }

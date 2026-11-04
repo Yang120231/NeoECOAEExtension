@@ -121,14 +121,13 @@ final class ECOCraftingProviderDispatcher {
                 continue;
             }
 
+            if (cn.dancingsnow.neoecoae.compat.gto.ECOGtoProcessingDispatch.isBuffer(provider)
+                    && cn.dancingsnow.neoecoae.compat.gto.ECOGtoProcessingDispatch.maxOperations(
+                        provider, request.pattern(), request.inputs(), 1) == 0) continue;
+
             var plan = ECOBatchDispatchPlanning.plan(request, provider, 1, 1, singlePower,
                     energyService, ECOBatchMode.SINGLE);
             if (plan == null) continue;
-            var overload = cn.dancingsnow.neoecoae.compat.thunderbolt.ECOOverloadCpuAccountingBridge.prepare(
-                    owner, request.pattern(), request.job().link.getCraftingID(),
-                    request.job().finalOutput == null ? null : request.job().finalOutput.what(),
-                    request.job().waitingFor.list);
-            if (!overload.canDispatch()) continue;
             if (scaledProvider && !processing.claimFallbackAttempt(request.pattern())) {
                 diagnostics.budget();
                 continue;
@@ -161,7 +160,6 @@ final class ECOCraftingProviderDispatcher {
                 continue;
             }
             try {
-                overload.registerAccepted(1L);
                 accounting.apply(request, ECOCraftingDispatchResult.single(request.outputs(), request.remainders()),
                         budget::recordAcceptedNormalPush, provider);
             } catch (RuntimeException failure) {
