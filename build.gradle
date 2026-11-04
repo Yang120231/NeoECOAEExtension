@@ -323,6 +323,18 @@ tasks.register('gtoCompatibilityTest', Test) {
     if (!installedGtoGtmJar.isBlank()) inputs.file(installedGtoGtmJar)
     testClassesDirs = sourceSets.gtoCompatibilityTest.output.classesDirs
     classpath = sourceSets.gtoCompatibilityTest.runtimeClasspath
+    exclude '**/GtoNativeStorageAllocationTest.class'
+    dependsOn 'gtoNativeStorageAllocationTest'
+    useJUnitPlatform()
+    maxHeapSize = '2G'
+}
+
+// Mockito inline instrumentation from other tests allocates even for real instances. Measure IO in its own JVM.
+tasks.register('gtoNativeStorageAllocationTest', Test) {
+    description = 'Checks allocations of native storage and exact CPU inventory transfers without Mockito instrumentation.'
+    testClassesDirs = sourceSets.gtoCompatibilityTest.output.classesDirs
+    classpath = sourceSets.gtoCompatibilityTest.runtimeClasspath
+    include '**/GtoNativeStorageAllocationTest.class'
     useJUnitPlatform()
     maxHeapSize = '2G'
 }

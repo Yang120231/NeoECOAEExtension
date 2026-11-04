@@ -1,10 +1,11 @@
 package cn.dancingsnow.neoecoae.api.me.bigorder;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.config.Actionable;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.crafting.inv.ListCraftingInventory;
+import cn.dancingsnow.neoecoae.impl.storage.infinite.HugeAmount;
+import cn.dancingsnow.neoecoae.impl.storage.persistence.StorageAmounts;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -12,10 +13,10 @@ import java.util.Map;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
-/** Exact-order inventory. The inherited counter is a saturated compatibility window, never overflow storage. */
+/** The inherited counter remains authoritative for its long window; GTO quantities own only its exact excess. */
 public final class ECOExactInventory extends ListCraftingInventory {
     private static final BigInteger MAX = BigInteger.valueOf(Long.MAX_VALUE);
-    private final Map<AEKey, BigInteger> excess = new Object2ObjectLinkedOpenHashMap<>();
+    private final StorageAmounts excess = new StorageAmounts();
     private final ChangeListener listener;
     private boolean enabled;
 
@@ -25,14 +26,20 @@ public final class ECOExactInventory extends ListCraftingInventory {
     }
 
     public boolean isEnabled() { return enabled; }
+    public boolean isEmpty() { return list.isEmpty() && excess.isEmpty(); }
 
-    public void setEnabled(boolean enabled) {
-        // Cancelled big orders still own their leftovers until the network accepts every window.
-        this.enabled = enabled || !excess.isEmpty();
+    public void setEnabled(boolean requested) {
+        // AE2 may mutate the public counter directly. Keep that window live, including during cancellation.
+        enabled = requested || !excess.isEmpty();
     }
 
     public BigInteger amount(AEKey key) {
-        return BigInteger.valueOf(Math.max(0L, list.get(key))).add(excess.getOrDefault(key, BigInteger.ZERO));
+        return BigInteger.valueOf(Math.max(0L, list.get(key))).add(excess.get(key).toBigInteger());
+    }
+
+    public long availableAfterReservations(AEKey key, long removed, long reserved) {
+        if (!enabled) throw new IllegalStateException("Exact inventory is disabled");
+        return excess.availableWithBase(key, Math.max(0L, list.get(key)), removed, reserved);
     }
 
     public static BigInteger amount(ListCraftingInventory inventory, AEKey key) {
@@ -42,21 +49,57 @@ public final class ECOExactInventory extends ListCraftingInventory {
 
     public Map<AEKey, BigInteger> snapshot() {
         var result = new LinkedHashMap<AEKey, BigInteger>();
-        for (var entry : list) if (entry.getLongValue() > 0) result.put(entry.getKey(), amount(entry.getKey()));
+        list.fastForEach((key, amount) -> { if (amount > 0) result.put(key, BigInteger.valueOf(amount)); });
+        excess.visitExact((key, amount) -> result.merge(key, amount, BigInteger::add));
         return result;
     }
 
+    private void window(AEKey key, long amount) {
+        if (amount == 0) list.remove(key); else list.set(key, amount);
+    }
+
     private void set(AEKey key, BigInteger amount) {
-        long window = amount.min(MAX).longValueExact();
-        if (window == 0) list.remove(key); else list.set(key, window);
-        if (amount.compareTo(MAX) > 0) excess.put(key, amount.subtract(MAX)); else excess.remove(key);
+        long visible = amount.min(MAX).longValueExact();
+        if (amount.compareTo(MAX) > 0) excess.set(key, HugeAmount.of(amount.subtract(MAX)));
+        else excess.setLong(key, 0);
+        window(key, visible);
+    }
+
+    private void insertAmount(AEKey key, long amount) {
+        long before = Math.max(0, list.get(key));
+        long intoWindow = Math.min(amount, Long.MAX_VALUE - before);
+        long visible = before + intoWindow;
+        if (amount > intoWindow) excess.add(key, amount - intoWindow);
+        // A foreign AE2 counter debit may have opened space in the window.
+        if (visible < Long.MAX_VALUE && !excess.isEmpty()) visible += excess.extract(key, Long.MAX_VALUE - visible);
+        if (visible != before) window(key, visible);
+    }
+
+    private long extractAmount(AEKey key, long amount) {
+        long before = Math.max(0, list.get(key));
+        long fromExcess = excess.isEmpty() ? 0 : excess.extract(key, amount);
+        long fromWindow = Math.min(amount - fromExcess, before);
+        long visible = before - fromWindow;
+        if (visible < Long.MAX_VALUE && !excess.isEmpty()) visible += excess.extract(key, Long.MAX_VALUE - visible);
+        if (visible != before || visible == 0) window(key, visible);
+        return fromExcess + fromWindow;
+    }
+
+    private void credit(AEKey key, BigInteger amount) {
+        if (amount.bitLength() < 64) insertAmount(key, amount.longValueExact());
+        else set(key, amount(key).add(amount));
+    }
+
+    private void debitKey(AEKey key, BigInteger amount) {
+        if (amount.bitLength() < 64) extractAmount(key, amount.longValueExact());
+        else set(key, amount(key).subtract(amount));
     }
 
     @Override public void insert(AEKey key, long amount, Actionable mode) {
         if (!enabled) { super.insert(key, amount, mode); return; }
         if (amount < 0) throw new IllegalArgumentException("Negative inventory insertion");
         if (mode == Actionable.MODULATE && amount > 0) {
-            set(key, amount(key).add(BigInteger.valueOf(amount)));
+            insertAmount(key, amount);
             listener.onChange(key);
         }
     }
@@ -64,11 +107,10 @@ public final class ECOExactInventory extends ListCraftingInventory {
     @Override public long extract(AEKey key, long requested, Actionable mode) {
         if (!enabled) return super.extract(key, requested, mode);
         if (requested < 0) throw new IllegalArgumentException("Negative inventory extraction");
-        long extracted = amount(key).min(BigInteger.valueOf(requested)).longValueExact();
-        if (mode == Actionable.MODULATE && extracted > 0) {
-            set(key, amount(key).subtract(BigInteger.valueOf(extracted)));
-            listener.onChange(key);
-        }
+        if (requested == 0) return 0;
+        if (mode == Actionable.SIMULATE) return Math.min(requested, availableAfterReservations(key, 0, 0));
+        long extracted = extractAmount(key, requested);
+        if (extracted > 0) listener.onChange(key);
         return extracted;
     }
 
@@ -76,14 +118,17 @@ public final class ECOExactInventory extends ListCraftingInventory {
     public boolean debit(Map<AEKey, BigInteger> inputs) {
         if (!enabled) throw new IllegalStateException("Exact inventory is disabled");
         for (var entry : inputs.entrySet()) {
-            if (entry.getValue().signum() <= 0) throw new IllegalArgumentException("Invalid exact input");
-            if (amount(entry.getKey()).compareTo(entry.getValue()) < 0) return false;
+            BigInteger requested = entry.getValue();
+            if (requested.signum() <= 0) throw new IllegalArgumentException("Invalid exact input");
+            if (requested.bitLength() < 64) {
+                if (availableAfterReservations(entry.getKey(), 0, 0) < requested.longValueExact()) return false;
+            } else if (amount(entry.getKey()).compareTo(requested) < 0) return false;
         }
-        inputs.forEach((key, value) -> set(key, amount(key).subtract(value)));
+        inputs.forEach(this::debitKey);
         try {
             inputs.keySet().forEach(listener::onChange);
         } catch (RuntimeException failure) {
-            inputs.forEach((key, value) -> set(key, amount(key).add(value)));
+            inputs.forEach(this::credit);
             throw failure;
         }
         return true;
@@ -92,7 +137,7 @@ public final class ECOExactInventory extends ListCraftingInventory {
     public void restore(Map<AEKey, BigInteger> inputs) {
         if (!enabled) throw new IllegalStateException("Exact inventory is disabled");
         for (var amount : inputs.values()) if (amount.signum() <= 0) throw new IllegalArgumentException("Invalid exact input");
-        inputs.forEach((key, value) -> set(key, amount(key).add(value)));
+        inputs.forEach(this::credit);
         inputs.keySet().forEach(listener::onChange);
     }
 
@@ -118,13 +163,12 @@ public final class ECOExactInventory extends ListCraftingInventory {
     @Override public ListTag writeToNBT() {
         if (!enabled) return super.writeToNBT();
         var result = new ListTag();
-        for (var entry : list) {
-            if (entry.getLongValue() <= 0) continue;
-            var tag = entry.getKey().toTagGeneric();
-            tag.putLong("#", entry.getLongValue());
-            if (excess.containsKey(entry.getKey())) tag.putString("ecoExactAmount", amount(entry.getKey()).toString());
+        snapshot().forEach((key, amount) -> {
+            var tag = key.toTagGeneric();
+            tag.putLong("#", amount.min(MAX).longValueExact());
+            if (amount.compareTo(MAX) > 0) tag.putString("ecoExactAmount", amount.toString());
             result.add(tag);
-        }
+        });
         return result;
     }
 
@@ -134,7 +178,7 @@ public final class ECOExactInventory extends ListCraftingInventory {
             for (int i = 0; i < data.size(); i++) exactData |= data.getCompound(i).contains("ecoExactAmount", Tag.TAG_STRING);
             if (!exactData) { excess.clear(); super.readFromNBT(data); return; }
         }
-        // Decode into a temporary ledger first. Invalid exact data must not silently become a long window.
+        // Decode first. Invalid exact data must never become a truncated long window.
         var restored = new LinkedHashMap<AEKey, BigInteger>();
         boolean hasExact = false;
         for (int i = 0; i < data.size(); i++) {
