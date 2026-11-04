@@ -12,14 +12,14 @@ description='''An Applied Energistics 2 addon providing ECO crafting, storage an
 [[dependencies.neoecoae]]
 modId="gtocore"
 mandatory=true
-versionRange="[26.10.26]"
+versionRange="[26.10.26,)"
 ordering="AFTER"
 side="BOTH"
 
 [[dependencies.neoecoae]]
 modId="gtolib"
 mandatory=true
-versionRange="[26.10.26]"
+versionRange="[26.10.26,)"
 ordering="AFTER"
 side="BOTH"
 

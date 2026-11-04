@@ -1,10 +1,4 @@
 {
-  "gtocore": {
-    "mod_id": "gtocore",
-    "version": "26.10.26",
-    "filename": "gtocore-forge-1.20.1-26.10.26.jar",
-    "sha256": "90d85ed8a89776cbffc6712aa0169f559e1f6c5f8a5ae61b6d64725cd08919c1"
-  },
   "ae2": {
     "mod_id": "ae2",
     "filename": "GTO-AE2-15.2610.47.jar",

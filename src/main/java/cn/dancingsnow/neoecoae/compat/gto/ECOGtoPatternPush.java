@@ -5,6 +5,8 @@ import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import cn.dancingsnow.neoecoae.api.me.provider.ECOIndeterminateBatchException;
 import com.gto.datasynclib.util.holder.ObjHolder;
+import com.gtolib.api.ae2.IPatternProviderLogic;
+import com.gtolib.api.ae2.IPatternProviderLogic.PushResult;
 import java.util.function.Supplier;
 
 /** Direct adapter for GTO's callback-based provider API. */
@@ -14,7 +16,7 @@ public final class ECOGtoPatternPush {
     private ECOGtoPatternPush() {}
 
     public static void verifyContract() {
-        if (!GtoRuntimeApi.isPatternProvider(PatternProviderLogic.class)) {
+        if (!IPatternProviderLogic.class.isAssignableFrom(PatternProviderLogic.class)) {
             throw new IllegalStateException("GTO's pattern-provider API has not been applied");
         }
     }
@@ -36,13 +38,14 @@ public final class ECOGtoPatternPush {
                 throw new ECOIndeterminateBatchException(
                     "GTO callback failed after the workstation accepted its inputs", failure);
             }
-            if (result != GtoRuntimeApi.success()) return result;
+            if (result != PushResult.SUCCESS) return result;
         }
-        return pushed ? GtoRuntimeApi.success() : GtoRuntimeApi.rejected();
+        return pushed ? PushResult.SUCCESS : PushResult.REJECTED;
     }
 
     /** One scheduler submission owns one input batch; GTO's callback ends its native loop after commit. */
     public static boolean push(PatternProviderLogic provider, IPatternDetails pattern, KeyCounter[] inputs) {
+        IPatternProviderLogic nativeProvider = (IPatternProviderLogic) provider;
         State previous = STATE.get();
         State state = previous;
         if (state == null || state.active) {
@@ -53,7 +56,7 @@ public final class ECOGtoPatternPush {
         state.active = true;
         state.holder.value = inputs;
         try {
-            GtoRuntimeApi.push(provider, pattern, state.holder, state);
+            nativeProvider.gtolib$pushPattern(pattern, state.holder, state);
             return state.accepted;
         } catch (Throwable failure) {
             if (failure instanceof Error error) throw error;
@@ -67,15 +70,15 @@ public final class ECOGtoPatternPush {
         }
     }
 
-    private static final class State implements Supplier<Object> {
+    private static final class State implements Supplier<PushResult> {
         final ObjHolder<KeyCounter[]> holder = new ObjHolder<>();
         boolean accepted, active;
 
-        @Override public Object get() {
+        @Override public PushResult get() {
             if (accepted) throw new IllegalStateException("GTO accepted the same input batch twice");
             accepted = true;
             holder.value = null;
-            return GtoRuntimeApi.breakAfterCommit();
+            return PushResult.BREAK;
         }
     }
 }
