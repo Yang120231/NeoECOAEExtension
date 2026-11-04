@@ -42,6 +42,5 @@ public class UploadButton extends Button {
             16,
             16
         );
-
     }
 }

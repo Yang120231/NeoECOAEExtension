@@ -6,8 +6,8 @@ import appeng.client.gui.style.ScreenStyle;
 import appeng.menu.me.items.PatternEncodingTermMenu;
 import cn.dancingsnow.neoecoae.api.PatternEncodingTermMenuExtension;
 import cn.dancingsnow.neoecoae.gui.widget.UploadButton;
-import net.minecraft.network.chat.Component;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -28,7 +28,7 @@ public class PatternEncodingTermScreenMixin<C extends PatternEncodingTermMenu> e
     public void init() {
         super.init();
         var bounds = new Rect2i(leftPos, topPos, imageWidth, imageHeight);
-        var firstModeTab = style.getWidget("modeTabButton0").resolve(bounds);
+        var firstModeTab = getStyle().getWidget("modeTabButton0").resolve(bounds);
         // Keep the 1.20.1 side button aligned with the terminal's encoding tabs.
         neoecoae$uploadButton = addRenderableWidget(new UploadButton(
             leftPos + imageWidth - 1,
