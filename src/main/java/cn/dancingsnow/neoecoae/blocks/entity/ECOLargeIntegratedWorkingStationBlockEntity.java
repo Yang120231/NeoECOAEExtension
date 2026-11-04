@@ -5,7 +5,6 @@ import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress
 import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.State;
 
 import appeng.api.config.Actionable;
-import cn.dancingsnow.neoecoae.integration.appflux.WorkstationFluxEnergy;
 import cn.dancingsnow.neoecoae.recipe.WorkstationEnergy;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.crafting.IPatternDetails;
@@ -105,7 +104,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
 
     private final NEIntegratedWorkingStationControllerCalculator calculator;
     private final LargeWorkstationCoolingOutput coolingOutput = new LargeWorkstationCoolingOutput();
-    private final LargeWorkstationModuleInventory moduleInventory = new LargeWorkstationModuleInventory(this::moduleChanged);
     /** Accepted ordinary-path batches, bounded by MAX_PENDING_BATCHES backpressure. */
     private final Deque<PendingBatch> pendingBatches = new ArrayDeque<>();
     @Nullable
@@ -230,8 +228,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         if (state.getBlock() == NEBlocks.INTEGRATED_WORKING_STATION.get()) {
             BlockState next = state
                 .setValue(cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation.WORKING, isWorking())
-                .setValue(cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation.FORMED, formed)
-                .setValue(cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation.MODULE, getInstalledModule());
+                .setValue(cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation.FORMED, formed);
             if (next != state) {
                 level.setBlock(worldPosition, next, Block.UPDATE_CLIENTS);
             }
@@ -461,18 +458,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         getMainNode().ifPresent((grid, node) -> grid.getTickManager().wakeDevice(node));
     }
 
-    public LargeWorkstationModule getInstalledModule() {
-        return moduleInventory == null ? LargeWorkstationModule.REGULAR
-            : LargeWorkstationModule.fromUpgradeCard(moduleInventory.getStackInSlot(0));
-    }
-
-    public IItemHandlerModifiable getModuleInventory() { return moduleInventory; }
-
-    private void moduleChanged() {
-        if (level == null || level.isClientSide) return;
-        refreshModuleAppearance();
-        settingsChanged();
-    }
+    public LargeWorkstationModule getInstalledModule() { return LargeWorkstationModule.REGULAR; }
 
     public Component getOverclockSettingsText() {
         return Component.translatable(
@@ -654,17 +640,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         }
     }
 
-    /** The installed card selects the screen and formed-controller theme, including while idle. */
-    private void refreshModuleAppearance() {
-        if (level == null || level.isClientSide || !formed
-            || !(getBlockState().getBlock() instanceof ECOIntegratedWorkingStation)) return;
-        LargeWorkstationModule module = getInstalledModule();
-        BlockState current = getBlockState();
-        if (current.hasProperty(ECOIntegratedWorkingStation.MODULE)
-            && current.getValue(ECOIntegratedWorkingStation.MODULE) != module) {
-            level.setBlock(worldPosition, current.setValue(ECOIntegratedWorkingStation.MODULE, module), Block.UPDATE_CLIENTS);
-        }
-    }
 
     /** Returns one queued row's owned inputs after validating the menu's stable row identity. */
     private void returnTaskInputs(UUID interactionId) {
@@ -696,7 +671,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         setWorking(first != null);
         cachedTask = null;
         setPauseReason(PauseReason.NONE);
-        refreshModuleAppearance();
         setChanged();
         requestCommunicationProviderUpdate();
     }
@@ -716,7 +690,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         snapshot.putBoolean("preheating", isTemperatureEnabled() && preheating);
         snapshot.putBoolean("overheated", isTemperatureEnabled() && overheated);
         snapshot.putInt("recoveryTicks", isTemperatureEnabled() ? recoveryTicks : 0);
-        snapshot.putBoolean("ignoreUpgradeCards", NEConfig.largeWorkstationIgnoreUpgradeCards);
         snapshot.putInt("currentTier", isTemperatureEnabled()
             ? LargeWorkstationOverclock.forTemperature(true, temperature).coolingTier() : getCurrentBatchProfile().coolingTier());
         CoolingRecipe coolantRecipe = getCoolingRecipeForInput();
@@ -733,7 +706,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         snapshot.putDouble("energyUsage", uiEnergyUsage.average(level == null ? 0 : level.getGameTime()));
         snapshot.putDouble("feUsage", uiFluxUsage.average(level == null ? 0 : level.getGameTime()));
         snapshot.putLong("feBuffer", processingFeBuffer);
-        snapshot.putBoolean("appliedFlux", WorkstationFluxEnergy.available());
         snapshot.putDouble("energyStored", getAECurrentPower());
         snapshot.putDouble("energyCapacity", getAEMaxPower());
         snapshot.putDouble("energyScale", Math.max(1.0, getAEMaxPower()));
@@ -748,7 +720,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         }
         snapshot.putString("recipeModule", module.getSerializedName());
         snapshot.putString("module", getInstalledModule().getSerializedName());
-        snapshot.putBoolean("moduleInstalled", !moduleInventory.getStackInSlot(0).isEmpty());
         snapshot.putString("pause", pauseTranslationKey());
         snapshot.putString("coolingProblem", PauseReason.values()[JdkCompat.clamp(coolingProblemId, 0, PauseReason.values().length - 1)].translationKey);
         ListTag entries = new ListTag();
@@ -873,7 +844,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     public void saveAdditional(CompoundTag data) {
         super.saveAdditional(data);
         data.putLong("processingFeBuffer", processingFeBuffer);
-        data.put("workstationModule", moduleInventory.serializeNBT());
         CompoundTag thermal = new CompoundTag();
         LargeWorkstationThermal.save(thermalState(), thermal);
         data.put("largeWorkstationThermal", thermal);
@@ -891,7 +861,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         super.loadTag(data);
         processingFeBuffer = Math.max(0, data.getLong("processingFeBuffer"));
         uiThermalUsage = new LargeWorkstationThermalUsage();
-        moduleInventory.deserializeNBT(data.getCompound("workstationModule"));
         var thermal = LargeWorkstationThermal.load(data.getCompound("largeWorkstationThermal"));
         temperature = thermal.temperature();
         overheated = thermal.overheated();
@@ -948,7 +917,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
         retryPendingPowerRefund();
         if (!formed) return super.tickingRequest(node, ticksSinceLastCall);
-        refreshModuleAppearance();
         transferStoredFluid(inputTank, getInputTank());
         transferStoredFluid(outputTank, getOutputTank());
         flushOutputs();
@@ -1101,7 +1069,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         boolean restoreBatch = batch.segmented && batch.coolingTier > 0
             && getCurrentBatchProfile().coolingTier() >= batch.coolingTier;
         if (!acquireExtraInputs(batch, batch.segmented && !restoreBatch)) {
-            setPauseReason(PauseReason.LIGHTNING_MISSING);
+            setPauseReason(PauseReason.EXTRA_INPUTS_MISSING);
             return TickRateModulation.SLOWER;
         }
         if (restoreBatch) {
@@ -1162,21 +1130,8 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         try {
             flux = LargeWorkstationProcessing.fluxPayment(batch.fePerCraft, work, batch.processingTicks, batch.feRemainder);
         } catch (ArithmeticException overflow) {
-            setPauseReason(PauseReason.FE_MISSING);
+            setPauseReason(PauseReason.POWER_MISSING);
             return TickRateModulation.SLOWER;
-        }
-        if (flux.amount() > processingFeBuffer) {
-            IGrid grid = getMainNode().getGrid();
-            if (grid != null && WorkstationFluxEnergy.available()) {
-                MEStorage storage = grid.getStorageService().getInventory();
-                var actionSource = IActionSource.ofMachine(this);
-                long missing = flux.amount() - processingFeBuffer;
-                long offered = WorkstationFluxEnergy.extract(storage, missing, Actionable.SIMULATE, actionSource);
-                if (offered > 0) {
-                    processingFeBuffer += WorkstationFluxEnergy.extract(storage, Math.min(missing, offered), Actionable.MODULATE, actionSource);
-                    setChanged();
-                }
-            }
         }
         long consumedFe = Math.min(flux.amount(), processingFeBuffer);
         long substituteFe = flux.amount() - consumedFe;
@@ -1754,9 +1709,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
                 if (grid != null) available = Math.max(available,
                     grid.getEnergyService().extractAEPower(firstTick, Actionable.SIMULATE, PowerMultiplier.CONFIG));
                 long firstFe = LargeWorkstationProcessing.fluxPayment(fePerCraft, craftCount, processingTicks, 0).amount();
-                if (available + 0.001 < firstTick && WorkstationFluxEnergy.available() && grid != null
-                    && WorkstationFluxEnergy.extract(grid.getStorageService().getInventory(), firstFe,
-                        Actionable.SIMULATE, IActionSource.ofMachine(this)) >= firstFe) energyPerCraft = 0;
+                if (available + 0.001 < firstTick && processingFeBuffer >= firstFe) energyPerCraft = 0;
                 else fePerCraft = 0;
             }
             outputTotal = scaleCounter(outputPerCraft, craftCount);
@@ -1778,7 +1731,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         batch.fePerCraft = fePerCraft;
         batch.legacyTiming = false;
         batch.thermalWorkMultiplier = 1;
-        // Compatibility-only inputs (for example AE2LT lightning) are not represented by
+        // Additional recipe inputs are not represented by
         // ordinary AE2 pattern holders.  Keep them in the pending ledger so the actual
         // adapted recipe still charges them from the ME network before processing.
         batch.missingExtras.addAll(missingExtras);
@@ -1942,7 +1895,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         return LargeWorkstationUI.create(new LargeWorkstationUI.Config(
             getFluidCombined(), this::getUiSnapshot, () -> level.registryAccess(), this::returnTaskInputs,
             this::toggleOverclocked, this::toggleActiveCooling,
-            this::togglePreheating, moduleInventory), holder.player);
+            this::togglePreheating), holder.player);
     }
 
     /** Returns inputs still owned by incomplete batches to the ME network. */
@@ -1997,8 +1950,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     @Override
     public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
         super.addAdditionalDrops(level, pos, drops);
-        ItemStack card = moduleInventory.getStackInSlot(0);
-        if (!card.isEmpty()) drops.add(card.copy());
         for (PendingBatch batch : pendingBatches) {
             if (batch.craftingJobId != null) {
                 ECOCraftingJobLifecycle.finish(level, batch.craftingJobId, false);
@@ -2022,7 +1973,6 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         }
         pendingBatches.clear();
         super.clearContent();
-        moduleInventory.setStackInSlot(0, ItemStack.EMPTY);
     }
 
     private enum PauseReason {
@@ -2036,11 +1986,9 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         POWER_MISSING("gui.neoecoae.large_integrated_working_station.pause.power_missing"),
         OUTPUT_BLOCKED("gui.neoecoae.large_integrated_working_station.pause.output_blocked"),
         INPUT_RETURN_BLOCKED("gui.neoecoae.large_integrated_working_station.pause.input_return_blocked"),
-        LIGHTNING_MISSING("gui.neoecoae.large_integrated_working_station.pause.lightning_missing"),
+        EXTRA_INPUTS_MISSING("gui.neoecoae.large_integrated_working_station.pause.extra_inputs_missing"),
         TEMPERATURE_LOW("gui.neoecoae.large_integrated_working_station.pause.temperature_low"),
-        OVERHEATED("gui.neoecoae.large_integrated_working_station.pause.overheated"),
-        APPLIED_FLUX_MISSING("gui.neoecoae.large_integrated_working_station.pause.applied_flux_missing"),
-        FE_MISSING("gui.neoecoae.large_integrated_working_station.pause.fe_missing");
+        OVERHEATED("gui.neoecoae.large_integrated_working_station.pause.overheated");
 
         private final String translationKey;
 

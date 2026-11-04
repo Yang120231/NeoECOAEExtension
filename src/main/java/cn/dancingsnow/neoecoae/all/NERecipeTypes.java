@@ -4,7 +4,6 @@ package cn.dancingsnow.neoecoae.all;
 import cn.dancingsnow.neoecoae.recipe.CoolingRecipe;
 import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import cn.dancingsnow.neoecoae.recipe.LargeIntegratedWorkingStationRecipe;
-import cn.dancingsnow.neoecoae.recipe.ExtendedCrystalAssemblerRecipe;
 import cn.dancingsnow.neoecoae.recipe.StorageCellDisassemblyRecipe;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.crafting.Recipe;
@@ -37,9 +36,6 @@ public class NERecipeTypes {
         LargeIntegratedWorkingStationRecipe.Serializer::new
     );
 
-    public static final RegistryObject<RecipeType<ExtendedCrystalAssemblerRecipe>> EXTENDED_CRYSTAL_ASSEMBLER = registerRecipe("extended_crystal_assembler");
-    public static final RegistryObject<RecipeSerializer<ExtendedCrystalAssemblerRecipe>> EXTENDED_CRYSTAL_ASSEMBLER_SERIALIZER = RECIPE_SERIALIZER.register(
-        "extended_crystal_assembler", ExtendedCrystalAssemblerRecipe.Serializer::new);
 
     public static final RegistryObject<RecipeType<StorageCellDisassemblyRecipe>> CELL_DISASSEMBLY = registerRecipe("storage_cell_disassembly");
     public static final RegistryObject<RecipeSerializer<StorageCellDisassemblyRecipe>> CELL_DISASSEMBLY_SERIALIZER = RECIPE_SERIALIZER.register(

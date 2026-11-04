@@ -29,7 +29,6 @@ public class ItemSlot extends UIElement implements IBindable<ItemStack>{
     protected Slot slot;
     private final NativeSlot widget;
     private final SlotStyle slotStyle=new SlotStyle();
-    private boolean phantom;
     @FunctionalInterface public interface NativeClickHandler {
         ItemStack click(int button,net.minecraft.world.inventory.ClickType type,net.minecraft.world.entity.player.Player player);
     }
@@ -48,9 +47,6 @@ public class ItemSlot extends UIElement implements IBindable<ItemStack>{
     @Override public ItemSlot setValue(ItemStack stack){return setValue(stack,true);}
     public ItemSlot setValue(ItemStack stack,boolean notify){slot.set(stack==null?ItemStack.EMPTY:stack.copy());if(notify)valueListeners.forEach(l->l.accept(getValue()));return this;}
     public ItemSlot registerValueListener(Consumer<ItemStack> listener){valueListeners.add(listener);return this;}
-    public ItemSlot xeiPhantom(){phantom=true;return this;}
-    public ItemSlot xeiRecipeIngredient(com.lowdragmc.lowdraglib.jei.IngredientIO io){widget.setIngredientIO(io);return this;}
-    public ItemSlot xeiRecipeSlot(com.lowdragmc.lowdraglib.jei.IngredientIO io,float chance){widget.setIngredientIO(io);widget.setXEIChance(chance);return this;}
     public ItemSlot setItem(ItemStack stack,boolean notify){return setValue(stack,notify);}
     public ItemSlot nativeClickHandler(NativeClickHandler handler){nativeClickHandler=handler;return this;}
     protected void drawHover(GUIContext context){if(slotStyle.hover!=null)context.drawTexture(slotStyle.hover,0,0,16,16);}
@@ -64,7 +60,7 @@ public class ItemSlot extends UIElement implements IBindable<ItemStack>{
         var result=new ArrayList<Component>();var stack=getDisplayedStack();if(withItemTooltips&&!stack.isEmpty())result.addAll(stack.getTooltipLines(net.minecraft.client.Minecraft.getInstance().player,net.minecraft.world.item.TooltipFlag.Default.NORMAL));return result;
     }
     @Override protected void onHoverTooltips(UIEvent event){event.hoverTooltips=new HoverTooltips(getFullTooltipTexts(),getDisplayedStack(),null,null);}
-    private final class NativeSlot extends SlotWidget implements com.lowdragmc.lowdraglib.gui.ingredient.IGhostIngredientTarget{
+    private final class NativeSlot extends SlotWidget{
         NativeSlot(Slot slot){super();canPutItems=canTakeItems=true;drawHoverOverlay=false;drawHoverTips=false;bindSlot(slot);}
         void bindSlot(Slot original){updateSlot(new Slot(original.container,original.getContainerSlot(),0,0){
             @Override public ItemStack getItem(){return original.getItem();}
@@ -91,19 +87,6 @@ public class ItemSlot extends UIElement implements IBindable<ItemStack>{
         @Override public boolean canMergeSlot(ItemStack stack){return slotStyle.quickMove&&super.canMergeSlot(stack);}
         @Override public ItemStack slotClick(int button,net.minecraft.world.inventory.ClickType type,net.minecraft.world.entity.player.Player player){
             return nativeClickHandler==null?null:nativeClickHandler.click(button,type,player);
-        }
-        @Override public java.util.List<com.lowdragmc.lowdraglib.gui.ingredient.Target> getPhantomTargets(Object ingredient){
-            if(!phantom||!ItemSlot.this.effectivelyVisible())return java.util.List.of();
-            ItemStack result=ItemStack.EMPTY;
-            if(ingredient instanceof ItemStack stack)result=stack;
-            else if(com.lowdragmc.lowdraglib.LDLib.isJeiLoaded()&&ingredient instanceof mezz.jei.api.ingredients.ITypedIngredient<?> typed)result=typed.getItemStack().orElse(ItemStack.EMPTY);
-            else if(com.lowdragmc.lowdraglib.LDLib.isEmiLoaded()&&ingredient instanceof dev.emi.emi.api.stack.EmiStack stack)result=stack.getItemStack();
-            if(result.isEmpty())return java.util.List.of();
-            ItemStack display=result.copy();
-            return java.util.List.of(new com.lowdragmc.lowdraglib.gui.ingredient.Target(){
-                public net.minecraft.client.renderer.Rect2i getArea(){return ItemSlot.this.toRectangleBox();}
-                public void accept(Object ignored){ItemSlot.this.setValue(display.copy(),true);}
-            });
         }
     }
 }

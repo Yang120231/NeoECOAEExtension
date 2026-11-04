@@ -6,7 +6,6 @@ import appeng.api.stacks.AEKey;
 import appeng.api.storage.cells.StorageCell;
 import appeng.items.storage.CreativeCellItem;
 import cn.dancingsnow.neoecoae.blocks.entity.storage.ECODriveBlockEntity;
-import cn.dancingsnow.neoecoae.compat.storage.ECOOptionalUnboundedCells;
 import cn.dancingsnow.neoecoae.crafting.planner.solve.PlannerInventorySnapshot;
 import cn.dancingsnow.neoecoae.crafting.display.terminal.ExactAmountSource;
 import cn.dancingsnow.neoecoae.grid.NEMachineLookup;
@@ -43,7 +42,6 @@ public final class ECOPlannerInventory {
             for (int slot = 0; slot < host.getCellCount(); slot++) {
                 StorageCell cell = host.getOriginalCellInventory(slot);
                 if (cell instanceof ExactAmountSource source) markUnbounded(source, unbounded);
-                ECOOptionalUnboundedCells.collect(cell, unbounded);
 
                 if (cell != null && host.getCellItem(slot) instanceof CreativeCellItem) {
                     // Native ME drives expose AE2 creative cells as StorageCell and report only

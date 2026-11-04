@@ -69,12 +69,6 @@ public class NEConfig {
             .push("storage");
     }
 
-    private static final ForgeConfigSpec.LongValue MEGA_BULK_AUTO_MARK_THRESHOLD = BUILDER
-        .comment(
-            "ECO 存储主机自动标记可压缩物品时使用的数量阈值；只有数量严格大于此值的物品才会被标记。",
-            "Amount threshold used when an ECO storage host automatically marks compressible items; only amounts strictly greater than this value are marked.")
-        .translation("neoecoae.configuration.megaBulkAutoMarkThreshold")
-        .defineInRange("megaBulkAutoMarkThreshold", 20_000L, 0L, Long.MAX_VALUE);
 
     private static final ForgeConfigSpec.IntValue INFINITE_MIGRATION_TICK_BUDGET_MICROS = BUILDER
         .comment(
@@ -117,19 +111,6 @@ public class NEConfig {
         .translation("neoecoae.configuration.largeWorkstationTemperatureEnabled")
         .define("largeWorkstationTemperatureEnabled", true);
 
-    private static final ForgeConfigSpec.BooleanValue LARGE_WORKSTATION_IGNORE_UPGRADE_CARDS = BUILDER
-        .comment(
-            "忽略大型集成工作站的升级卡限制，直接解锁所有受支持的兼容配方，默认关闭。",
-            "兼容配方默认加载；关闭此选项时，高级 AE、扩展 AE、水晶科技和闪电科技的配方由对应升级卡解锁。",
-            "空白卡不增加配方类别，常规配方与没有专用升级卡的兼容配方始终可用。",
-            "修改后重新进入世界或重启服务器。",
-            "Ignore large workstation upgrade cards and unlock every supported compatible recipe. Disabled by default.",
-            "Compatible recipes are always loaded; with this option off, install the matching card to unlock its recipe family.",
-            "The blank card adds no recipe family; native recipes and adapters without a dedicated card remain available.",
-            "Reopen the world or restart the server after changing this option.")
-        .worldRestart()
-        .translation("neoecoae.configuration.largeWorkstationIgnoreUpgradeCards")
-        .define("largeWorkstationIgnoreUpgradeCards", false);
 
     private static final ForgeConfigSpec.IntValue CRAFTING_PATTERN_BUS_PAGES = BUILDER
         .comment(
@@ -271,11 +252,9 @@ public class NEConfig {
     public static int craftingSystemMaxLength = CRAFTING_SYSTEM_MAX_LENGTH.getDefault();
     public static int computationSystemMaxLength = COMPUTATION_SYSTEM_MAX_LENGTH.getDefault();
     public static int storageSystemMaxLength = STORAGE_SYSTEM_MAX_LENGTH.getDefault();
-    public static long megaBulkAutoMarkThreshold = 20_000L;
     public static int infiniteMigrationTickBudgetMicros = 2_000;
     public static int infiniteMigrationKeysPerTick = 512;
     public static boolean postCraftingEvent;
-    public static boolean largeWorkstationIgnoreUpgradeCards = false;
     public static boolean largeWorkstationTemperatureEnabled = true;
     public static int craftingPatternBusPages = 1;
     public static int ecoCpuPushTickLimit = MAX_ECO_CPU_PUSH_TICK_LIMIT;
@@ -302,11 +281,9 @@ public class NEConfig {
         craftingSystemMaxLength = CRAFTING_SYSTEM_MAX_LENGTH.get();
         computationSystemMaxLength = COMPUTATION_SYSTEM_MAX_LENGTH.get();
         storageSystemMaxLength = STORAGE_SYSTEM_MAX_LENGTH.get();
-        megaBulkAutoMarkThreshold = MEGA_BULK_AUTO_MARK_THRESHOLD.get();
         infiniteMigrationTickBudgetMicros = INFINITE_MIGRATION_TICK_BUDGET_MICROS.get();
         infiniteMigrationKeysPerTick = INFINITE_MIGRATION_KEYS_PER_TICK.get();
         postCraftingEvent = POST_CRAFTING_EVENT.get();
-        largeWorkstationIgnoreUpgradeCards = LARGE_WORKSTATION_IGNORE_UPGRADE_CARDS.get();
         largeWorkstationTemperatureEnabled = LARGE_WORKSTATION_TEMPERATURE_ENABLED.get();
         craftingPatternBusPages = CRAFTING_PATTERN_BUS_PAGES.get();
         ecoCpuPushTickLimit = JdkCompat.clamp(ECO_CPU_PUSH_TICK_LIMIT.get(), 1, MAX_ECO_CPU_PUSH_TICK_LIMIT);

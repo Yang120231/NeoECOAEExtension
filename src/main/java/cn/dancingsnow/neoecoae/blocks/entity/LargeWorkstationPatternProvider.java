@@ -22,7 +22,6 @@ import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import cn.dancingsnow.neoecoae.api.me.provider.ECOParallelCraftingProvider;
 import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider;
-import cn.dancingsnow.neoecoae.compat.extendedaeplus.ECOExtendedAEPlusBlocking;
 import cn.dancingsnow.neoecoae.mixins.ae2.accessor.PatternProviderLogicAccessor;
 import cn.dancingsnow.neoecoae.multiblock.cluster.NEIntegratedWorkingStationCluster;
 import cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipes;
@@ -372,12 +371,6 @@ public final class LargeWorkstationPatternProvider extends PatternProviderLogic
             return false;
         }
         if (!isBlocking()) {
-            return true;
-        }
-        // Dispatch bypasses EAEP's injection into the base pushPattern method. Apply the same
-        // input-presence rule to the controller's pending ledger for both single and batch pushes.
-        if (ECOExtendedAEPlusBlocking.isEnabled(getConfigManager())
-                && ECOExtendedAEPlusBlocking.matchesPendingInputs(pattern, controller::containsPendingPatternInput)) {
             return true;
         }
         return !controller.containsPendingPatternInput(patternInputKeys(pattern));

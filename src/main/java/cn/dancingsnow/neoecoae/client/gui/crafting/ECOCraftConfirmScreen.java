@@ -20,7 +20,6 @@ import cn.dancingsnow.neoecoae.crafting.display.format.NEByteFormatter;
 import cn.dancingsnow.neoecoae.crafting.planner.result.PlanningStatus;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import cn.dancingsnow.neoecoae.gui.theme.ECOIcon;
-import cn.dancingsnow.neoecoae.integration.xei.RecipeViewerBookmarkAccess;
 import cn.dancingsnow.neoecoae.network.ECOForceCraftStartFlagC2SPacket;
 import java.math.BigInteger;
 import java.util.List;
@@ -55,7 +54,6 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     private final Button start;
     private final Button selectCPU;
     private final Button graph;
-    private final Button bookmarkMissing;
     private final Scrollbar scrollbar;
     private final Scrollbar cycleScrollbar;
     private @Nullable Integer selectedCycleComponentId;
@@ -80,9 +78,6 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         selectCPU = addTextButton("selectCpu", getNextCpuButtonLabel(), this::selectNextCpu);
         selectCPU.active = false;
         addTextButton("cancel", GuiText.Cancel.text(), menu::goBack);
-        bookmarkMissing = addTextButton("bookmarkMissing",
-            Component.translatable("gui.neoecoae.crafting_report.bookmark_missing"), this::bookmarkMissing);
-        bookmarkMissing.active = false;
         graph = addToLeftToolbar(new CraftingGraphButton(this::openGraph));
     }
 
@@ -197,8 +192,6 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         graph.active = (Object) menu instanceof ECOCraftConfirmMenuMode mode
             && (!mode.neoecoae$getCraftingGraphSnapshot().cycleGroups().isEmpty()
                 || mode.neoecoae$getCraftingGraphSnapshot().rootNodeId() >= 0);
-        bookmarkMissing.active = RecipeViewerBookmarkAccess.isAvailable()
-            && exactMaterials().stream().anyMatch(node -> node.missingBigInteger().signum() > 0);
         if ((Object) menu instanceof ECOCraftConfirmMenuMode mode && !mode.neoecoae$diagnosticsReady()) {
             start.active = false;
             graph.active = false;
@@ -405,12 +398,6 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         minecraft.setScreen(new ECOCraftingGraphScreen(this, snapshot, initialCycle, focusedMaterial));
     }
 
-    private void bookmarkMissing() {
-        if (!bookmarkMissing.active) return;
-        RecipeViewerBookmarkAccess.addMissingToBookmarks(exactMaterials().stream()
-            .filter(node -> node.missingBigInteger().signum() > 0)
-            .map(CraftingGraphSnapshot.MaterialNode::key).toList());
-    }
 
     private List<CraftingGraphSnapshot.MaterialNode> exactMaterials() {
         if (!((Object) menu instanceof ECOCraftConfirmMenuMode mode)) return List.of();
@@ -418,13 +405,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         return ECOExactMaterialTableRenderer.sortMaterials(mode.neoecoae$getCraftingGraphSnapshot().nodes());
     }
 
-    /**
-     * Returns the AE key rendered under the given absolute screen coordinates.
-     *
-     * <p>The report uses custom table renderers instead of vanilla slots, so EMI cannot discover these
-     * stacks through its normal handled-screen fallback. The optional EMI integration calls this method
-     * from its stack provider to expose the same item/ fluid entries to recipe and usage lookups.</p>
-     */
+    /** Returns the native AE key at the absolute screen coordinates. */
     public @Nullable AEKey getECOStackAt(int mouseX, int mouseY) {
         int localX = mouseX - getGuiLeft();
         int localY = mouseY - getGuiTop();

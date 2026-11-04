@@ -6,7 +6,6 @@ import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.util.IConfigManager;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import cn.dancingsnow.neoecoae.blocks.entity.LargeWorkstationPatternProvider;
-import cn.dancingsnow.neoecoae.compat.advanced_ae.ECOAdvancedAEPatternScaling;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -17,7 +16,7 @@ public final class ECOExternalProviderBlocking {
     public static boolean isEnabled(ICraftingProvider provider) {
         if (provider instanceof LargeWorkstationPatternProvider) return false;
         Object logic = provider;
-        if (!(logic instanceof PatternProviderLogic) && !ECOAdvancedAEPatternScaling.isProvider(logic)) {
+        if (!(logic instanceof PatternProviderLogic)) {
             try {
                 logic = provider.getClass().getMethod("getLogic").invoke(provider);
             } catch (NoSuchMethodException absent) {
@@ -30,9 +29,6 @@ public final class ECOExternalProviderBlocking {
         if (logic instanceof LargeWorkstationPatternProvider) return false;
         try {
             if (logic instanceof PatternProviderLogic ae2) return ae2.isBlocking();
-            if (ECOAdvancedAEPatternScaling.isProvider(logic)) {
-                return ECOAdvancedAEPatternScaling.isBlocking(logic);
-            }
             Method isBlocking = logic.getClass().getMethod("isBlocking");
             if (isBlocking.getReturnType() == boolean.class || isBlocking.getReturnType() == Boolean.class) {
                 return Boolean.TRUE.equals(isBlocking.invoke(logic));

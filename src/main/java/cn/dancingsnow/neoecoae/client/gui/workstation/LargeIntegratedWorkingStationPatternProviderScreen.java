@@ -92,9 +92,6 @@ public class LargeIntegratedWorkingStationPatternProviderScreen
         lastScrollFrame = now;
         patternScrollbar.setCurrentScroll((int) Math.round(patternScroll.offset()));
         updatePatternSlots();
-        // EAEP adds these private widgets to the superclass, including after a resize.
-        hideSmartDoublingWidget("eap$SmartDoublingToggle");
-        hideSmartDoublingWidget("eap$PerProviderLimitInput");
     }
 
     @Override
@@ -333,20 +330,4 @@ public class LargeIntegratedWorkingStationPatternProviderScreen
         slotClicked(slot, slot.index, 0, ClickType.QUICK_MOVE);
     }
 
-    private void hideSmartDoublingWidget(String name) {
-        try {
-            var field = PatternProviderScreen.class.getDeclaredField(name);
-            field.setAccessible(true);
-            if (field.get(this) instanceof net.minecraft.client.gui.components.AbstractWidget widget) {
-                widget.visible = false;
-                widget.active = false;
-                widget.setFocused(false);
-                removeWidget(widget);
-            }
-        } catch (NoSuchFieldException absent) {
-            // EAEP is optional.
-        } catch (IllegalAccessException failure) {
-            throw new IllegalStateException("Cannot hide workstation smart doubling", failure);
-        }
-    }
 }

@@ -18,7 +18,6 @@ public record LargeWorkstationRecipeGroup(LargeWorkstationRecipe representative,
     public List<LargeWorkstationModule> supportedModules() {
         return variants.stream().flatMap(variant -> variant.modules().stream()).distinct().sorted().toList();
     }
-    public List<ResourceLocation> upgradeCards() { return supportedModules().stream().map(LargeWorkstationModule::upgradeCardId).toList(); }
     public boolean availableWithoutCard() { return variants.stream().anyMatch(Variant::unrestricted); }
     public List<Variant> availableVariants(LargeWorkstationModule installed) { return variants.stream().filter(variant -> variant.unlocks(installed)).toList(); }
 

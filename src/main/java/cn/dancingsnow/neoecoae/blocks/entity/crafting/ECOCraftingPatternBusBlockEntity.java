@@ -30,7 +30,6 @@ import cn.dancingsnow.neoecoae.api.me.network.ECOCraftingNetworkSettings;
 import cn.dancingsnow.neoecoae.api.me.provider.ECOBatchDispatchContext;
 import cn.dancingsnow.neoecoae.api.me.provider.ECOFastPathDispatchProvider;
 import cn.dancingsnow.neoecoae.api.me.provider.ECOJobAwareCraftingProvider;
-import cn.dancingsnow.neoecoae.compat.thunderbolt.ECOThunderboltBatchBridge;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOBatchCraftingRequest;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOExtractedPatternExecution;
@@ -151,8 +150,10 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
         var rejection = validateExternalRequest(request);
         if (rejection != RejectionReason.NONE) return rejectedCapability(rejection);
         var pattern = findExternalPattern(request);
-        if (pattern == null
-            || !ECOThunderboltBatchBridge.fastPathEligible(this, pattern)) {
+        if (pattern == null || isBusy() || !(pattern instanceof IMolecularAssemblerSupportedPattern)
+                || !cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECORecipeClassifier.classify(pattern).supported()
+                || cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECORecipeClassifier.classify(pattern).type()
+                    != cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECORecipeClassifier.Type.NORMAL) {
             return rejectedCapability(RejectionReason.UNSUPPORTED_PROCESSING);
         }
         long accepted = Math.min(request.requestedAmount(), Math.max(0, getAvailableThreadSlots()));
@@ -180,9 +181,16 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
                 for (var stack : slot) counter.add(stack.what(), stack.amount());
                 return counter;
             }).toArray(KeyCounter[]::new);
-            long leftover = ECOThunderboltBatchBridge
-                .drainFastPath(this, pattern, inputs, capability.acceptedAmount(), getLevel(), null);
-            if (leftover < 0L || leftover > capability.acceptedAmount()) leftover = capability.acceptedAmount();
+            long leftover = capability.acceptedAmount();
+            while (leftover > 0) {
+                var batch = cn.dancingsnow.neoecoae.api.me.ECOFastPathFacade.prepareAllocated(
+                    this, pattern, inputs, leftover, getLevel(), null);
+                if (batch == null || !batch.submit(energy -> new cn.dancingsnow.neoecoae.api.me.ECOFastPathFacade.Reservation() {
+                    @Override public void commit() {}
+                    @Override public void refund() {}
+                })) break;
+                leftover -= batch.craftCount();
+            }
             long amount = capability.acceptedAmount() - leftover;
             long unaccepted = request.requestedAmount() - amount;
             var status = amount == 0L ? Status.REJECTED : unaccepted == 0L ? Status.ACCEPTED : Status.PARTIAL;

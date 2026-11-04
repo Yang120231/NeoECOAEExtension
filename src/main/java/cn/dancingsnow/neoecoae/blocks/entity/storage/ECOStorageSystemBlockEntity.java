@@ -120,7 +120,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     private CompoundTag legacy2042ComponentData = new CompoundTag();
     // Keep LDLib-managed fields on the block entity; delegate domain-specific behavior and caches.
     private final ECOStorageHostStatistics statistics = new ECOStorageHostStatistics(this);
-    private final ECOStorageMegaController megaController = new ECOStorageMegaController(this);
     private final ECOStorageInterfaceTransfer interfaceTransfer = new ECOStorageInterfaceTransfer(this);
     private final ECOStorageInfiniteRestore infiniteRestore = new ECOStorageInfiniteRestore(this);
     private final ECOInfiniteStorageModeController infiniteModeController =
@@ -128,10 +127,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     private final IItemHandlerModifiable infiniteComponentItemHandler =
             infiniteRestore.componentItemHandler(new cn.dancingsnow.neoecoae.compat.gto.ECOGtoItemHandler(infiniteComponentInventory));
 
-    @DescSynced
-    private int selectedEcoMegaBulkCell;
-    @DescSynced
-    private int selectedEcoMegaPage;
     @DescSynced
     private boolean buildInProgress;
     @Getter
@@ -317,95 +312,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
         var expansion = orientation.getSide(getBlockState(), mirrored ? RelativeSide.RIGHT : RelativeSide.LEFT);
         var top = orientation.getSide(getBlockState(), RelativeSide.TOP);
         return StorageDriveLayout.ordered(cluster.getDrives(), getBlockPos(), expansion, top);
-    }
-
-    public boolean hasEcoMegaUpgradeCard() {
-        return megaController.hasEcoMegaUpgradeCard();
-    }
-
-    public boolean hasEcoMegaBulkCell() {
-        return megaController.hasEcoMegaBulkCell();
-    }
-
-    public int getEcoMegaBulkCellCount() {
-        return megaController.getEcoMegaBulkCellCount();
-    }
-
-    public int getSelectedEcoMegaBulkCell() {
-        return megaController.getSelectedEcoMegaBulkCell();
-    }
-
-    public int getEcoMegaPageCount() {
-        return megaController.getEcoMegaPageCount();
-    }
-
-    public boolean isEcoMegaFilterSlotAvailable(int visualSlot) {
-        return megaController.isEcoMegaFilterSlotAvailable(visualSlot);
-    }
-
-    public int getSelectedEcoMegaPage() {
-        return megaController.getSelectedEcoMegaPage();
-    }
-
-    public void changeSelectedEcoMegaBulkCell(int delta) {
-        megaController.changeSelectedEcoMegaBulkCell(delta);
-    }
-
-    public void changeSelectedEcoMegaPage(int delta) {
-        megaController.changeSelectedEcoMegaPage(delta);
-    }
-
-    public void setEcoMegaFilterFromClient(int visualSlot, ItemStack stack) {
-        int driveIndex = getSelectedEcoMegaBulkCell();
-        int page = getSelectedEcoMegaPage();
-        if (level != null && level.isClientSide) {
-            rpcToServer("setEcoMegaFilter", driveIndex, page, visualSlot, stack);
-            return;
-        }
-        megaController.setEcoMegaFilterDirect(driveIndex, page, visualSlot, stack);
-    }
-
-    @RPCMethod
-    public void setEcoMegaFilter(
-            RPCSender sender,
-            int driveIndex,
-            int page,
-            int visualSlot,
-            ItemStack stack
-    ) {
-        if (sender.isServer() || !(level instanceof ServerLevel serverLevel)) {
-            return;
-        }
-        ServerPlayer player = cn.dancingsnow.neoecoae.platform.sync.NERpcSenders.asPlayer(sender);
-        if (player == null || player.level() != serverLevel || !canPlayerInteract(player)) {
-            return;
-        }
-        ECOStorageMegaController.EcoMegaFilterResult result = megaController.setEcoMegaFilterDirect(driveIndex, page, visualSlot, stack);
-        if (result == ECOStorageMegaController.EcoMegaFilterResult.NOT_COMPRESSIBLE) {
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "gui.neoecoae.storage.mega_filter.not_compressible"), true);
-        } else if (result == ECOStorageMegaController.EcoMegaFilterResult.DUPLICATE_CHAIN) {
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                    "gui.neoecoae.storage.mega_filter.duplicate_chain"), true);
-        }
-    }
-
-    public void cycleEcoMegaCutoffFromClient(int visualSlot, int delta) {
-        if (level != null && level.isClientSide) {
-            rpcToServer("cycleEcoMegaCutoff", getSelectedEcoMegaBulkCell(), getSelectedEcoMegaPage(), visualSlot, delta);
-        }
-    }
-
-    @RPCMethod
-    public void cycleEcoMegaCutoff(RPCSender sender, int driveIndex, int page, int visualSlot, int delta) {
-        if (sender.isServer() || !(level instanceof ServerLevel serverLevel)) return;
-        ServerPlayer player = cn.dancingsnow.neoecoae.platform.sync.NERpcSenders.asPlayer(sender);
-        if (player == null || player.level() != serverLevel || !canPlayerInteract(player)) return;
-        var selected = megaController.cycleCutoff(driveIndex, page, visualSlot, delta);
-        if (selected != null) {
-            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
-                "gui.neoecoae.storage.mega_filter.cutoff", selected.toStack().getHoverName()), true);
-        }
     }
 
     private net.minecraft.network.chat.Component storageDiagnostics() {
@@ -914,22 +820,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
 
     AppEngInternalInventory infiniteComponentInventory() {
         return infiniteComponentInventory;
-    }
-
-    int selectedEcoMegaBulkCell() {
-        return selectedEcoMegaBulkCell;
-    }
-
-    void selectEcoMegaBulkCell(int index) {
-        selectedEcoMegaBulkCell = index;
-    }
-
-    int selectedEcoMegaPage() {
-        return selectedEcoMegaPage;
-    }
-
-    void selectEcoMegaPage(int page) {
-        selectedEcoMegaPage = page;
     }
 
     @Override

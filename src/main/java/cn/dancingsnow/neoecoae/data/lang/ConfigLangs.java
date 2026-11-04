@@ -26,12 +26,7 @@ public class ConfigLangs {
         );
         provider.add("neoecoae.configuration.storage", "Storage");
         provider.add("neoecoae.configuration.storage.tooltip", "ECO storage system options.");
-        provider.add("neoecoae.configuration.megaBulkAutoMarkThreshold", "Bulk Storage Auto-Mark Threshold");
-        provider.add(
-            "neoecoae.configuration.megaBulkAutoMarkThreshold.tooltip",
-            "Amount threshold used when an ECO storage host automatically marks compressible items.\n" +
-                "Only items with amounts strictly greater than this value are marked."
-        );
+
         provider.add("neoecoae.configuration.infiniteMigrationTickBudgetMicros", "Infinite Migration Time Budget per Tick");
         provider.add(
             "neoecoae.configuration.infiniteMigrationTickBudgetMicros.tooltip",
@@ -57,14 +52,7 @@ public class ConfigLangs {
                 "Enable overclock and active cooling: water / sodium / cryotheum provide 16,384 / 65,536 / 262,144 parallel; normal is 256.\n" +
                 "Consumes 100 mB per advancing overclocked processing tick; all tiers use x1 recipe energy.\n" +
                 "Reopen the world or restart the server after changing this option.");
-        provider.add("neoecoae.configuration.largeWorkstationIgnoreUpgradeCards", "Ignore Large Workstation Upgrade Cards");
-        provider.add(
-            "neoecoae.configuration.largeWorkstationIgnoreUpgradeCards.tooltip",
-            "Compatible recipes are loaded by default. Leave this disabled to require the matching upgrade card.\n" +
-                "Enable to unlock all supported compatible recipes without installing a card.\n" +
-                "Native recipes and adapters without a dedicated card remain available. The blank card adds no recipe family.\n" +
-                "Reopen the world or restart the server after changing this option."
-        );
+
         provider.add("neoecoae.configuration.craftingPatternBusPages", "Crafting Pattern Bus Pages");
         provider.add(
             "neoecoae.configuration.craftingPatternBusPages.tooltip",

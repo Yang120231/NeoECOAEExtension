@@ -65,8 +65,7 @@ final class ManagedInventoryClientProbe {
             case 0 -> {
                 if (specimen == 0) {
                     verifySnapshotRoundTrip();
-                    verifyPersistenceBridge(client);
-                    client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
+                                client.getTutorial().setStep(net.minecraft.client.tutorial.TutorialSteps.NONE);
                     previousPauseOnLostFocus=client.options.pauseOnLostFocus;
                     client.options.pauseOnLostFocus=false;
                 }
@@ -312,21 +311,6 @@ final class ManagedInventoryClientProbe {
         LOG.info("INVENTORY_SMOKE snapshot PASS: counts, tags, sparse clearing, no receive echo, dirty listener");
     }
 
-    private static void verifyPersistenceBridge(Minecraft client){
-        var calls=new int[2];
-        var fixture=new cn.dancingsnow.neoecoae.api.me.ECOCraftingCPULogic(){
-            @Override protected void readNativePersistentData(net.minecraft.nbt.CompoundTag data){
-                require(data.getInt("native_persistence")==73,"registry-aware hook lost native persistence data");calls[0]++;
-            }
-            @Override protected void writeNativePersistentData(net.minecraft.nbt.CompoundTag data){
-                data.putInt("native_persistence",73);calls[1]++;
-            }
-        };
-        var data=new net.minecraft.nbt.CompoundTag();
-        fixture.writeToNBT(data,client.level.registryAccess());fixture.readFromNBT(data,client.level.registryAccess());
-        require(calls[0]==1&&calls[1]==1,"registry-aware persistence did not delegate exactly once");
-        LOG.info("INVENTORY_SMOKE persistence bridge PASS: live addon target loaded, native save/load delegated once");
-    }
 
     private static void advance() {
         stage++;

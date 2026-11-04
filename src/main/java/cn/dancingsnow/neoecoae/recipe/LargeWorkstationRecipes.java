@@ -43,17 +43,12 @@ import java.util.LinkedHashMap;
 /** Grouped viewer recipes with complete original and borrowed execution contracts. */
 public final class LargeWorkstationRecipes {
     private static final Logger LOGGER = LoggerFactory.getLogger(LargeWorkstationRecipes.class);
-    private static final Set<String> COMPAT_TYPES = Set.of(
-        "ae2lt:overload_processing", "ae2lt:lightning_assembly", "ae2lt:lightning_simulation",
-        "advanced_ae:reaction", "ae2cs:circuit_etcher_recipe", "ae2cs:crystal_aggregator_recipe", "ae2cs:crystal_pulverizer_recipe");
-    private static BooleanSupplier ignoreUpgradeCards = () -> false;
     private static final Map<RecipeManager, Cache> CACHE = new WeakHashMap<>();
     private static final Comparator<LargeWorkstationRecipe> COST_ORDER = (a, b) -> {
         int cost = compareCosts(a, 1, b, 1);
         return cost != 0 ? cost : a.id().toString().compareTo(b.id().toString());
     };
     private LargeWorkstationRecipes() {}
-    public static void configure(BooleanSupplier supplier) { ignoreUpgradeCards = Objects.requireNonNull(supplier); }
     public static synchronized void invalidate() { CACHE.clear(); }
 
     public static List<LargeWorkstationRecipe> getAll(Level level) { return getAll(level.getRecipeManager(), level.registryAccess()); }
@@ -67,21 +62,11 @@ public final class LargeWorkstationRecipes {
         for (var source : sources) {
             try {
                 LargeWorkstationRecipe recipe;
-                if (source instanceof ExtendedCrystalAssemblerRecipe extended) {
-                    recipe = new LargeWorkstationRecipe(source.getId(), extended.display(), extended.display().energy(), List.of(), ExtendedCrystalAssemblerRecipe.SOURCE_TYPE)
-                        .processing(extended.display().processingTicks(), 0, false);
-                } else if (source instanceof LargeIntegratedWorkingStationRecipe large) {
+                if (source instanceof LargeIntegratedWorkingStationRecipe large) {
                     recipe = new LargeWorkstationRecipe(source.getId(), large.display(), large.display().energy(), List.of());
                 } else if (source instanceof IntegratedWorkingStationRecipe nativeRecipe) {
                     recipe = new LargeWorkstationRecipe(source.getId(), nativeRecipe, nativeRecipe.energy(), List.of());
-                } else if (source instanceof appeng.recipes.entropy.EntropyRecipe entropy && CrystalScienceWorkstationRecipes.isPresent()) {
-                    recipe = CrystalScienceWorkstationRecipes.entropy(source.getId(), entropy);
-                    if (recipe == null) continue;
-                } else {
-                    String type = typeId(source.getType());
-                    if (!COMPAT_TYPES.contains(type)) continue;
-                    recipe = LargeWorkstationRecipeAdapters.adapt(source, type);
-                }
+                } else continue;
                 variants.add(LargeWorkstationRecipeSources.direct(recipe));
             } catch (RuntimeException | LinkageError failure) {
                 LOGGER.warn("Cannot adapt large workstation recipe {}", source.getId(), failure);
@@ -112,7 +97,6 @@ public final class LargeWorkstationRecipes {
     static synchronized List<LargeWorkstationRecipe> getAvailable(RecipeManager manager, RegistryAccess registries, LargeWorkstationModule module) {
         getAll(manager, registries);
         var cache = CACHE.get(manager);
-        if (ignoreUpgradeCards.getAsBoolean()) return cache.executionRecipes;
         return cache.moduleRecipes.computeIfAbsent(module, installed -> cache.variants.stream()
             .filter(variant -> variant.unlocks(installed)).map(LargeWorkstationRecipeGroup.Variant::recipe).toList());
     }
@@ -151,15 +135,12 @@ public final class LargeWorkstationRecipes {
         Map<AEKey, Long> resources = new Object2LongOpenHashMap<>(), outputs = new HashMap<>();
         for (var input : recipe.display().inputItems()) items.merge(itemPredicate(input.ingredient(), ops), (long) input.count(), Math::addExact);
         for (var fluid : recipe.inputFluids()) fluids.merge(fluidPredicate(fluid.ingredient(), ops), (long) fluid.amount(), Math::addExact);
-        for (var extra : recipe.extraInputs()) if (!isLightning(extra)) resources.merge(extra.what(), extra.amount(), Math::addExact);
+        for (var extra : recipe.extraInputs()) resources.merge(extra.what(), extra.amount(), Math::addExact);
         for (var output : recipe.outputs()) outputs.merge(output.what(), output.amount(), Math::addExact);
         return new MaterialContract(Map.copyOf(items), Map.copyOf(fluids), Map.copyOf(resources), Map.copyOf(outputs));
     }
     private static int compareCosts(LargeWorkstationRecipe first, long firstMultiplier,
             LargeWorkstationRecipe second, long secondMultiplier) {
-        int lightning = Boolean.compare(first.extraInputs().stream().noneMatch(LargeWorkstationRecipes::isLightning),
-            second.extraInputs().stream().noneMatch(LargeWorkstationRecipes::isLightning));
-        if (lightning != 0) return lightning;
         // Different currencies have no universal price ordering. Keep a deterministic contract order.
         int currency = Integer.compare(energyKind(first), energyKind(second));
         if (currency != 0) return currency;
@@ -241,7 +222,6 @@ public final class LargeWorkstationRecipes {
     }
 
 
-    private static boolean isLightning(GenericStack stack) { return stack.what().getType().getId().getNamespace().equals("ae2lt"); }
     @Nullable public static LargeWorkstationRecipe find(Level level, KeyCounter inputs, KeyCounter outputs) {
         var match = findScaled(level, inputs, outputs); return match == null || match.multiplier() != 1 ? null : match.recipe();
     }

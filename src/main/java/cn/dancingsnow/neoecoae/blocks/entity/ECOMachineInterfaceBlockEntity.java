@@ -1853,7 +1853,6 @@ public class ECOMachineInterfaceBlockEntity<C extends NECluster<C>> extends NEBl
             return StorageInterfaceUI.create((ECOMachineInterfaceBlockEntity<NEStorageCluster>) this, holder.player);
         }
         if (supportsIntegratedWorkingStationInterfaceUi()) {
-            // The large workstation interface uses the copied AE2/ExtendedAE menu opened
             // from useWithoutItem. It must never fall back to the old LDLib2 panel.
             return null;
         }

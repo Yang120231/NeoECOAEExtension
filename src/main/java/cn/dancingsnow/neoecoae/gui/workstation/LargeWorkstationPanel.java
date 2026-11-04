@@ -312,20 +312,7 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
     }
 
     private List<Component> moduleTooltip() {
-        var selected = module();
-        List<Component> lines = new ArrayList<>();
-        lines.add(title("module_slot"));
-        lines.add(tr("module_current", selected.title()).withStyle(neColor -> neColor.withColor(selected.color())));
-        lines.add(tr("task_source", LargeWorkstationModule.byName(state.getString("recipeModule")).title()));
-        lines.add(hint("module_slot_hint"));
-        lines.add(hint("module_swap_hint"));
-        lines.add(tr("module_cards"));
-        for (var module : LargeWorkstationModule.values()) {
-            if (module.hasUpgradeCard()) lines.add(Component.translatable("item.neoecoae." + module.upgradeCardId().getPath())
-                .withStyle(neColor -> neColor.withColor(module.color())));
-        }
-        if (state.getBoolean("ignoreUpgradeCards")) lines.add(tr("compat_all_unlocked").withStyle(ChatFormatting.GREEN));
-        return lines;
+        return List.of(tr("task_source", Component.literal("GTO")));
     }
 
     private List<Component> parallelTooltip() {
@@ -468,14 +455,12 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
         if (module != LargeWorkstationModule.REGULAR) sprite(context, WorkstationTextures.module(module), 6, 6, 15, 15);
         text(context, Component.translatable("block.neoecoae.large_integrated_working_station"), 25, 9, 115, 0.85f, TEXT);
         text(context, tr("queue_heading"), 9, 28, 72, 0.7f, TEXT);
-        text(context, tr("module_slot"), 176, 28, 69, 0.7f, TEXT);
+        text(context, Component.literal("GTO"), 176, 28, 69, 0.7f, TEXT);
         // The atlas alpha matches the baked circuit exactly; retain the chip and its original shadow.
         if (module != LargeWorkstationModule.REGULAR) {
             sprite(context, WorkstationTextures.circuit(module), WorkstationTextures.CIRCUIT_X, WorkstationTextures.CIRCUIT_Y, 28, 28);
         }
         text(context, module.shortTitle(), 181, 41, 35, 0.75f, 0xFFF2F2F2);
-        text(context, tr(!state.getBoolean("moduleInstalled") ? "module_empty" : "module_installed"),
-            181, 53, 35, 0.65f, 0xFFBEC6DD);
         if (tasks.isEmpty()) {
             centeredText(context, tr("empty_task"), 9, 65, 69, 0.8f, TEXT);
             centeredText(context, tr("queue_empty_hint"), 9, 77, 69, 0.65f, MUTED);

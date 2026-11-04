@@ -332,17 +332,6 @@ public final class ECOLargeIntegratedWorkingStationInterfaceBlockEntity
 
     private AEItemKey terminalIcon(LargeWorkstationModule module) {
         ItemStack icon = new ItemStack(getBlockState().getBlock());
-        if (module != LargeWorkstationModule.REGULAR) {
-            // Presentation-only stacks use the existing formed-controller models; the real block item stays unchanged.
-            int modelData = switch (module) {
-                case REGULAR -> 0;
-                case ADVANCED_AE -> 1;
-                case EXTENDED_AE -> 2;
-                case CRYSTAL_SCIENCE -> 3;
-                case LIGHTNING_TECH -> 4;
-            };
-            icon.getOrCreateTag().putInt("CustomModelData", modelData);
-        }
         return AEItemKey.of(icon);
     }
 

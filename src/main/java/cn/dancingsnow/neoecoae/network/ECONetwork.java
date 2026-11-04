@@ -34,8 +34,6 @@ public final class ECONetwork {
             ECOBigOrderProgressS2CPacket.STREAM_CODEC, ECOBigOrderProgressS2CPacket::handle);
         register(3, ECOForceCraftStartFlagC2SPacket.class, NetworkDirection.PLAY_TO_SERVER,
             ECOForceCraftStartFlagC2SPacket.STREAM_CODEC, ECOForceCraftStartFlagC2SPacket::handle);
-        register(4, ECOImportJeiBookmarksC2SPacket.class, NetworkDirection.PLAY_TO_SERVER,
-            ECOImportJeiBookmarksC2SPacket.STREAM_CODEC, ECOImportJeiBookmarksC2SPacket::handle);
     }
 
     private static <P> void register(int id, Class<P> type, NetworkDirection direction,
@@ -54,6 +52,6 @@ public final class ECONetwork {
     }
 
     static String protocolVersion(String modVersion) {
-        return "3/" + modVersion;
+        return "4/" + modVersion;
     }
 }

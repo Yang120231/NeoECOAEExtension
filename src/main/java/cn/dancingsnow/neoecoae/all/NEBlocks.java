@@ -562,7 +562,7 @@ public class NEBlocks {
                     boolean working = s.getValue(ECOIntegratedWorkingStation.WORKING);
                     boolean formed = s.getValue(ECOIntegratedWorkingStation.FORMED);
                     ModelFile formedModel = prov.models().getExistingFile(prov.modLoc(
-                        s.getValue(ECOIntegratedWorkingStation.MODULE).modelPath(working)));
+                        "block/large_integrated_working_station_" + (working ? "on" : "off")));
                     return ConfiguredModel.builder()
                         .modelFile(formed ? formedModel : (working ? modelFileWorking : modelFile))
                         .rotationY(((int) s.getValue(ECOIntegratedWorkingStation.FACING).toYRot() + 180) % 360)

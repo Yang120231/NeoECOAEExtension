@@ -144,12 +144,6 @@ public class ExecutingCraftingJob extends cn.dancingsnow.neoecoae.api.me.Executi
             waitingFor.insert(entry.getKey(), entry.getLongValue(), Actionable.MODULATE);
             timeTracker.addMaxItems(entry.getLongValue(), entry.getKey().getType());
         }
-        // EAEP's vanilla/quantum mixins do not run on ECO's independent executor.
-        // Use the normal persisted ledger so missing inputs survive reload and follow normal insertion/cancellation.
-        for (var entry : cn.dancingsnow.neoecoae.compat.extendedaeplus.EAEPForcedCrafting.manualMissing(plan)) {
-            waitingFor.insert(entry.getKey(), entry.getLongValue(), Actionable.MODULATE);
-            timeTracker.addMaxItems(entry.getLongValue(), entry.getKey().getType());
-        }
         for (var entry : plan.patternTimes().entrySet()) {
             tasks.computeIfAbsent(entry.getKey(), p -> new TaskProgress()).value += entry.getValue();
             for (var output : entry.getKey().getOutputs()) {
@@ -157,19 +151,6 @@ public class ExecutingCraftingJob extends cn.dancingsnow.neoecoae.api.me.Executi
                 amount = NEMath.saturatingMultiply(amount, output.what().getAmountPerUnit());
                 timeTracker.addMaxItems(amount, output.what().getType());
             }
-        }
-        // ECO plans already carry base recipes and a verified execution schedule. Only
-        // imported plans need EAEP automatic wrappers converted back to logical crafts.
-        if (executionPlan == null && !exactOrder) {
-            var normalized = cn.dancingsnow.neoecoae.compat.extendedaeplus.ECOExternalPatternNormalization
-                    .normalize(plan.patternTimes());
-            tasks.clear();
-            normalized.forEach((pattern, count) -> {
-                var progress = new TaskProgress();
-                if (count.bitLength() > 63) progress.setExact(count, count);
-                else progress.value = count.longValueExact();
-                tasks.put(pattern, progress);
-            });
         }
         this.executionPlan = executionPlan;
         if (plan instanceof cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOExactCraftingPlan exact) {

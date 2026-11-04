@@ -49,11 +49,6 @@ public final class ClientStartupProbe {
             if (!System.getProperty("neoecoae.multiblockAlignmentSmoke", "").isBlank()) {
                 MultiblockAlignmentClientProbe.verifyModels(client);
             }
-            if (Boolean.getBoolean("neoecoae.ae2ByteTooltipSmoke")) {
-                AE2ByteTooltipClientProbe.verify();
-                client.stop();
-                return;
-            }
             LOG.info("CLIENT_SMOKE title screen reached; creating isolated creative world");
             var rules = new GameRules();
             rules.getRule(GameRules.RULE_DOMOBSPAWNING).set(false, null);
@@ -68,8 +63,6 @@ public final class ClientStartupProbe {
             LOG.info("CLIENT_SMOKE world entered: dimension={}, player={}, integratedServer={}, gameTime={}",
                 client.level.dimension().location(), client.player.getGameProfile().getName(),
                 server != null, client.level.getGameTime());
-            LOG.info("CLIENT_SMOKE addons={}", java.util.List.of("advanced_ae", "expatternprovider", "extendedae_plus", "ae2lt")
-                .stream().filter(net.minecraftforge.fml.ModList.get()::isLoaded).toList());
             if (server != null) server.execute(() -> {
                 if (Boolean.getBoolean("neoecoae.gtoAcceptance")) {
                     var recipes = server.getRecipeManager();
@@ -86,12 +79,6 @@ public final class ClientStartupProbe {
                     }
                     LOG.info("GTO_ACCEPTANCE provider callback and native CPU ledger contracts verified");
                 }
-                for (String recipe : java.util.List.of("reaction_chamber/energized_fluix_crystal", "reaction_chamber/energized_crystal",
-                        "circuit_cutter/superconducting_processor_print", "compat/ae2lt/eco_lightning_cell_16m",
-                        "compat/ae2lt/eco_lightning_cell_64m", "compat/ae2lt/eco_lightning_cell_256m")) {
-                    var id = cn.dancingsnow.neoecoae.NeoECOAE.id(recipe);
-                    LOG.info("CLIENT_SMOKE recipe {} loaded={}", id, server.getRecipeManager().byKey(id).isPresent());
-                }
             });
             if (Boolean.getBoolean("neoecoae.gtoAcceptance")) {
                 long own = client.level.getRecipeManager().getRecipeIds()
@@ -100,9 +87,6 @@ public final class ClientStartupProbe {
             }
             Screenshot.grab(client.gameDirectory, "neoecoae-startup-world.png", client.getMainRenderTarget(),
                 message -> LOG.info("CLIENT_SMOKE screenshot: {}", message.getString()));
-        }
-        if (captured && Boolean.getBoolean("neoecoae.gtoAcceptance")) {
-            GTOCompatibilityClientProbe.tick(client);
         }
         if (captured && Boolean.getBoolean("neoecoae.clientSmokeEnergy")) {
             ManagedEnergyClientProbe.tick(client);

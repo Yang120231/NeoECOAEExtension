@@ -111,8 +111,6 @@ final class WorkstationModelClientProbe {
                             for (Direction direction : DIRECTIONS) build(level, position(direction), direction);
                         }
                         var controller = (ECOLargeIntegratedWorkingStationBlockEntity) level.getBlockEntity(pos);
-                        controller.getModuleInventory().setStackInSlot(0, module == LargeWorkstationModule.REGULAR
-                            ? ItemStack.EMPTY : new ItemStack(BuiltInRegistries.ITEM.get(module.upgradeCardId())));
                         controller.rebuildMultiblock();
                         require(controller.isFormed(), "structure did not form: " + front);
                         Vec3 target = Vec3.atCenterOf(pos).add(Vec3.atLowerCornerOf(front.getOpposite().getNormal()).scale(0.5)).add(0, -0.4, 0);
@@ -153,7 +151,6 @@ final class WorkstationModelClientProbe {
                     return;
                 }
                 if (ticks < 10) return;
-                require(state.getValue(ECOIntegratedWorkingStation.MODULE) == module, "module state not synchronized");
                 require(state.getValue(ECOIntegratedWorkingStation.WORKING) == working, "visual working state changed");
                 if (!run.equals("before")) {
                     var model = client.getBlockRenderer().getBlockModel(state);

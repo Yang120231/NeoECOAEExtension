@@ -20,7 +20,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The copied ExtendedAE-style menu for the large workstation interface.
  *
  * <p>All physical pattern slots remain in the menu while capacity cards unlock their visible rows.</p>
  */

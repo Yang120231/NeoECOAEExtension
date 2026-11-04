@@ -6,8 +6,5 @@ public class NERecipeGenerator {
     public static void accept(RegistrateRecipeProvider provider) {
         EcoMachineRecipes.init(provider);
         CoolingRecipes.init(provider);
-
-        EAERecipes.init(provider);
-        AAERecipes.init(provider);
     }
 }

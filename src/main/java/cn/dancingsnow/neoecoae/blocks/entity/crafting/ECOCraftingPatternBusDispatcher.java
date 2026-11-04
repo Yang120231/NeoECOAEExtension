@@ -20,7 +20,7 @@ import java.util.UUID;
 /** Owns worker selection and the ordinary/FastPath dispatch contract for one pattern bus. */
 final class ECOCraftingPatternBusDispatcher {
     private final ECOCraftingPatternBusBlockEntity host;
-    /** Ordinary one-craft dispatch follows AdvancedAE's successful-target round-robin. */
+    /** Ordinary one-craft dispatch rotates between successful targets. */
     private int roundRobinIndex;
 
     ECOCraftingPatternBusDispatcher(ECOCraftingPatternBusBlockEntity host) {
@@ -47,7 +47,6 @@ final class ECOCraftingPatternBusDispatcher {
         if (execution.molecularPattern() == null || cluster == null) {
             return false;
         }
-        // Match AdvancedAE's ordinary provider routing: visit reachable workers from a rotating cursor and advance
         // only after a successful push. Batch offers use the capacity-ranked path below, but a single craft should
         // not keep concentrating on the worker with the most free slots.
         List<ECOCraftingWorkerBlockEntity> candidates = cluster.collectDispatchCandidateWorkers();

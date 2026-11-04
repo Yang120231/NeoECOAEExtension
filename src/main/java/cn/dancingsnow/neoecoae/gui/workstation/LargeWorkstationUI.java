@@ -42,7 +42,7 @@ public final class LargeWorkstationUI {
     public record Config(IFluidHandler fluids, IntFunction<CompoundTag> snapshot,
         Supplier<HolderLookup.Provider> registries, Consumer<UUID> returnTask,
         Runnable toggleOverclocked, Runnable toggleActiveCooling,
-        Runnable togglePreheating, IItemHandlerModifiable moduleInventory) {}
+        Runnable togglePreheating) {}
 
     private static final ResourceLocation JSON_LAYOUT =
         new ResourceLocation("neoecoae", "screens/workstation/large");
@@ -68,7 +68,6 @@ public final class LargeWorkstationUI {
                 case "player_inventory" -> playerInventory(node, player);
                 case "input_fluid" -> fluidGauge(config.fluids(), 0, "input");
                 case "output_fluid" -> fluidGauge(config.fluids(), 1, "output");
-                case "module_card" -> moduleSlot(config.moduleInventory());
                 default -> throw new IllegalArgumentException("Unknown large workstation element: " + node);
             };
         }
@@ -95,28 +94,6 @@ public final class LargeWorkstationUI {
         return new WorkstationFluidGauge(fluids, tank, false, false).withTooltipRole(name);
     }
 
-    private static ItemSlot moduleSlot(IItemHandlerModifiable inventory) {
-        ItemSlot slot = new ItemSlot(new ItemHandlerSlot(inventory, 0) {
-            @Override
-            public int getMaxStackSize(net.minecraft.world.item.ItemStack stack) {
-                // A capacity query must not briefly remove the card and republish the pattern catalog.
-                return Math.min(getMaxStackSize(), stack.getMaxStackSize());
-            }
-        }) {
-            @Override
-            protected void onHoverTooltips(UIEvent event) {
-                var lines = new ArrayList<Component>();
-                lines.add(Component.translatable("gui.neoecoae.workstation.module_slot").withStyle(ChatFormatting.YELLOW));
-                if (!getValue().isEmpty()) lines.addAll(getFullTooltipTexts());
-                else lines.add(Component.translatable("gui.neoecoae.workstation.module_slot_empty"));
-                lines.add(Component.translatable("gui.neoecoae.workstation.module_slot_hint").withStyle(ChatFormatting.GRAY));
-                lines.add(Component.translatable("gui.neoecoae.workstation.module_swap_hint").withStyle(ChatFormatting.GRAY));
-                event.hoverTooltips = new HoverTooltips(lines, null, null, getValue());
-            }
-        };
-        slot.style(style -> style.backgroundTexture(IGuiTexture.EMPTY));
-        return slot;
-    }
 
     public static Button settingButton(ECOIcon icon, Runnable action, Supplier<Component> tooltip) {
         return settingButton(AETextures.icon(icon), action, tooltip);

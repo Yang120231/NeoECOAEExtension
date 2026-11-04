@@ -5,7 +5,6 @@ import appeng.api.orientation.OrientationStrategies;
 import cn.dancingsnow.neoecoae.platform.NEEntityBlock;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOIntegratedWorkingStationBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationBlockEntity;
-import cn.dancingsnow.neoecoae.recipe.LargeWorkstationModule;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.factory.BlockUIMenuType;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.ModularUI;
 import net.minecraft.core.BlockPos;
@@ -20,7 +19,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.BooleanOp;
@@ -34,7 +32,6 @@ public class ECOIntegratedWorkingStation extends NEEntityBlock<ECOIntegratedWork
     public static final Property<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final Property<Boolean> WORKING = BooleanProperty.create("working");
     public static final BooleanProperty FORMED = BooleanProperty.create("formed");
-    public static final EnumProperty<LargeWorkstationModule> MODULE = EnumProperty.create("module", LargeWorkstationModule.class);
 
     private static final VoxelShape NORTH = Stream.of(
         Block.box(4, 4, 1, 12, 15, 12),
@@ -79,14 +76,12 @@ public class ECOIntegratedWorkingStation extends NEEntityBlock<ECOIntegratedWork
         Block.box(1, 15, 0, 12, 16, 4),
         Block.box(1, 15, 12, 12, 16, 16)
     ).reduce((v1, v2) -> Shapes.join(v1, v2, BooleanOp.OR)).get();
-    
-
 
     public ECOIntegratedWorkingStation(Properties props) {
         // The recessed screen and cutout models must not hide neighbouring block faces.
         super(props.noOcclusion());
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(WORKING, false)
-            .setValue(FORMED, false).setValue(MODULE, LargeWorkstationModule.REGULAR));
+            .setValue(FORMED, false));
     }
 
     @Override
@@ -97,7 +92,7 @@ public class ECOIntegratedWorkingStation extends NEEntityBlock<ECOIntegratedWork
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
-        builder.add(WORKING, FORMED, MODULE);
+        builder.add(WORKING, FORMED);
     }
 
     @Override
