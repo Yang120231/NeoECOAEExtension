@@ -9,8 +9,7 @@ import appeng.api.stacks.KeyCounter;
 import cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory;
 import cn.dancingsnow.neoecoae.crafting.execution.batch.*;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOBatchCraftingHelper;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
-import java.math.BigInteger;
+import appeng.api.stacks.AEKeyLongMap;
 import java.util.Map;
 
 /** Captures live CPU limits without taking ownership of any material or energy. */
@@ -37,8 +36,8 @@ final class ECOBatchDispatchPlanning {
     static final class Prepared {
         private final ECOCraftingDispatchRequest request;
         private final ECOPatternIdentity identity;
-        private final Object2LongOpenHashMap<AEKey> inputs = new Object2LongOpenHashMap<>();
-        private final Object2LongOpenHashMap<AEKey> waitingPerCraft = new Object2LongOpenHashMap<>();
+        private final AEKeyLongMap<AEKey> inputs = new AEKeyLongMap<>();
+        private final AEKeyLongMap<AEKey> waitingPerCraft = new AEKeyLongMap<>();
         private final long arithmetic;
         private final ECOBatchInputScaling inputScaling;
 
@@ -62,19 +61,18 @@ final class ECOBatchDispatchPlanning {
             arithmetic = limit;
         }
 
-        private static void accumulate(KeyCounter counter, Object2LongOpenHashMap<AEKey> totals) {
+        private static void accumulate(KeyCounter counter, AEKeyLongMap<AEKey> totals) {
             if (counter != null) {
-                for (var entry : counter) {
-                    long count = entry.getLongValue();
-                    if (count <= 0) continue;
-                    totals.put(entry.getKey(), Math.addExact(totals.getLong(entry.getKey()), count));
-                }
+                counter.fastForEach((key, count) -> {
+                    // An overflowing candidate is discarded by the constructor before any dispatch.
+                    if (count > 0) Math.addExact(totals.addTo(key, count), count);
+                });
             }
         }
 
-        private static long arithmeticLimit(Object2LongOpenHashMap<AEKey> totals, ECOBatchInputScaling scaling) {
+        private static long arithmeticLimit(AEKeyLongMap<AEKey> totals, ECOBatchInputScaling scaling) {
             long limit = Long.MAX_VALUE;
-            for (var it = totals.object2LongEntrySet().fastIterator(); it.hasNext();) {
+            for (var it = totals.reference2LongEntrySet().fastIterator(); it.hasNext();) {
                 var input = it.next();
                 if (!scaling.perBatch().test(input.getKey())) {
                     limit = Math.min(limit, ECOBatchCraftingHelper.maxBatchSizeForAmount(input.getLongValue()));
@@ -95,15 +93,12 @@ final class ECOBatchDispatchPlanning {
             long material = upper;
             var protectedSeeds = request.job().executionRuntime == null ? Map.<AEKey, Long>of()
                     : request.job().executionRuntime.protectedStartupSeed(request.candidate());
-            for (var it = inputs.object2LongEntrySet().fastIterator(); it.hasNext();) {
+            for (var it = inputs.reference2LongEntrySet().fastIterator(); it.hasNext();) {
                 var input = it.next();
                 long seed = protectedSeeds.getOrDefault(input.getKey(), 0L);
                 long available;
                 if (request.inventory() instanceof ECOExactInventory exact && exact.isEnabled()) {
-                    var amount = exact.amount(input.getKey()).subtract(BigInteger.valueOf(seed)).max(BigInteger.ZERO);
-                    // Arithmetic already bounds each aggregate debit to long, so excess stock cannot limit it.
-                    if (amount.bitLength() > 63) continue;
-                    available = amount.longValue();
+                    available = exact.availableAfterReservations(input.getKey(), 0, seed);
                 } else {
                     available = Math.max(0L, Math.max(0L, request.inventory().list.get(input.getKey())) - seed);
                 }
@@ -116,7 +111,7 @@ final class ECOBatchDispatchPlanning {
             }
             long waiting = Math.min(upper, ECOCraftingEnergyTransaction.maxSafeCrafts(singlePower));
             if (!request.job().exactOrder) {
-                for (var it = waitingPerCraft.object2LongEntrySet().fastIterator(); it.hasNext();) {
+                for (var it = waitingPerCraft.reference2LongEntrySet().fastIterator(); it.hasNext();) {
                     var output = it.next();
                     long stored = request.job().waitingFor.list.get(output.getKey());
                     if (stored < 0) return null;

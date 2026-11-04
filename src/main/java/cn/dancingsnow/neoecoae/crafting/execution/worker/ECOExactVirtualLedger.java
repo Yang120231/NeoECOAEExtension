@@ -53,7 +53,7 @@ public final class ECOExactVirtualLedger {
                 changed.run();
             }
         }
-        return inventory.snapshot().isEmpty();
+        return inventory.isEmpty();
     }
 
     /** Exact delivery path used when the destination can accept more than AE2's long-sized windows. */
@@ -69,7 +69,7 @@ public final class ECOExactVirtualLedger {
                 changed.run();
             }
         }
-        return inventory.snapshot().isEmpty();
+        return inventory.isEmpty();
     }
 
     public CompoundTag write() {

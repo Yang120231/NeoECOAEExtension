@@ -11,9 +11,9 @@ import appeng.crafting.inv.ListCraftingInventory;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
 import com.google.common.collect.MapMaker;
 import net.minecraft.world.level.Level;
-import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import appeng.api.stacks.AEKeyLongMap;
+import appeng.api.stacks.AEKeySet;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +30,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
 
     private final ICraftingInventory source;
     // Virtual removals only use exact keys; a fuzzy KeyCounter index needlessly queries item components.
-    private final Object2LongOpenHashMap<AEKey> removed = new Object2LongOpenHashMap<>();
+    private final AEKeyLongMap<AEKey> removed = new AEKeyLongMap<>();
     private final Set<AEKey> primaryInputs;
     private final Set<AEKey> possibleInputs;
     private final Set<AEKey> reusableTemplates;
@@ -95,7 +95,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
         this.possibleInputs = metadata.possibleInputs();
         this.reusableTemplates = metadata.reusableTemplates();
         this.protectedAmounts = protectedAmounts;
-        this.componentInsensitiveInputs = new HashSet<>();
+        this.componentInsensitiveInputs = new AEKeySet<>();
         for (var key : primaryInputs) {
             if (cn.dancingsnow.neoecoae.crafting.ECOProcessingComponentMatching
                     .enabled(pattern, key, fuzzyPlanningItemIds)) componentInsensitiveInputs.add(key);
@@ -111,9 +111,9 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
 
     private static PatternMetadata buildMetadata(IPatternDetails pattern,
             ECOCraftingRemainderCache remainderCache, long reloadGeneration) {
-        Set<AEKey> primaryInputs = new HashSet<>();
-        Set<AEKey> possibleInputs = new HashSet<>();
-        Set<AEKey> reusableTemplates = new HashSet<>();
+        Set<AEKey> primaryInputs = new AEKeySet<>();
+        Set<AEKey> possibleInputs = new AEKeySet<>();
+        Set<AEKey> reusableTemplates = new AEKeySet<>();
         for (var input : pattern.getInputs()) {
             if (input == null || input.getPossibleInputs() == null || input.getPossibleInputs().length == 0) continue;
             var possible = input.getPossibleInputs();
@@ -136,7 +136,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
             ECOCraftingRemainderCache remainderCache) {
         try {
             AEKey remainder = remainderCache.get(input, key);
-            if (key.equals(remainder)) return true;
+            if (key == remainder) return true;
             if (!(key instanceof AEItemKey item) || !(remainder instanceof AEItemKey returned)
                     || item.getItem() != returned.getItem()) return false;
             var before = item.toStack(1);
@@ -178,7 +178,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
             var candidates = new java.util.ArrayList<AEKey>();
             candidates.add(primary.what());
             for (var candidate : source.findFuzzyTemplates(primary.what())) {
-                if (!candidate.equals(primary.what())
+                if (candidate != primary.what()
                         && cn.dancingsnow.neoecoae.crafting.ECOProcessingComponentMatching
                             .sameItem(primary.what(), candidate)) candidates.add(candidate);
             }
@@ -227,9 +227,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
 
     private long availableAfterReservations(AEKey key) {
         if (source instanceof cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory exact && exact.isEnabled()) {
-            return exact.amount(key).subtract(java.math.BigInteger.valueOf(removed.getLong(key)))
-                .subtract(java.math.BigInteger.valueOf(protectedAmounts.getOrDefault(key, 0L)))
-                .max(java.math.BigInteger.ZERO).min(java.math.BigInteger.valueOf(Long.MAX_VALUE)).longValueExact();
+            return exact.availableAfterReservations(key, removed.getLong(key), protectedAmounts.getOrDefault(key, 0L));
         }
         long available = Math.max(0L, availableExact(key) - removed.getLong(key));
         return Math.max(0L, available - protectedAmounts.getOrDefault(key, 0L));
@@ -257,7 +255,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
         // fuzzy inventory match from changing that concrete key after planning.
         var result = new java.util.ArrayList<AEKey>();
         for (var candidate : source.findFuzzyTemplates(key)) {
-            if (key.equals(candidate) && primaryInputs.contains(candidate)) result.add(candidate);
+            if (key == candidate && primaryInputs.contains(candidate)) result.add(candidate);
         }
         return result;
     }
