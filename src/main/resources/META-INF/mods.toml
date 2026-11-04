@@ -17,6 +17,20 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies.neoecoae]]
+modId="gtolib"
+mandatory=true
+versionRange="[26.10.26,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.neoecoae]]
+modId="datasynclib"
+mandatory=true
+versionRange="[26.11.1,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.neoecoae]]
 modId="gtceu"
 mandatory=true
 versionRange="[26.10.70,)"

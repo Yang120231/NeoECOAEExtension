@@ -6,6 +6,8 @@ import cn.dancingsnow.neoecoae.impl.storage.persistence.StorageAmounts;
 
 /** Compatibility name for the shared server-thread quantity table; records changed keys for incremental listing. */
 final class InfiniteStorageAmounts extends StorageAmounts {
+    InfiniteStorageAmounts() { super(true); }
+
     final StorageChangeLog changes = new StorageChangeLog();
 
     @Override protected void changed(AEKey key) { changes.record(key); }
