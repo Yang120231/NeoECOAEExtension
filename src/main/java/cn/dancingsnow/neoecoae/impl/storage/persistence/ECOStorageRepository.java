@@ -130,7 +130,9 @@ public final class ECOStorageRepository {
                     }
                     storage.set(key, data);
                 }
-                data.bind(file); track(data); cells.put(id, data);
+                data.bind(file);
+                if (server != null && data.canRead()) data.amounts().attachNativeStorage();
+                track(data); cells.put(id, data);
                 if (fresh && !data.legacy2042Pending() && (!data.canMutate() || !data.flush())) {
                     throw new IllegalStateException("Cannot import ECO disk; original item contents retained: " + data.failure());
                 }

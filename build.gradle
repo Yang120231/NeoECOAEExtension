@@ -297,6 +297,8 @@ sourceSets {
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/GtoTestKeys.java'
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageMigrationBudgetTest.java'
         java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageIncrementalListingTest.java'
+        java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageDurabilityTest.java'
+        java.include 'cn/dancingsnow/neoecoae/impl/storage/infinite/ECOInfiniteStorageHotPathTest.java'
         java.include 'cn/dancingsnow/neoecoae/blocks/entity/storage/MigrationProgressAccess.java'
         java.include 'cn/dancingsnow/neoecoae/blocks/entity/storage/StorageDriveTestFixtures.java'
         java.include 'cn/dancingsnow/neoecoae/blocks/entity/storage/DrivePersistenceNotificationTest.java'

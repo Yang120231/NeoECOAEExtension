@@ -29,6 +29,11 @@ public final class U126 implements Comparable<U126> {
         return value == 0L ? ZERO : new U126(0L, value);
     }
 
+    /** Copies GTO's mutable base-2^63 inventory value into the planner's immutable base-2^64 value. */
+    public static U126 fromGto(appeng.api.stacks.U126 value) {
+        return ofParts(value.hi() >>> 1, (value.hi() << 63) | value.lo());
+    }
+
     /** {@code null} when negative or wider than 126 bits. */
     public static @Nullable U126 of(BigInteger value) {
         if (value.signum() < 0 || value.bitLength() > 126) return null;
@@ -116,6 +121,10 @@ public final class U126 implements Comparable<U126> {
     /** Truncating division by a positive long. */
     public U126 divide(long divisor) {
         if (divisor <= 0L) throw new ArithmeticException("U126 divisor must be positive");
+        if ((divisor & (divisor - 1)) == 0) {
+            int shift = Long.numberOfTrailingZeros(divisor);
+            return shift == 0 ? this : ofParts(hi >>> shift, (lo >>> shift) | (hi << (64 - shift)));
+        }
         long qHi = hi / divisor;
         long rem = hi % divisor;
         long qLo = 0L;
@@ -135,6 +144,7 @@ public final class U126 implements Comparable<U126> {
     /** Remainder of division by a positive long. */
     public long remainder(long divisor) {
         if (divisor <= 0L) throw new ArithmeticException("U126 divisor must be positive");
+        if ((divisor & (divisor - 1)) == 0) return lo & (divisor - 1);
         long rem = hi % divisor;
         for (int bit = 63; bit >= 0; bit--) {
             long twice = (rem << 1) | ((lo >>> bit) & 1L);
