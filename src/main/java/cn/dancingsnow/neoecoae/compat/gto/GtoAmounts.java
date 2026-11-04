@@ -26,9 +26,17 @@ public final class GtoAmounts {
     }
 
     public static long available(U126 amount, long base, long removed, long reserved) {
+        return available(amount == null ? 0 : amount.hi(), amount == null ? 0 : amount.lo(), base, removed, reserved);
+    }
+
+    public static long available(long amount, long base, long removed, long reserved) {
+        if (amount < 0) throw new IllegalArgumentException("Negative stock");
+        return available(0, amount, base, removed, reserved);
+    }
+
+    private static long available(long hi, long lo, long base, long removed, long reserved) {
         if (base < 0) throw new IllegalArgumentException("Negative base window");
         if (reserved < 0) throw new IllegalArgumentException("Negative protected amount");
-        long hi = amount == null ? 0 : amount.hi(), lo = amount == null ? 0 : amount.lo();
         long combined = lo + base;
         if (combined < 0) hi++;
         lo = combined & Long.MAX_VALUE;

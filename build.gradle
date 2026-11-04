@@ -37,7 +37,9 @@ def pinned = { String mod ->
 repositories {
     maven {
         url = 'https://gtodyssey.com/maven/releases'
-        content { includeGroup 'com.gto.fastcollection' }
+        content {
+            includeGroup 'com.gto'
+        }
     }
     ivy {
         name = 'VerifiedReleaseJars'
@@ -67,6 +69,15 @@ repositories {
 
 dependencies {
     ['ae2', 'guideme', 'ldlib'].each { modImplementation pinned(it) }
+    // Like the pinned GTO AE2 fork, GTO runs on Java 21 while this addon's output targets Java 17.
+    modImplementation("com.gto:gtocore-forge-1.20.1:${gtocore_version}") {
+        transitive = false
+        attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
+    }
+    modImplementation("com.gto:datasynclib-forge-1.20.1:${datasynclib_version}") {
+        transitive = false
+        attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
+    }
     modApi "com.tterrag.registrate:Registrate:${registrate_version}"
     jarJar "com.tterrag.registrate:Registrate:${registrate_version}"
     implementation "io.github.llamalad7:mixinextras-forge:${mixinextras_version}"
