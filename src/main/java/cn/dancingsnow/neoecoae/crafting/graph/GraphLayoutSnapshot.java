@@ -1,6 +1,5 @@
 package cn.dancingsnow.neoecoae.crafting.graph;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -23,6 +22,8 @@ public final class GraphLayoutSnapshot {
     public static final int COMPACT_FOLDER_HEIGHT = COMPACT_MATERIAL_HEIGHT;
     public static final int COMPACT_REFERENCE_WIDTH = COMPACT_MATERIAL_WIDTH;
     public static final int COMPACT_REFERENCE_HEIGHT = COMPACT_MATERIAL_HEIGHT;
+
+    public record RecursionRegion(RecursiveCycleNode.Role role, int level, Bounds bounds) {}
 
     public record Box(int nodeId, float x, float y, float width, float height) {
         public float centerX() { return x + width / 2; }
@@ -52,6 +53,7 @@ public final class GraphLayoutSnapshot {
     private final GraphSpatialIndex<ClientCraftingGraph.Link> edgeIndex;
     private final GraphSpatialIndex<Bounds> rowIndex;
     private final List<Bounds> rowFrames;
+    private final List<RecursionRegion> recursionRegions;
     private final List<ClientCraftingGraph.Link> links;
     private final Map<ClientCraftingGraph.Link, List<Point>> edgeRoutes;
     private final Map<Integer, int[]> edgesByNode;
@@ -67,10 +69,17 @@ public final class GraphLayoutSnapshot {
 
     GraphLayoutSnapshot(Map<Integer, Box> boxes, List<ClientCraftingGraph.Link> links,
             Map<ClientCraftingGraph.Link, List<Point>> edgeRoutes, Bounds bounds, long layoutNanos, long version) {
+        this(boxes, links, edgeRoutes, bounds, layoutNanos, version, List.of());
+    }
+
+    GraphLayoutSnapshot(Map<Integer, Box> boxes, List<ClientCraftingGraph.Link> links,
+            Map<ClientCraftingGraph.Link, List<Point>> edgeRoutes, Bounds bounds, long layoutNanos, long version,
+            List<RecursionRegion> recursionRegions) {
         this.boxes = Map.copyOf(boxes);
         this.bounds = bounds;
         this.version = version;
         this.links = List.copyOf(links);
+        this.recursionRegions = List.copyOf(recursionRegions);
         Map<ClientCraftingGraph.Link, List<Point>> frozenRoutes = new HashMap<>();
         edgeRoutes.forEach((link, points) -> frozenRoutes.put(link, List.copyOf(points)));
         this.edgeRoutes = Map.copyOf(frozenRoutes);
@@ -83,13 +92,13 @@ public final class GraphLayoutSnapshot {
         rowIndex = new GraphSpatialIndex<>(rowFrames.stream()
             .map(row -> new GraphSpatialIndex.Entry<>(row, row)).toList());
 
-        Map<Integer, List<Integer>> mutableEdges = new Int2ObjectOpenHashMap<>();
+        Map<Integer, List<Integer>> mutableEdges = new HashMap<>();
         for (int i = 0; i < links.size(); i++) {
             var link = links.get(i);
             mutableEdges.computeIfAbsent(link.fromId(), ignored -> new ArrayList<>()).add(i);
             mutableEdges.computeIfAbsent(link.toId(), ignored -> new ArrayList<>()).add(i);
         }
-        Map<Integer, int[]> frozenEdges = new Int2ObjectOpenHashMap<>();
+        Map<Integer, int[]> frozenEdges = new HashMap<>();
         mutableEdges.forEach((key, ids) -> frozenEdges.put(key, ids.stream().mapToInt(Integer::intValue).toArray()));
         this.edgesByNode = frozenEdges;
         this.layoutNanos = layoutNanos;
@@ -103,6 +112,7 @@ public final class GraphLayoutSnapshot {
     public Map<ClientCraftingGraph.Link, List<Point>> edgeRoutes() { return edgeRoutes; }
     public List<Point> edgePoints(ClientCraftingGraph.Link link) { return edgeRoutes.getOrDefault(link, List.of()); }
     public List<Bounds> rowFrames() { return rowFrames; }
+    public List<RecursionRegion> recursionRegions() { return recursionRegions; }
     public int nodeCount(Bounds area) { return nodeIndex.count(area); }
     public int edgeCount(Bounds area) { return edgeIndex.count(area); }
     public List<Bounds> queryRowFrames(Bounds area) { return rowIndex.query(area, Integer.MAX_VALUE); }
@@ -187,7 +197,7 @@ public final class GraphLayoutSnapshot {
         return switch (node.kind()) {
             case MATERIAL -> MATERIAL_WIDTH;
             case PATTERN -> PATTERN_WIDTH;
-            case CYCLE_GROUP, CYCLE_CLUSTER -> CYCLE_WIDTH;
+            case CYCLE_GROUP, CYCLE_CLUSTER, RECURSION -> CYCLE_WIDTH;
             case FOLDER -> COMPACT_FOLDER_WIDTH;
             case REFERENCE -> COMPACT_REFERENCE_WIDTH;
         };
@@ -197,7 +207,7 @@ public final class GraphLayoutSnapshot {
         return switch (node.kind()) {
             case MATERIAL -> MATERIAL_HEIGHT;
             case PATTERN -> PATTERN_HEIGHT;
-            case CYCLE_GROUP, CYCLE_CLUSTER -> CYCLE_HEIGHT;
+            case CYCLE_GROUP, CYCLE_CLUSTER, RECURSION -> CYCLE_HEIGHT;
             case FOLDER -> COMPACT_FOLDER_HEIGHT;
             case REFERENCE -> COMPACT_REFERENCE_HEIGHT;
         };

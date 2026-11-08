@@ -70,7 +70,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     @Unique
     private static final Logger NEOECOAE_LOGGER = LoggerFactory.getLogger("neoecoae");
 
-    // Reserve 12000..12011 for this menu's ECO fields. AE2 requires unique IDs across every
+    // Reserve 12000..12014 for this menu's ECO fields. AE2 requires unique IDs across every
     // merged field; keep our diagnostics separate from addons using the common low ID range.
     @Unique
     @GuiSync(12000)
@@ -118,9 +118,66 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
 
     @Unique @GuiSync(12009) private long neoecoae$diagnosticsVersion;
     @Unique private long neoecoae$receivedDiagnosticsVersion = -1;
+    @Unique private long neoecoae$receivedGraphVersion = -1;
     @Unique private CraftingGraphSnapshot neoecoae$sentGraph;
     @Unique private ECOCycleItemList neoecoae$sentCycles;
+    @Unique private boolean neoecoae$graphPending;
+    /** 1: material report failed; 2: optional full graph failed after the material report. */
+    @Unique @GuiSync(12015) private int neoecoae$reportSyncFailure;
     @Unique private long neoecoae$startButtonAttemptStartedNanos;
+    @Unique private @Nullable ECOPlanningService.Request neoecoae$planningRequest;
+    @Unique private final java.util.Map<Long, ICraftingPlan> neoecoae$displayedPlans = new LinkedHashMap<>();
+    @Unique @GuiSync(12012) private int neoecoae$optimizationState;
+    @Unique @GuiSync(12013) private boolean neoecoae$exactPlanReady;
+    @Unique @GuiSync(12014) private boolean neoecoae$provenInfeasible;
+
+    @Override public int neoecoae$getOptimizationState() { return neoecoae$optimizationState; }
+    @Override public boolean neoecoae$exactPlanReady() { return neoecoae$exactPlanReady; }
+    @Override public boolean neoecoae$provenInfeasible() { return neoecoae$provenInfeasible; }
+    @Override public long neoecoae$getDisplayedPlanRevision() {
+        return neoecoae$receivedDiagnosticsVersion;
+    }
+
+    @Override public boolean neoecoae$lockDisplayedPlan(long revision) {
+        ICraftingPlan displayed = neoecoae$displayedPlans.get(revision);
+        neoecoae$stopOptimization();
+        if (displayed == null) return false;
+        if (displayed != result) {
+            result = displayed;
+            neoecoae$applyPlannerDiagnostics(result);
+            plan = neoecoae$recheckStoredAmounts(getGrid(), getActionSrc(),
+                CraftingPlanSummary.fromJob(getGrid(), getActionSrc(), result));
+        }
+        return true;
+    }
+
+    @Unique private void neoecoae$stopOptimization() {
+        if (neoecoae$planningRequest != null) neoecoae$planningRequest.cancel(true);
+        neoecoae$planningRequest = null;
+        neoecoae$optimizationState = 0;
+    }
+
+    @Inject(method = "broadcastChanges()V", remap = true, at = @At("HEAD"))
+    private void neoecoae$updatePlanningState(CallbackInfo ci) {
+        var menu = (CraftConfirmMenu) (Object) this;
+        if (!(menu.getPlayer() instanceof ServerPlayer player) || neoecoae$planningRequest == null) return;
+        if (player.containerMenu != menu || getGrid() == null) {
+            neoecoae$stopOptimization();
+            return;
+        }
+        neoecoae$optimizationState = neoecoae$planningRequest.searchState();
+    }
+
+    @Inject(method = "removed(Lnet/minecraft/world/entity/player/Player;)V", remap = true, at = @At("HEAD"))
+    private void neoecoae$cancelClosedPlanning(net.minecraft.world.entity.player.Player player, CallbackInfo ci) {
+        neoecoae$stopOptimization();
+        neoecoae$displayedPlans.clear();
+    }
+
+    @Inject(method = "startJob*", at = @At("HEAD"))
+    private void neoecoae$freezeSubmittedPreview(CallbackInfo ci) {
+        if (!((CraftConfirmMenu) (Object) this).isClientSide()) neoecoae$stopOptimization();
+    }
 
     @Override public boolean neoecoae$diagnosticsReady() {
         return !((CraftConfirmMenu) (Object) this).isClientSide()
@@ -128,28 +185,74 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     }
 
     @Override public void neoecoae$setDiagnostics(long version, CraftingGraphSnapshot graph, ECOCycleItemList cycles) {
+        if (version < neoecoae$receivedDiagnosticsVersion) return;
         neoecoae$receivedDiagnosticsVersion = version;
+        neoecoae$receivedGraphVersion = version;
         neoecoae$craftingGraph = graph;
         neoecoae$cycleItems = cycles;
     }
+
+    @Override public void neoecoae$setMaterialReport(long version, CraftingGraphSnapshot report, ECOCycleItemList cycles) {
+        if (version <= neoecoae$receivedDiagnosticsVersion) return;
+        neoecoae$receivedDiagnosticsVersion = version;
+        neoecoae$craftingGraph = report;
+        neoecoae$cycleItems = cycles;
+    }
+
+    @Override public boolean neoecoae$graphReady() {
+        return !((CraftConfirmMenu) (Object) this).isClientSide()
+            || neoecoae$receivedGraphVersion == neoecoae$diagnosticsVersion;
+    }
+
+    @Override public int neoecoae$getReportSyncFailure() { return neoecoae$reportSyncFailure; }
 
     @Inject(method = "broadcastChanges()V", remap = true, at = @At("TAIL"))
     private void neoecoae$sendDiagnostics(CallbackInfo ci) {
         var menu = (CraftConfirmMenu) (Object) this;
         if (!(menu.getPlayer() instanceof ServerPlayer player) || player.containerMenu != menu) return;
-        if (neoecoae$sentGraph == neoecoae$craftingGraph && neoecoae$sentCycles == neoecoae$cycleItems) return;
+        if (neoecoae$sentGraph == neoecoae$craftingGraph && neoecoae$sentCycles == neoecoae$cycleItems) {
+            if (neoecoae$graphPending && !cn.dancingsnow.neoecoae.network.MenuDataTransport.busy(player,
+                    cn.dancingsnow.neoecoae.network.MenuDataTransport.Channel.GRAPH)) {
+                neoecoae$sendReport(player, neoecoae$craftingGraph, true);
+                neoecoae$graphPending = false;
+            }
+            return;
+        }
         neoecoae$diagnosticsVersion++;
+        neoecoae$reportSyncFailure = 0;
+        if (result != null) {
+            neoecoae$displayedPlans.put(neoecoae$diagnosticsVersion, result);
+            while (neoecoae$displayedPlans.size() > 8) {
+                var versions = neoecoae$displayedPlans.keySet().iterator();
+                versions.next();
+                versions.remove();
+            }
+        }
         // A changed plan invalidates the previous stream, even when its first chunks have already arrived.
         cn.dancingsnow.neoecoae.network.MenuDataTransport.cancel(player,
             cn.dancingsnow.neoecoae.network.MenuDataTransport.Channel.GRAPH);
-        cn.dancingsnow.neoecoae.network.MenuDataTransport.send(player,
-            cn.dancingsnow.neoecoae.network.MenuDataTransport.Channel.GRAPH, buf -> {
-                buf.writeVarLong(neoecoae$diagnosticsVersion);
-                neoecoae$craftingGraph.writeToPacket(buf);
-                neoecoae$cycleItems.writeToPacket(buf);
-            });
+        // Keep the exact table on the critical path, then send graph details after those rows have been sent.
+        // Both payloads describe the same displayed plan, including its submission revision.
+        neoecoae$graphPending = neoecoae$sendReport(player, neoecoae$craftingGraph.materialReport(), false);
         neoecoae$sentGraph = neoecoae$craftingGraph;
         neoecoae$sentCycles = neoecoae$cycleItems;
+    }
+
+    @Unique
+    private boolean neoecoae$sendReport(ServerPlayer player, CraftingGraphSnapshot snapshot, boolean completeGraph) {
+        try {
+            cn.dancingsnow.neoecoae.network.CraftingReportStream.send(player,
+                neoecoae$diagnosticsVersion, completeGraph, snapshot, neoecoae$cycleItems);
+            return true;
+        } catch (RuntimeException error) {
+            neoecoae$reportSyncFailure = completeGraph ? 2 : 1;
+            org.slf4j.LoggerFactory.getLogger("neoecoae").error(
+                "[craft-confirm] Failed to encode {} for revision {} (materials={}, patterns={}, edges={}, cycles={})",
+                completeGraph ? "crafting graph" : "material report", neoecoae$diagnosticsVersion,
+                snapshot.nodes().size(), snapshot.patterns().size(), snapshot.edges().size(),
+                snapshot.cycleGroups().size(), error);
+            return false;
+        }
     }
 
     @Override public String neoecoae$getPlanningDiagnostic() {
@@ -215,6 +318,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     @Override public void neoecoae$startBigOrder(boolean forced) {
         var menu = (CraftConfirmMenu) (Object) this;
         if (menu.isClientSide()) return;
+        neoecoae$stopOptimization();
         if (result == null || neoecoae$originalOptions == null) {
             neoecoae$rejectBigOrder(result == null ? "NO_PLAN" : "NO_PLANNER_OPTIONS",
                 appeng.crafting.execution.CraftingSubmitResult.INCOMPLETE_PLAN);
@@ -252,20 +356,19 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         }
         if (!forced) {
             var inventory = cn.dancingsnow.neoecoae.crafting.planner.ECOPlannerInventory.capture(grid);
-            for (var node : exact.trace().nodes()) {
-                if (node.key() == null || node.exactFromInventory().signum() <= 0) continue;
-                var required = node.exactFromInventory();
+            for (var entry : exact.exactUsedItems().entrySet()) {
+                var key = entry.getKey();
+                var required = entry.getValue();
                 // Validate the full order; the exact ledger owns deferred inputs beyond long.
                 if (!cn.dancingsnow.neoecoae.api.me.bigorder.ECOBigOrderAdmission.hasStoredAmount(
-                        required, inventory.isUnbounded(node.key()), amount ->
-                            grid.getStorageService().getInventory().extract(node.key(), amount,
+                        required, inventory.amountOf(key), inventory.isUnbounded(key), amount ->
+                            grid.getStorageService().getInventory().extract(key, amount,
                                 Actionable.SIMULATE, getActionSrc()))) {
                     NEOECOAE_LOGGER.warn("[big-order-submit] Inventory check failed: container={}, key={}, required={}, unbounded={}",
-                        menu.containerId, node.key(), required, inventory.isUnbounded(node.key()));
+                        menu.containerId, key, required, inventory.isUnbounded(key));
                     neoecoae$rejectBigOrder("MISSING_INGREDIENT",
                         appeng.crafting.execution.CraftingSubmitResult.missingIngredient(
-                            new appeng.api.stacks.GenericStack(node.key(),
-                                required.min(BigInteger.valueOf(Long.MAX_VALUE)).longValueExact())));
+                            new appeng.api.stacks.GenericStack(key, required.longValueSaturated())));
                     return;
                 }
             }
@@ -282,7 +385,10 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
                 submitted = request.submit(carrier ->
                     cpu.getCluster().submitJob(grid, carrier, getActionSrc(), null));
             } else {
-                var admission = new cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOExactCraftingPlan(exact, forced);
+                var admission = forced
+                    ? new cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOExactCraftingPlan(exact, true)
+                    : exact.exactPlan();
+                if (admission == null) throw new IllegalArgumentException(exact.exactPlanError());
                 submitted = cpu.getCluster().submitJob(grid, admission, getActionSrc(), null);
             }
         } catch (RuntimeException invalid) {
@@ -317,6 +423,9 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
 
     @Shadow
     private ICraftingPlan result;
+
+    @Shadow
+    private Future<ICraftingPlan> job;
 
     @Shadow
     private CraftingPlanSummary plan;
@@ -355,6 +464,10 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
 
     @Unique
     private void resetPlannerDiagnostics() {
+        neoecoae$stopOptimization();
+        neoecoae$displayedPlans.clear();
+        neoecoae$exactPlanReady = false;
+        neoecoae$provenInfeasible = false;
         neoecoae$planningDiagnostic = "";
         neoecoae$showFastPlannerReport = false;
         neoecoae$ecoReportReady = false;
@@ -421,8 +534,9 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         }
         if (useEco) {
             neoecoae$originalOptions = ECOPlannerOptions.from(settings);
-            return ECOPlanningService.begin(level, getGrid(), requester.getActionSource(), what, amount, strategy,
-                neoecoae$originalOptions);
+            neoecoae$planningRequest = ECOPlanningService.begin(level, getGrid(), requester.getActionSource(), what,
+                amount, strategy, neoecoae$originalOptions);
+            return neoecoae$planningRequest;
         }
         return service.beginCraftingCalculation(level, requester, what, amount, strategy);
     }
@@ -440,6 +554,9 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     )
     private void capturePlannerDiagnostics(CallbackInfo ci) {
         if (neoecoae$ownsPlan(result)) {
+            if (neoecoae$planningRequest != null) {
+                neoecoae$optimizationState = neoecoae$planningRequest.searchState();
+            }
             neoecoae$applyPlannerDiagnostics(result);
             neoecoae$showFastPlannerReport = true;
             neoecoae$ecoReportReady = true;
@@ -554,6 +671,8 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         neoecoae$calculationNanos = 0;
         neoecoae$theoreticalBytes = "0";
         neoecoae$planningStatusCode = 0;
+        neoecoae$exactPlanReady = false;
+        neoecoae$provenInfeasible = false;
         neoecoae$cycleItems = ECOCycleItemList.EMPTY;
         neoecoae$craftingGraph = CraftingGraphSnapshot.EMPTY;
         ECOPlanningResult planningResult = neoecoae$resolveOwnedPlanningResult(diagnosticPlan);
@@ -562,6 +681,13 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
             neoecoae$calculationNanos = planningResult.calculationNanos();
             neoecoae$theoreticalBytes = planningResult.theoreticalBytes().toString();
             neoecoae$planningStatusCode = planningResult.status().ordinal() + 1;
+            neoecoae$exactPlanReady = planningResult.exactPlan() != null;
+            neoecoae$provenInfeasible = planningResult.provenInfeasible();
+            neoecoae$planningDiagnostic = planningResult.trace().diagnostics().stream()
+                .map(diagnostic -> diagnostic.code() + ": " + diagnostic.message())
+                .collect(java.util.stream.Collectors.joining("\n"));
+            if (neoecoae$planningDiagnostic.length() > 4096)
+                neoecoae$planningDiagnostic = neoecoae$planningDiagnostic.substring(0, 4096);
             if (planningResult.shouldUseNativeFallback()) {
                 neoecoae$planningDiagnostic = planningResult.trace().diagnostics().stream()
                     .map(diagnostic -> diagnostic.code() + ": " + diagnostic.message())

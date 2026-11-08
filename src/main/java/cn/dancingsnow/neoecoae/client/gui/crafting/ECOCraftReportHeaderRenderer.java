@@ -1,6 +1,7 @@
 package cn.dancingsnow.neoecoae.client.gui.crafting;
 
 import cn.dancingsnow.neoecoae.crafting.display.format.DisplayNumbers;
+import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import cn.dancingsnow.neoecoae.gui.common.HostText;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -34,14 +35,28 @@ final class ECOCraftReportHeaderRenderer {
 
     record Summary(Component elapsed, Component bytes, List<Component> tooltip) {}
 
+    static boolean hasCompleteByteEstimate(CraftingGraphSnapshot snapshot) {
+        boolean materialShortage = snapshot.summary().planningStatus().equals("MISSING_ITEMS")
+            || snapshot.summary().planningStatus().equals("PLANNED_BUT_AMOUNT_UNREPRESENTABLE");
+        return ECOExactMaterialTableRenderer.hasMaterialDetails(snapshot)
+            && snapshot.cycleGroups().stream().allMatch(cycle ->
+                cycle.status().equals("SOLVED") || cycle.status().equals("NOT_REQUIRED")
+                    || materialShortage && cycle.status().equals("INSUFFICIENT_EXTERNAL_INPUT")
+                        && cycle.executionCountKnowledge()
+                            == cn.dancingsnow.neoecoae.crafting.planner.result.ExecutionCountKnowledge.EXACT);
+    }
+
     static Summary pending(Component status) {
         Component bytes = text("bytes_pending");
         return new Summary(status, bytes, List.of(status, bytes));
     }
 
-    static Summary completed(long nanos, @Nullable BigInteger usedBytes, ToIntFunction<Component> width) {
+    static Summary completed(long nanos, @Nullable BigInteger usedBytes, boolean completeByteEstimate,
+            ToIntFunction<Component> width) {
+        if (!completeByteEstimate && usedBytes != null && usedBytes.signum() <= 0) usedBytes = null;
         Component elapsed = text("elapsed", formatMillis(nanos));
-        Component bytes = usedBytes == null ? text("bytes_unknown") : fitBytes(usedBytes, width);
+        String bytesKey = completeByteEstimate ? "bytes_only" : "bytes_partial";
+        Component bytes = usedBytes == null ? text("bytes_unknown") : fitBytes(usedBytes, bytesKey, width);
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(text("elapsed", DisplayNumbers.grouped(BigDecimal.valueOf(Math.max(0L, nanos), 6)
             .toPlainString())));
@@ -51,27 +66,28 @@ final class ECOCraftReportHeaderRenderer {
             // Keep the exact BigInteger here, including values beyond the compact formatter's units.
             String exact = DisplayNumbers.grouped(usedBytes.toString());
             if (exact.length() <= 32) {
-                tooltip.add(text("bytes_only", exact + " B"));
+                tooltip.add(text(bytesKey, exact + " B"));
             } else {
-                tooltip.add(text("bytes_only", ""));
+                tooltip.add(text(bytesKey, ""));
                 for (int start = 0; start < exact.length(); start += 32) {
                     int end = Math.min(exact.length(), start + 32);
                     tooltip.add(Component.literal(exact.substring(start, end)
                         + (end == exact.length() ? " B" : "")));
                 }
             }
+            if (!completeByteEstimate) tooltip.add(text("bytes_partial_hint"));
         }
         return new Summary(elapsed, bytes, List.copyOf(tooltip));
     }
 
-    private static Component fitBytes(BigInteger value, ToIntFunction<Component> width) {
+    private static Component fitBytes(BigInteger value, String bytesKey, ToIntFunction<Component> width) {
         String compact = HostText.ae2Amount(value);
         int maxWidth = (int) (BYTES_WIDTH / MAX_BYTES_SCALE);
-        if (width.applyAsInt(text("bytes_only", byteUnit(compact))) > maxWidth) {
+        if (width.applyAsInt(text(bytesKey, byteUnit(compact))) > maxWidth) {
             compact = HostText.fitHugeAmount(value, maxWidth,
-                amount -> width.applyAsInt(text("bytes_only", byteUnit(amount))));
+                amount -> width.applyAsInt(text(bytesKey, byteUnit(amount))));
         }
-        return text("bytes_only", byteUnit(compact));
+        return text(bytesKey, byteUnit(compact));
     }
 
     private static String byteUnit(String amount) {
