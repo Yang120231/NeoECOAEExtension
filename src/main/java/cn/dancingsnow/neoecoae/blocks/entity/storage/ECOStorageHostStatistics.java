@@ -13,6 +13,7 @@ import cn.dancingsnow.neoecoae.impl.storage.ECOInfiniteResourceCell;
 import cn.dancingsnow.neoecoae.impl.storage.StorageByteAccounting;
 import cn.dancingsnow.neoecoae.impl.storage.infinite.ECOInfiniteStorageEngine;
 import cn.dancingsnow.neoecoae.crafting.amount.NEMath;
+import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.AEKeyTypes;
 import appeng.api.storage.cells.CellState;
@@ -71,7 +72,7 @@ final class ECOStorageHostStatistics {
                     () -> getStorageValue(id, StorageValue.TOTAL_BYTES),
                     () -> getStorageUiSnapshot().storageTypeTotals(id).infiniteBytesText(),
                     cellTypes.getKey(cellType),
-                    () -> getStorageUiSnapshot().storageTypeTotals(id).displayUsedBytes()
+                    () -> getStorageUiSnapshot().storageTypeTotals(id).displayUsedBytes().toBigInteger()
                 );
             })
             .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
@@ -94,22 +95,23 @@ final class ECOStorageHostStatistics {
             () -> getStorageValue(id, StorageValue.USED_BYTES),
             () -> getStorageValue(id, StorageValue.TOTAL_BYTES),
             () -> getStorageUiSnapshot().storageTypeTotals(id).infiniteBytesText(), keyType.getId(),
-            () -> getStorageUiSnapshot().storageTypeTotals(id).displayUsedBytes());
+            () -> getStorageUiSnapshot().storageTypeTotals(id).displayUsedBytes().toBigInteger());
     }
 
     String getTotalUsedBytesText() {
         StorageUiSnapshot snapshot = getStorageUiSnapshot();
-        BigInteger used = BigInteger.ZERO;
+        PlannerAmount used = PlannerAmount.ZERO;
         if (host.isFormedInfiniteMode()) {
             for (StorageTypeTotals totals : snapshot.storageTypes().values()) {
                 used = used.add(totals.displayUsedBytes());
             }
         } else {
             for (StorageHostUI.CellEntry entry : snapshot.cellEntries()) {
-                used = used.add(BigInteger.valueOf(Math.max(0L, entry.usedBytes())));
+                if (entry.totalBytes() == Long.MAX_VALUE) continue;
+                used = used.add(PlannerAmount.of(Math.max(0L, entry.usedBytes())));
             }
         }
-        return HostText.ae2Amount(used);
+        return HostText.ae2Amount(used.toBigInteger());
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -218,7 +220,7 @@ final class ECOStorageHostStatistics {
             if (cellTypeId >= 0) {
                 storageTypes.merge(
                     cellTypeId,
-                    new StorageTypeTotals(usedTypes, totalTypes, usedBytes, totalBytes),
+                    new StorageTypeTotals(usedTypes, totalTypes, usedBytes, totalBytes, PlannerAmount.of(Math.max(0L, view.usedBytes()))),
                     StorageTypeTotals::add
                 );
             }
@@ -289,13 +291,13 @@ final class ECOStorageHostStatistics {
             if (cellTypeId == Integer.MIN_VALUE) {
                 continue;
             }
-            BigInteger usedBytes = infiniteUsedBytes(stats);
+            PlannerAmount usedBytes = infiniteUsedBytes(stats);
             storageTypes.merge(
                 cellTypeId,
                 new StorageTypeTotals(
                     stats.storedTypes(),
                     0L,
-                    usedBytes.min(BigInteger.valueOf(Long.MAX_VALUE)).longValue(),
+                    usedBytes.longValueSaturated(),
                     0L,
                     usedBytes
                 ),
@@ -304,10 +306,10 @@ final class ECOStorageHostStatistics {
         }
     }
 
-    private static BigInteger infiniteUsedBytes(ECOInfiniteStorageEngine.TypeStats stats) {
+    private static PlannerAmount infiniteUsedBytes(ECOInfiniteStorageEngine.TypeStats stats) {
         long bytesPerType = 1L << (12 + ECOTier.L9.getTier());
-        return StorageByteAccounting.usedBytes(
-            stats.storedTypes(), stats.storedAmount().toBigInteger(), stats.keyType().getAmountPerByte(), bytesPerType);
+        return StorageByteAccounting.usedBytesQuantity(
+            stats.storedTypes(), stats.storedAmount().quantity(), stats.keyType().getAmountPerByte(), bytesPerType);
     }
 
     private record StorageUiSnapshot(
@@ -330,16 +332,16 @@ final class ECOStorageHostStatistics {
         long totalTypes,
         long usedBytes,
         long totalBytes,
-        BigInteger displayUsedBytes
+        PlannerAmount displayUsedBytes
     ) {
-        private static final StorageTypeTotals EMPTY = new StorageTypeTotals(0L, 0L, 0L, 0L, BigInteger.ZERO);
+        private static final StorageTypeTotals EMPTY = new StorageTypeTotals(0L, 0L, 0L, 0L, PlannerAmount.ZERO);
 
         private StorageTypeTotals(long usedTypes, long totalTypes, long usedBytes, long totalBytes) {
-            this(usedTypes, totalTypes, usedBytes, totalBytes, BigInteger.valueOf(Math.max(0L, usedBytes)));
+            this(usedTypes, totalTypes, usedBytes, totalBytes, PlannerAmount.of(Math.max(0L, usedBytes)));
         }
 
         private String infiniteBytesText() {
-            return HostText.ae2Amount(displayUsedBytes);
+            return HostText.ae2Amount(displayUsedBytes.toBigInteger());
         }
 
         private StorageTypeTotals add(StorageTypeTotals other) {

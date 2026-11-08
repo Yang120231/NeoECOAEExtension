@@ -38,6 +38,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.math.BigInteger;
+import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,13 +111,19 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     private final IECOTier tier;
 
     public ECOStorageCell(ItemStack cellStack, @Nullable ISaveProvider container) {
+        this(cellStack, container, true);
+    }
+
+    /** Stateless supplies must not acquire a persisted identity while being queried or mounted. */
+    protected ECOStorageCell(ItemStack cellStack, @Nullable ISaveProvider container, boolean persistContents) {
         this.container = container;
         this.cellStack = cellStack;
 
         if (cellStack.getItem() instanceof IBasicECOCellItem c) {
             keyType = c.getKeyType();
             maxItemTypes = c.getTotalTypes();
-            this.storageAccess = ECOStorageRepository.open(cellStack, container);
+            this.storageAccess = persistContents ? ECOStorageRepository.open(cellStack, container)
+                : new ECOStorageRepository.Access(new ECOCellSavedData(new java.util.UUID(0, 0)), null, container, false);
             this.cellType = c;
             this.tier = c.getTier();
 
@@ -528,26 +535,29 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     @Override public BigInteger getMigrationAmountBigInteger(AEKey key) { return storageData().amounts().get(key).toBigInteger(); }
 
-    private BigInteger exactUsedBytes(long types, BigInteger amount) {
-        BigInteger perByte = BigInteger.valueOf(Math.max(1, keyType.getAmountPerByte()));
-        return amount.add(perByte).subtract(BigInteger.ONE).divide(perByte)
-            .add(BigInteger.valueOf(types).multiply(BigInteger.valueOf(getBytesPerType())));
-    }
-
     public BigInteger simulateInsertForMigrationBigInteger(AEKey key, BigInteger offered,
             BigInteger current, long types, BigInteger total) {
+        if (key == null || offered == null || offered.signum() <= 0) return BigInteger.ZERO;
+        return simulateInsertForMigrationQuantity(key, PlannerAmount.of(offered), PlannerAmount.of(current),
+            types, PlannerAmount.of(total)).toBigInteger();
+    }
+
+    public PlannerAmount simulateInsertForMigrationQuantity(AEKey key, PlannerAmount offered,
+            PlannerAmount current, long types, PlannerAmount total) {
         if (key == null || offered == null || offered.signum() <= 0 || !acceptsKey(key)
-            || !partitionList.matchesFilter(key, partitionListMode) || cellType.isBlackListed(cellStack, key)) return BigInteger.ZERO;
-        if (current.signum() == 0 && !canStoreKeyInsideStorageCell(key)) return BigInteger.ZERO;
-        BigInteger perByte = BigInteger.valueOf(Math.max(1, keyType.getAmountPerByte()));
-        BigInteger free = BigInteger.valueOf(getTotalBytes()).subtract(exactUsedBytes(types, total)).max(BigInteger.ZERO);
-        BigInteger unused = total.mod(perByte).signum() == 0 ? BigInteger.ZERO : perByte.subtract(total.mod(perByte));
-        BigInteger remaining = free.multiply(perByte).add(unused);
+            || !partitionList.matchesFilter(key, partitionListMode) || cellType.isBlackListed(cellStack, key)) return PlannerAmount.ZERO;
+        if (current.signum() == 0 && !canStoreKeyInsideStorageCell(key)) return PlannerAmount.ZERO;
+        PlannerAmount perByte = PlannerAmount.of(Math.max(1, keyType.getAmountPerByte()));
+        PlannerAmount free = PlannerAmount.of(getTotalBytes()).subtract(StorageByteAccounting.usedBytesQuantity(
+            types, total, keyType.getAmountPerByte(), getBytesPerType())).max(PlannerAmount.ZERO);
+        PlannerAmount remainder = total.remainder(perByte);
+        PlannerAmount unused = remainder.isZero() ? PlannerAmount.ZERO : perByte.subtract(remainder);
+        PlannerAmount remaining = free.multiply(perByte).add(unused);
         if (current.signum() == 0) {
-            BigInteger typeBytes = BigInteger.valueOf(getBytesPerType());
+            PlannerAmount typeBytes = PlannerAmount.of(getBytesPerType());
             if (types >= getTotalItemTypes() || free.compareTo(typeBytes) < 0
-                || free.equals(typeBytes) && unused.signum() == 0) return BigInteger.ZERO;
-            remaining = remaining.subtract(typeBytes.multiply(perByte)).max(BigInteger.ZERO);
+                || free.equals(typeBytes) && unused.signum() == 0) return PlannerAmount.ZERO;
+            remaining = remaining.subtract(typeBytes.multiply(perByte)).max(PlannerAmount.ZERO);
         }
         return offered.min(remaining);
     }
@@ -557,7 +567,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         BigInteger inserted = simulateInsertForMigrationBigInteger(key, amount, current,
             getStoredItemTypes(), getStoredItemCountExact());
         if (mode == Actionable.MODULATE && inserted.signum() > 0) {
-            storageData().amounts().set(key, HugeAmount.of(current.add(inserted))); saveChanges();
+            storageData().amounts().set(key, HugeAmount.of(current).add(HugeAmount.of(inserted))); saveChanges();
         }
         return inserted;
     }
@@ -582,11 +592,11 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     @Override public BigInteger extractBigInteger(AEKey key, BigInteger amount, Actionable mode, IActionSource source) {
         if (!storageWritable() || key == null || amount == null || amount.signum() <= 0
             || cn.dancingsnow.neoecoae.impl.storage.infinite.ECOInfiniteStorageMember.isSealed(cellStack)) return BigInteger.ZERO;
-        BigInteger current = getMigrationAmountBigInteger(key), extracted = current.min(amount);
-        if (mode == Actionable.MODULATE && extracted.signum() > 0) {
-            storageData().amounts().set(key, HugeAmount.of(current.subtract(extracted))); saveChanges();
+        HugeAmount current = storageData().amounts().get(key), extracted = current.min(HugeAmount.of(amount));
+        if (mode == Actionable.MODULATE && !extracted.isZero()) {
+            storageData().amounts().set(key, current.subtract(extracted)); saveChanges();
         }
-        return extracted;
+        return extracted.toBigInteger();
     }
 
     @Override public void neoecoae$visitExactAmounts(java.util.function.BiConsumer<AEKey,
