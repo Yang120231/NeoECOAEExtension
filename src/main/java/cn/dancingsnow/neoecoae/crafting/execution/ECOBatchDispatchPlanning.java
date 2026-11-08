@@ -10,6 +10,7 @@ import cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory;
 import cn.dancingsnow.neoecoae.crafting.execution.batch.*;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOBatchCraftingHelper;
 import appeng.api.stacks.AEKeyLongMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import java.util.Map;
 
 /** Captures live CPU limits without taking ownership of any material or energy. */
@@ -91,16 +92,20 @@ final class ECOBatchDispatchPlanning {
             if (mode == ECOBatchMode.SINGLE) upper = Math.min(upper, 1L);
             if (upper <= 0) return null;
             long material = upper;
-            var protectedSeeds = request.job().executionRuntime == null ? Map.<AEKey, Long>of()
+            var protectedSeeds = request.job().executionRuntime == null ? Map.<AEKey, cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount>of()
                     : request.job().executionRuntime.protectedStartupSeed(request.candidate());
             for (var it = inputs.reference2LongEntrySet().fastIterator(); it.hasNext();) {
                 var input = it.next();
-                long seed = protectedSeeds.getOrDefault(input.getKey(), 0L);
+                var seed = protectedSeeds.getOrDefault(input.getKey(), cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount.ZERO);
                 long available;
                 if (request.inventory() instanceof ECOExactInventory exact && exact.isEnabled()) {
-                    available = exact.availableAfterReservations(input.getKey(), 0, seed);
+                    var amount = exact.quantity(input.getKey()).subtract(seed).max(cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount.ZERO);
+                    // Arithmetic already bounds each aggregate debit to long, so excess stock cannot limit it.
+                    if (amount.bitLength() > 63) continue;
+                    available = amount.longValue();
                 } else {
-                    available = Math.max(0L, Math.max(0L, request.inventory().list.get(input.getKey())) - seed);
+                    available = cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount.of(request.inventory().list.get(input.getKey()))
+                        .subtract(seed).max(cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount.ZERO).longValueSaturated();
                 }
                 if (inputScaling.perBatch().test(input.getKey())) {
                     if (available < input.getLongValue()) return null;

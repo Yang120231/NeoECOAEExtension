@@ -7,6 +7,7 @@ import appeng.crafting.inv.ListCraftingInventory;
 import cn.dancingsnow.neoecoae.impl.storage.infinite.HugeAmount;
 import cn.dancingsnow.neoecoae.impl.storage.persistence.StorageAmounts;
 import java.math.BigInteger;
+import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,50 @@ public final class ECOExactInventory extends ListCraftingInventory {
 
     public BigInteger amount(AEKey key) {
         return BigInteger.valueOf(Math.max(0L, list.get(key))).add(excess.get(key).toBigInteger());
+    }
+
+    public PlannerAmount quantity(AEKey key) { return PlannerAmount.of(amount(key)); }
+
+    public static PlannerAmount quantity(ListCraftingInventory inventory, AEKey key) {
+        return inventory instanceof ECOExactInventory exact && exact.isEnabled()
+            ? exact.quantity(key) : PlannerAmount.of(Math.max(0L, inventory.list.get(key)));
+    }
+
+    public Map<AEKey, PlannerAmount> snapshotQuantities() { return fromBigIntegers(snapshot()); }
+
+    public PlannerAmount totalQuantity() {
+        PlannerAmount total = PlannerAmount.ZERO;
+        for (var amount : snapshotQuantities().values()) total = total.add(amount);
+        return total;
+    }
+
+    public boolean debitQuantities(Map<AEKey, PlannerAmount> inputs) { return debit(toBigIntegers(inputs)); }
+    public void restoreQuantities(Map<AEKey, PlannerAmount> inputs) { restore(toBigIntegers(inputs)); }
+
+    public static Map<AEKey, PlannerAmount> totalsQuantities(List<GenericStack> stacks, long copies) {
+        return totalsQuantities(stacks, PlannerAmount.of(copies));
+    }
+
+    public static Map<AEKey, PlannerAmount> totalsQuantities(List<GenericStack> stacks, PlannerAmount copies) {
+        if (copies.signum() <= 0) throw new IllegalArgumentException("Invalid copies");
+        var result = new LinkedHashMap<AEKey, PlannerAmount>();
+        for (var stack : stacks) {
+            if (stack.amount() <= 0) throw new IllegalArgumentException("Invalid stack");
+            result.merge(stack.what(), copies.multiply(stack.amount()), PlannerAmount::add);
+        }
+        return result;
+    }
+
+    public static <K extends AEKey> Map<K, PlannerAmount> fromBigIntegers(Map<K, BigInteger> amounts) {
+        var result = new LinkedHashMap<K, PlannerAmount>();
+        amounts.forEach((key, value) -> result.put(key, PlannerAmount.of(value)));
+        return result;
+    }
+
+    public static <K extends AEKey> Map<K, BigInteger> toBigIntegers(Map<K, PlannerAmount> amounts) {
+        var result = new LinkedHashMap<K, BigInteger>();
+        amounts.forEach((key, value) -> result.put(key, value.toBigInteger()));
+        return result;
     }
 
     public long availableAfterReservations(AEKey key, long removed, long reserved) {
@@ -146,13 +191,7 @@ public final class ECOExactInventory extends ListCraftingInventory {
     }
 
     public static Map<AEKey, BigInteger> totals(List<GenericStack> stacks, BigInteger copies) {
-        var result = new LinkedHashMap<AEKey, BigInteger>();
-        if (copies.signum() <= 0) throw new IllegalArgumentException("Invalid copies");
-        for (var stack : stacks) {
-            if (stack.amount() <= 0) throw new IllegalArgumentException("Invalid stack");
-            result.merge(stack.what(), BigInteger.valueOf(stack.amount()).multiply(copies), BigInteger::add);
-        }
-        return result;
+        return toBigIntegers(totalsQuantities(stacks, PlannerAmount.of(copies)));
     }
 
     @Override public void clear() {

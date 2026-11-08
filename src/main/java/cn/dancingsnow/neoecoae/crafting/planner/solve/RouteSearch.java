@@ -1,6 +1,5 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.planner.ECOCancellation;
 import cn.dancingsnow.neoecoae.crafting.planner.compile.CompiledNetwork;
@@ -49,7 +48,7 @@ final class RouteSearch {
 
     private final CompiledNetwork network;
     /** Keys whose candidate patterns also output (or return) the map key; choosing them touches that key. */
-    private final Map<AEKey, Set<AEKey>> sideProducers = new Object2ObjectLinkedOpenHashMap<>();
+    private final Map<AEKey, Set<AEKey>> sideProducers = new LinkedHashMap<>();
     private final Map<AEKey, Integer> choices;
     private final Set<AEKey> fixed = new HashSet<>();
     private final ArrayDeque<Frame> stack = new ArrayDeque<>();
@@ -98,6 +97,12 @@ final class RouteSearch {
 
     long prunedBranches() {
         return prunedBranches;
+    }
+
+    Map<AEKey, Integer> changedChoices() {
+        Map<AEKey, Integer> changed = new LinkedHashMap<>();
+        for (Frame frame : stack) if (frame.offset() != 0) changed.put(frame.key, choices.get(frame.key));
+        return changed;
     }
 
     /** Next route as a full choice map, or null once every route has been returned. */

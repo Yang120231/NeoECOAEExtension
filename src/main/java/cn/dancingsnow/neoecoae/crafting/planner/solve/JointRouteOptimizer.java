@@ -1,11 +1,5 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.Int2ObjectLinkedOpenHashMap;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
@@ -29,7 +23,6 @@ import cn.dancingsnow.neoecoae.crafting.planner.result.PlanningStatus;
 import cn.dancingsnow.neoecoae.crafting.planner.trace.ECOPlanTrace;
 import cn.dancingsnow.neoecoae.crafting.planner.trace.PlanTraceNode;
 import cn.dancingsnow.neoecoae.crafting.planner.trace.PlannerDiagnostic;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -45,7 +38,7 @@ public final class JointRouteOptimizer {
     private boolean budgetExhausted;
     /** Reason, work and time of the last exhausted search; empty when the last search finished. */
     private String exhaustion = "";
-    private Map<AEKey, Long> prefixRequired = Map.of();
+    private Map<AEKey, PlannerAmount> prefixRequired = Map.of();
     private Map<IPatternDetails, PlannerAmount> prefixExecuted = Map.of();
 
     public boolean budgetExhausted() { return budgetExhausted; }
@@ -63,7 +56,7 @@ public final class JointRouteOptimizer {
         budgetExhausted = false;
         exhaustion = "";
         if (amount <= 0) return preferred;
-        boolean completed = preferred != null && preferred.status() == PlanningStatus.SUCCESS;
+        boolean completed = preferred != null && preferred.completeCandidate();
         // Feasibility recovery gets a useful share; optional improvement remains short and keeps its incumbent.
         long work = completed ? 50_000 : 1_000_000;
         long nanos = completed ? 100_000_000L : 3_000_000_000L;
@@ -90,7 +83,7 @@ public final class JointRouteOptimizer {
             }
             if (proposal == null) proposal = propose(network, inventory, amount, !completed, allowOrdered, bounded);
             if (proposal == null) return preferred;
-            if (preferred != null && preferred.status() == PlanningStatus.SUCCESS
+            if (completed
                     && cost(proposal.state()).compareTo(cost(preferred.state())) >= 0) return preferred;
             return proposal;
         } catch (ECOPlanningBudget.Exhausted exhausted) {
@@ -106,7 +99,7 @@ public final class JointRouteOptimizer {
 
     private ComponentPlanner.Outcome propose(CompiledNetwork network, PlannerInventorySnapshot inventory,
             long amount, boolean firstFeasible, boolean allowOrdered, ECOCancellation cancellation) throws InterruptedException {
-        Set<AEKey> demanded = new ObjectLinkedOpenHashSet<>();
+        Set<AEKey> demanded = new LinkedHashSet<>();
         var pending = new java.util.ArrayDeque<AEKey>(); pending.add(network.goal());
         Set<IPatternDetails> demandedPatterns = Collections.newSetFromMap(new IdentityHashMap<>());
         while (!pending.isEmpty()) {
@@ -134,10 +127,10 @@ public final class JointRouteOptimizer {
         }
         if (!competition || candidates.isEmpty()) return null;
         // Presence closure removes seed-free and unavailable branches without asserting numeric feasibility.
-        Set<AEKey> available = new ObjectLinkedOpenHashSet<>(network.emittable());
+        Set<AEKey> available = new LinkedHashSet<>(network.emittable());
         available.remove(network.goal());
         for (var entry : inventory.toKeyCounter()) if (!entry.getKey().equals(network.goal())) available.add(entry.getKey());
-        Set<CompiledPattern> reachable = new ObjectLinkedOpenHashSet<>();
+        Set<CompiledPattern> reachable = new LinkedHashSet<>();
         boolean changed;
         do {
             changed = false;
@@ -163,20 +156,20 @@ public final class JointRouteOptimizer {
             }
             if (!dominated) patterns.add(candidate);
         }
-        Map<AEKey, Integer> keys = new Object2IntLinkedOpenHashMap<>();
+        Map<AEKey, Integer> keys = new LinkedHashMap<>();
         keys.put(network.goal(), 0);
         for (CompiledPattern pattern : patterns) {
             pattern.inputs().forEach(input -> keys.computeIfAbsent(input.key(), ignored -> keys.size()));
             pattern.grossOutputs().forEach(output -> keys.computeIfAbsent(output.what(), ignored -> keys.size()));
         }
-        List<Map<Integer, BigInteger>> net = new ArrayList<>();
+        List<Map<Integer, PlannerAmount>> net = new ArrayList<>();
         for (CompiledPattern pattern : patterns) {
             cancellation.checkpoint();
-            Map<Integer, BigInteger> column = new Int2ObjectLinkedOpenHashMap<>();
+            Map<Integer, PlannerAmount> column = new LinkedHashMap<>();
             for (var input : inputs(pattern).entrySet())
-                column.merge(keys.get(input.getKey()), input.getValue().toBigInteger(), BigInteger::add);
+                column.merge(keys.get(input.getKey()), input.getValue(), PlannerAmount::add);
             for (var output : outputs(pattern).entrySet())
-                column.merge(keys.get(output.getKey()), output.getValue().toBigInteger().negate(), BigInteger::add);
+                column.merge(keys.get(output.getKey()), output.getValue().negate(), PlannerAmount::add);
             column.values().removeIf(value -> value.signum() == 0);
             net.add(column);
         }
@@ -194,7 +187,7 @@ public final class JointRouteOptimizer {
         // Reserve the rest of this phase for concrete replay even if quantity optimization exhausts its slice.
         ECOCancellation quantities = new ECOPlanningBudget(cancellation, firstFeasible ? 700_000 : 30_000,
             firstFeasible ? 2_000_000_000L : 60_000_000L, System::nanoTime);
-        var solution = CycleStateEquation.solveSparseMaterialBalance(net, imports, initial, target, firstFeasible, quantities);
+        var solution = CycleStateEquation.solveSparseAmounts(net, imports, initial, target, firstFeasible, quantities);
         if (solution.counts() == null) return null;
         boolean returnedWorkingStock = false;
         for (int i = 0; i < patterns.size(); i++) {
@@ -206,8 +199,8 @@ public final class JointRouteOptimizer {
         SolveState state = returnedWorkingStock ? null
             : replay(network, inventory, amount, patterns, solution.counts(), cancellation);
         if (state == null && allowOrdered) {
-            Set<Map<Integer, PlannerAmount>> attempted = new ObjectLinkedOpenHashSet<>();
-            Map<Integer, PlannerAmount> lowerBounds = new Int2ObjectLinkedOpenHashMap<>();
+            Set<Map<Integer, PlannerAmount>> attempted = new LinkedHashSet<>();
+            Map<Integer, PlannerAmount> lowerBounds = new LinkedHashMap<>();
             while (true) {
                 prefixRequired = Map.of(); prefixExecuted = Map.of();
                 var ordered = orderedProposal(network, inventory, amount, patterns, solution.counts(), cancellation);
@@ -217,11 +210,11 @@ public final class JointRouteOptimizer {
                 Set<IPatternDetails> allowedStartup = Collections.newSetFromMap(new IdentityHashMap<>());
                 var bootstrap = bootstrapNetwork(network, inventory, prefixRequired.keySet(), cancellation);
                 bootstrap.producers().values().forEach(views -> views.forEach(pattern -> allowedStartup.add(pattern.details())));
-                Map<Integer, PlannerAmount> repaired = new Int2ObjectLinkedOpenHashMap<>();
+                Map<Integer, PlannerAmount> repaired = new LinkedHashMap<>();
                 for (int i = 0; i < patterns.size(); i++) if (allowedStartup.contains(patterns.get(i).details()))
                     repaired.put(i, prefixExecuted.getOrDefault(patterns.get(i).details(), PlannerAmount.ZERO));
-                var external = new ExternalDemandPlanner(new AcyclicCraftingSolver()).solveDemands(bootstrap, cycle,
-                    prefixRequired, inventory.toKeyCounter(), new SolveState(inventory), Map.of(), Set.of(), cancellation);
+                var external = new ExternalDemandPlanner(new AcyclicCraftingSolver()).solveExactDemands(bootstrap, cycle,
+                    prefixRequired, inventory, new SolveState(inventory), Map.of(), Set.of(), false, cancellation);
                 if (!external.solved()) return null;
                 for (SolveState supply : external.states()) {
                     for (var firing : supply.patternTimes.entrySet()) {
@@ -234,11 +227,11 @@ public final class JointRouteOptimizer {
                 repaired.forEach((index, count) -> lowerBounds.merge(index, count, PlannerAmount::max));
                 if (lowerBounds.isEmpty() || !attempted.add(Map.copyOf(lowerBounds))) return null;
                 // This restricted model is a recovery heuristic, not an original-graph infeasibility proof.
-                solution = CycleStateEquation.solveSparseMaterialBalance(net, imports, initial, target, lowerBounds, firstFeasible, quantities);
+                solution = CycleStateEquation.solveSparseAmounts(net, imports, initial, target, lowerBounds, firstFeasible, quantities);
                 if (solution.counts() == null) return null;
             }
         }
-        if (state == null || !state.executionAmountIssues().isEmpty()
+        if (state == null
                 || ECOPlanMaterialValidator.firstDeficit(state, network.goal(), amount, inventory.toKeyCounter(), network) != null)
             return null;
         state.executionProvenance().requireComplete();
@@ -249,7 +242,7 @@ public final class JointRouteOptimizer {
                 "Joint exact-pattern plan verified; firings=" + cost(state) + " candidates=" + candidates.size()
                         + " retained=" + patterns.size() + " quantityStatus=" + solution.status()));
         List<ComponentPlanningResult> components = new ArrayList<>();
-        List<Integer> order = new IntArrayList();
+        List<Integer> order = new ArrayList<>();
         for (var task : state.patternTimes.entrySet()) {
             CompiledPattern pattern = patterns.stream().filter(p -> p.details() == task.getKey()).findFirst().orElseThrow();
             int id = components.size();
@@ -258,15 +251,17 @@ public final class JointRouteOptimizer {
                     ComponentPlanningResult.Status.PLANNED, Map.of(), Set.of(task.getKey()), Set.of(task.getKey()),
                     null, null, Map.of(), "JOINT_ROUTE", null, CycleExecutionDisposition.NOT_REQUIRED, Map.of()));
             trace.addNode(new PlanTraceNode(PlanTraceNode.Kind.PATTERN, pattern.producedKey(), task.getKey(),
-                    0, 0, 0, 0, task.getValue().longValueExact(), PlanTraceNode.Selection.SELECTED, "JOINT_ROUTE"));
+                    0, 0, 0, 0, task.getValue().longValueSaturated(), PlanTraceNode.Selection.SELECTED, "JOINT_ROUTE")
+                    .withExact(java.math.BigInteger.ZERO, java.math.BigInteger.ZERO, java.math.BigInteger.ZERO,
+                        java.math.BigInteger.ZERO, task.getValue().toBigInteger()));
         }
-        return new ComponentPlanner.Outcome(PlanningStatus.SUCCESS, state, trace, List.of(), components, order);
+        return new ComponentPlanner.Outcome(executionStatus(state), state, trace, List.of(), components, order);
     }
 
     /** A candidate-only startup DAG: earliest supply cannot depend on the same loop's later returns. */
     private static CompiledNetwork bootstrapNetwork(CompiledNetwork network, PlannerInventorySnapshot inventory,
             Set<AEKey> goals, ECOCancellation cancellation) throws InterruptedException {
-        Map<AEKey, Integer> ranks = new Object2IntLinkedOpenHashMap<>();
+        Map<AEKey, Integer> ranks = new LinkedHashMap<>();
         network.emittable().forEach(key -> ranks.put(key, 0));
         for (var entry : inventory.toKeyCounter()) if (entry.getLongValue() > 0) ranks.put(entry.getKey(), 0);
         boolean changed;
@@ -283,9 +278,9 @@ public final class JointRouteOptimizer {
                 }
             }
         } while (changed);
-        Map<AEKey, List<CompiledPattern>> producers = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, List<CompiledPattern>> producers = new LinkedHashMap<>();
         var pending = new java.util.ArrayDeque<>(goals);
-        Set<AEKey> visited = new ObjectLinkedOpenHashSet<>();
+        Set<AEKey> visited = new LinkedHashSet<>();
         while (!pending.isEmpty()) {
             cancellation.checkpoint();
             AEKey key = pending.removeFirst();
@@ -314,14 +309,14 @@ public final class JointRouteOptimizer {
             long amount, List<CompiledPattern> patterns, PlannerAmount[] counts, ECOCancellation cancellation)
             throws InterruptedException {
         List<CompiledPattern> selected = new ArrayList<>();
-        Map<IPatternDetails, PlannerAmount> firings = new Object2ObjectLinkedOpenHashMap<>();
-        Set<AEKey> keys = new ObjectLinkedOpenHashSet<>(); keys.add(network.goal());
-        Map<AEKey, PlannerAmount> demand = new Object2ObjectLinkedOpenHashMap<>();
+        Map<IPatternDetails, PlannerAmount> firings = new LinkedHashMap<>();
+        Set<AEKey> keys = new LinkedHashSet<>(); keys.add(network.goal());
+        Map<AEKey, PlannerAmount> demand = new LinkedHashMap<>();
         demand.put(network.goal(), PlannerAmount.of(amount));
         for (int i = 0; i < patterns.size(); i++) {
             cancellation.checkpoint();
             if (counts[i].isZero()) continue;
-            if (counts[i].signum() < 0 || !counts[i].fitsLong()) return null;
+            if (counts[i].signum() < 0) return null;
             CompiledPattern pattern = patterns.get(i);
             selected.add(pattern); firings.put(pattern.details(), counts[i]);
             for (var input : inputs(pattern).entrySet()) {
@@ -340,29 +335,28 @@ public final class JointRouteOptimizer {
                     && network.producersOf(key).stream().noneMatch(view -> view.details() == pattern.details()))) return null;
         }
         if (selected.isEmpty() || !orderedActivationsCovered(network, selected, firings, amount, Map.of(), cancellation)) return null;
-        var stock = inventory.toKeyCounter();
-        Map<AEKey, Long> initial = new Object2LongLinkedOpenHashMap<>();
-        for (AEKey key : keys) initial.put(key, stock.get(key));
-        PlannerAmount required = PlannerAmount.of(amount).add(stock.get(network.goal()));
+        Map<AEKey, PlannerAmount> initial = new LinkedHashMap<>();
+        for (AEKey key : keys) initial.put(key, inventory.amountOf(key));
+        PlannerAmount required = PlannerAmount.of(amount).add(inventory.amountOf(network.goal()));
         var component = new CycleComponent(0, List.copyOf(keys), selected, List.of(), List.of(), List.of());
         var witness = new BoundedCycleSolver().verifyFirings(new CycleSolveRequest(component,
-            required.fitsLong() ? Map.of(network.goal(), required.longValueExact()) : Map.of(),
-            Map.of(network.goal(), required), initial, List.of(), new CycleSolveRequest.PlannerOptions()), firings, cancellation);
+            Map.of(network.goal(), required), initial, Set.of(), List.of(), new CycleSolveRequest.PlannerOptions(), Map.of()),
+            firings, cancellation);
         if (witness == null) return null;
         if (witness.status() == CycleSolveStatus.INSUFFICIENT_EXTERNAL_INPUT) {
-            prefixRequired = Map.copyOf(witness.seedShortfall());
+            prefixRequired = witness.exactSeedShortfall();
             prefixExecuted = verifiedPrefixFirings(witness.executionPlan(), initial, cancellation);
             return null;
         }
         if (witness.status() != CycleSolveStatus.SUCCESS || witness.executionPlan().isEmpty()) return null;
-        if (!orderedActivationsCovered(network, selected, firings, amount, witness.requiredSeed(), cancellation)) return null;
+        if (!orderedActivationsCovered(network, selected, firings, amount, witness.exactRequiredSeed(), cancellation)) return null;
         SolveState state = new SolveState(inventory);
         state.patternTimes.putAll(firings); state.demand.putAll(demand);
-        for (var seed : witness.requiredSeed().entrySet()) {
-            if (seed.getValue() > stock.get(seed.getKey())) return null;
+        for (var seed : witness.exactRequiredSeed().entrySet()) {
+            if (seed.getValue().compareTo(inventory.amountOf(seed.getKey())) > 0) return null;
             state.used.add(seed.getKey(), seed.getValue());
-            if (seed.getValue() > 0) {
-                var boundary = MaterialDemand.boundary(0, seed.getKey(), PlannerAmount.of(seed.getValue()));
+            if (seed.getValue().signum() > 0) {
+                var boundary = MaterialDemand.boundary(0, seed.getKey(), seed.getValue());
                 state.provenance.register(boundary);
                 state.provenance.allocate(boundary, seed.getKey(), MaterialSource.Stock.INSTANCE, boundary.amount());
             }
@@ -372,20 +366,17 @@ public final class JointRouteOptimizer {
         state.provenance.allocate(goal, goal.key(), new MaterialSource.CycleOutput(0), goal.amount());
         state.bytes = PlannerAmount.of(demand.size()).multiply(8).add(cost(state));
         demand.forEach((key, count) -> state.bytes = state.bytes.add(PlannerAmount.stackBytes(count, key.getAmountPerByte())));
-        if (!state.executionAmountIssues().isEmpty()
-                || ECOPlanMaterialValidator.firstDeficit(state, network.goal(), amount, stock, network) != null) return null;
+        if (ECOPlanMaterialValidator.firstDeficit(state, network.goal(), amount, inventory.toKeyCounter(), network) != null) return null;
         state.executionProvenance().requireComplete();
-        Map<AEKey, Long> reservations = new Object2LongLinkedOpenHashMap<>();
-        for (var entry : state.usedItems()) reservations.put(entry.getKey(), entry.getLongValue());
-        var result = new ComponentPlanningResult(0, ComponentPlanningResult.Type.CYCLIC,
-            ComponentPlanningResult.Status.PLANNED, Map.of(network.goal(), amount), firings.keySet(), firings.keySet(),
+        var result = new ComponentPlanningResult(Map.of(network.goal(), PlannerAmount.of(amount)), state.usedAmounts(),
+            0, ComponentPlanningResult.Type.CYCLIC, ComponentPlanningResult.Status.PLANNED, firings.keySet(), firings.keySet(),
             CyclePlanningStatus.SOLVED, CycleExternalDemandStatus.SOLVED, Map.of(), "JOINT_ORDERED", witness,
-            CycleExecutionDisposition.ORDERED_EXECUTION, reservations);
+            CycleExecutionDisposition.ORDERED_EXECUTION);
         ECOPlanTrace trace = new ECOPlanTrace();
         trace.addDiagnostic(new PlannerDiagnostic(PlannerDiagnostic.Code.JOINT_ROUTE_OPTIMIZED,
             "Joint firing vector verified with ordered prefix; firings=" + cost(state) + " steps=" + witness.executionPlan().size()));
-        Map<AEKey, PlannerAmount> netOutputs = new Object2ObjectLinkedOpenHashMap<>();
-        Map<AEKey, PlannerAmount> totalOutputs = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> netOutputs = new LinkedHashMap<>();
+        Map<AEKey, PlannerAmount> totalOutputs = new LinkedHashMap<>();
         for (var pattern : selected) {
             var net = outputs(pattern);
             inputs(pattern).forEach((key, used) -> net.merge(key, used.multiply(-1), PlannerAmount::add));
@@ -394,22 +385,23 @@ public final class JointRouteOptimizer {
                 totalOutputs.merge(key, output.multiply(firings.get(pattern.details())), PlannerAmount::add);
             });
         }
+        Map<AEKey, Long> displayedStock = new LinkedHashMap<>();
+        initial.forEach((key, quantity) -> displayedStock.put(key, quantity.longValueSaturated()));
         var diagnostic = new CycleDiagnostic(List.copyOf(keys), List.copyOf(firings.keySet()), netOutputs, totalOutputs,
-            initial, witness.executionCountKnowledge(), witness.status());
-        return new ComponentPlanner.Outcome(PlanningStatus.SUCCESS, state, trace, List.of(diagnostic), List.of(result), List.of(0));
+            displayedStock, witness.executionCountKnowledge(), witness.status());
+        return new ComponentPlanner.Outcome(executionStatus(state), state, trace, List.of(diagnostic), List.of(result), List.of(0));
     }
 
     private static Map<IPatternDetails, PlannerAmount> verifiedPrefixFirings(
-            List<cn.dancingsnow.neoecoae.crafting.planner.cycle.PatternRun> runs, Map<AEKey, Long> initial,
+            List<cn.dancingsnow.neoecoae.crafting.planner.cycle.PatternRun> runs, Map<AEKey, PlannerAmount> initial,
             ECOCancellation cancellation) throws InterruptedException {
-        Map<AEKey, PlannerAmount> stock = new Object2ObjectLinkedOpenHashMap<>();
-        initial.forEach((key, amount) -> stock.put(key, PlannerAmount.of(amount)));
-        Map<IPatternDetails, PlannerAmount> executed = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> stock = new LinkedHashMap<>(initial);
+        Map<IPatternDetails, PlannerAmount> executed = new LinkedHashMap<>();
         for (var run : runs) {
             cancellation.checkpoint();
             if (run.repetitions() != 1) break;
             var in = inputs(run.pattern()); var out = outputs(run.pattern());
-            PlannerAmount count = PlannerAmount.of(run.count());
+            PlannerAmount count = run.plannerCount();
             for (var input : in.entrySet()) {
                 PlannerAmount available = stock.getOrDefault(input.getKey(), PlannerAmount.ZERO);
                 if (available.compareTo(input.getValue()) < 0) { count = PlannerAmount.ZERO; break; }
@@ -421,21 +413,21 @@ public final class JointRouteOptimizer {
                 for (var output : out.entrySet()) stock.merge(output.getKey(), output.getValue().multiply(count), PlannerAmount::add);
                 executed.merge(run.details(), count, PlannerAmount::add);
             }
-            if (count.compareTo(PlannerAmount.of(run.count())) < 0) break;
+            if (count.compareTo(run.plannerCount()) < 0) break;
         }
         return executed;
     }
 
     private static boolean orderedActivationsCovered(CompiledNetwork network, List<CompiledPattern> selected,
-            Map<IPatternDetails, PlannerAmount> firings, long amount, Map<AEKey, Long> stockCredits,
+            Map<IPatternDetails, PlannerAmount> firings, long amount, Map<AEKey, PlannerAmount> stockCredits,
             ECOCancellation cancellation) throws InterruptedException {
-        Map<AEKey, PlannerAmount> demand = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> demand = new LinkedHashMap<>();
         demand.put(network.goal(), PlannerAmount.of(amount));
         for (var pattern : selected) inputs(pattern).forEach((key, input) ->
             demand.merge(key, input.multiply(firings.get(pattern.details())), PlannerAmount::add));
         stockCredits.forEach((key, held) -> demand.computeIfPresent(key,
-            (ignored, needed) -> needed.subtract(PlannerAmount.of(held)).max(PlannerAmount.ZERO)));
-        Set<AEKey> useful = new ObjectLinkedOpenHashSet<>(); useful.add(network.goal());
+            (ignored, needed) -> needed.subtract(held).max(PlannerAmount.ZERO)));
+        Set<AEKey> useful = new LinkedHashSet<>(); useful.add(network.goal());
         Set<IPatternDetails> activated = Collections.newSetFromMap(new IdentityHashMap<>());
         boolean progress;
         do {
@@ -451,7 +443,7 @@ public final class JointRouteOptimizer {
             }
         } while (progress);
         if (activated.size() != selected.size()) return false;
-        Map<AEKey, PlannerAmount> remaining = new Object2ObjectLinkedOpenHashMap<>(demand);
+        Map<AEKey, PlannerAmount> remaining = new LinkedHashMap<>(demand);
         for (CompiledPattern pattern : selected) {
             cancellation.checkpoint();
             AEKey activationKey = null; PlannerAmount allocation = null;
@@ -481,7 +473,7 @@ public final class JointRouteOptimizer {
                 && (allowOrdered || pattern.semantics().feedbackEdges().isEmpty())
                 && pattern.inputs().stream().allMatch(input -> input.fastSupported() && !input.ignoresComponents()
                     && (input.remainderKey() == null || allowOrdered && input.reusable())
-                    && input.amountPerPattern().signum() > 0 && input.amountPerPattern().fitsLong())
+                    && input.amountPerPattern().signum() > 0)
                 && !pattern.outputs().isEmpty()
                 && pattern.outputs().stream().allMatch(output -> output != null && output.what() != null && output.amount() > 0);
     }
@@ -490,13 +482,13 @@ public final class JointRouteOptimizer {
     private static boolean unchangedReturns(CompiledPattern pattern) {
         if (pattern.specialAnalysis().requirements().stream().anyMatch(requirement -> requirement.type()
                 != cn.dancingsnow.neoecoae.crafting.planner.semantic.SpecialPatternAnalysis.Type.REUSABLE)) return false;
-        Map<AEKey, PlannerAmount> expected = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> expected = new LinkedHashMap<>();
         for (var input : pattern.inputs()) {
             if (input.remainderKey() == null) continue;
             if (!input.reusable()) return false;
             expected.merge(input.remainderKey(), input.remainderAmountPerPattern(), PlannerAmount::add);
         }
-        Map<AEKey, PlannerAmount> returned = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> returned = new LinkedHashMap<>();
         for (var output : pattern.semantics().returnedOutputs()) {
             if (output == null || output.what() == null || output.amount() <= 0) return false;
             returned.merge(output.what(), PlannerAmount.of(output.amount()), PlannerAmount::add);
@@ -510,7 +502,7 @@ public final class JointRouteOptimizer {
         var provenance = state.executionProvenance();
         for (var task : state.patternTimes.entrySet()) {
             cancellation.checkpoint();
-            Map<AEKey, PlannerAmount> allocated = new Object2ObjectLinkedOpenHashMap<>();
+            Map<AEKey, PlannerAmount> allocated = new LinkedHashMap<>();
             for (var allocation : provenance.allocations()) {
                 cancellation.checkpoint();
                 if (allocation.source() instanceof MaterialSource.PatternOutput source && source.pattern() == task.getKey())
@@ -532,13 +524,13 @@ public final class JointRouteOptimizer {
     }
 
     private static Map<AEKey, PlannerAmount> inputs(CompiledPattern pattern) {
-        Map<AEKey, PlannerAmount> result = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> result = new LinkedHashMap<>();
         pattern.inputs().forEach(input -> result.merge(input.key(), input.amountPerPattern(), PlannerAmount::add));
         return result;
     }
 
     private static Map<AEKey, PlannerAmount> outputs(CompiledPattern pattern) {
-        Map<AEKey, PlannerAmount> result = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> result = new LinkedHashMap<>();
         pattern.grossOutputs().forEach(output -> result.merge(output.what(), PlannerAmount.of(output.amount()), PlannerAmount::add));
         return result;
     }
@@ -621,7 +613,12 @@ public final class JointRouteOptimizer {
         return state;
     }
 
-    private static PlannerAmount cost(SolveState state) {
+    static PlannerAmount cost(SolveState state) {
         return state.plannerPatternTimes().values().stream().reduce(PlannerAmount.ZERO, PlannerAmount::add);
+    }
+
+    private static PlanningStatus executionStatus(SolveState state) {
+        return state.executionAmountIssues().isEmpty() ? PlanningStatus.SUCCESS
+            : PlanningStatus.PLANNED_BUT_AMOUNT_UNREPRESENTABLE;
     }
 }
