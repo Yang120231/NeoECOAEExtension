@@ -7,6 +7,14 @@ plugins {
 group = mod_group_id
 version = mod_version
 base.archivesName = mod_id
+// Private upstream builds are selected locally; the shared Maven baseline stays the default.
+def localBuildProperties = new Properties()
+if (file('local.properties').isFile()) {
+    file('local.properties').withInputStream { localBuildProperties.load(it) }
+}
+def gtoLocalVersion = providers.gradleProperty('gtoLocalVersion')
+    .getOrElse(localBuildProperties.getProperty('gtoLocalVersion', '')).trim()
+def selectedGtoVersion = gtoLocalVersion ?: gtocore_version
 // GTO's AE2 dependency uses Java 21 bytecode; retain Java 17 source/output compatibility.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 tasks.withType(JavaCompile).configureEach { options.release = 17 }
@@ -35,6 +43,12 @@ def pinned = { String mod ->
     "porting.pinned:${releaseJars[mod].name.take(releaseJars[mod].name.length() - 4)}:${releaseVersions[mod]}"
 }
 repositories {
+    if (gtoLocalVersion) {
+        exclusiveContent {
+            forRepository { mavenLocal() }
+            filter { includeVersion('com.gto', 'gtocore-forge-1.20.1', gtoLocalVersion) }
+        }
+    }
     maven {
         url = 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
@@ -76,7 +90,7 @@ dependencies {
     modCompileOnly('maven.modrinth:embeddium:0.3.31+mc1.20.1') { transitive = false }
     ['ae2', 'guideme', 'ldlib'].each { modImplementation pinned(it) }
     // Like the pinned GTO AE2 fork, GTO runs on Java 21 while this addon's output targets Java 17.
-    modImplementation("com.gto:gtocore-forge-1.20.1:${gtocore_version}") {
+    modImplementation("com.gto:gtocore-forge-1.20.1:${selectedGtoVersion}") {
         transitive = false
         attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
     }

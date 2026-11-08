@@ -1,10 +1,5 @@
 package cn.dancingsnow.neoecoae.crafting.planner.solve;
 
-import cn.dancingsnow.neoecoae.crafting.planner.PlannerText;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
-import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 
 import appeng.api.stacks.AEKey;
@@ -84,9 +79,17 @@ public final class AcyclicCraftingSolver {
     Outcome solveDemands(CompiledNetwork network, PlannerInventorySnapshot inventory, Map<AEKey, Long> demands,
             Map<AEKey, Integer> initialChoices, Set<IPatternDetails> deferredPatterns,
             boolean ignorePatternSubstitutions, ECOCancellation cancellation) throws InterruptedException {
-        Map<AEKey, PlannerAmount> goals = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, PlannerAmount> goals = new LinkedHashMap<>();
         demands.forEach((key, amount) -> { if (amount > 0) goals.put(key, PlannerAmount.of(amount)); });
-        return solveGoals(network, inventory, goals, false, initialChoices, deferredPatterns,
+        return solveExactDemands(network, inventory, goals, initialChoices, deferredPatterns,
+            ignorePatternSubstitutions, cancellation);
+    }
+
+    Outcome solveExactDemands(CompiledNetwork network, PlannerInventorySnapshot inventory,
+            Map<AEKey, PlannerAmount> demands, Map<AEKey, Integer> initialChoices,
+            Set<IPatternDetails> deferredPatterns, boolean ignorePatternSubstitutions,
+            ECOCancellation cancellation) throws InterruptedException {
+        return solveGoals(network, inventory, demands, false, initialChoices, deferredPatterns,
             ignorePatternSubstitutions, cancellation);
     }
 
@@ -94,13 +97,13 @@ public final class AcyclicCraftingSolver {
             Map<AEKey, PlannerAmount> goals, boolean additionalGoal, Map<AEKey, Integer> initialChoices,
             Set<IPatternDetails> deferredPatterns, boolean ignorePatternSubstitutions,
             ECOCancellation cancellation) throws InterruptedException {
-        long amount = goals.getOrDefault(network.goal(), PlannerAmount.ZERO).longValueExact();
+        PlannerAmount amount = goals.getOrDefault(network.goal(), PlannerAmount.ZERO);
         ECOPlanTrace trace = new ECOPlanTrace();
         if (goals.values().stream().anyMatch(value -> value.signum() <= 0)) {
             trace.addDiagnostic(new PlannerDiagnostic(PlannerDiagnostic.Code.AMOUNT_OVERFLOW, "Goal amount must be positive"));
             return new Outcome(PlanningStatus.AMOUNT_OVERFLOW, new SolveState(inventory), trace);
         }
-        Map<AEKey, Integer> choices = new Object2IntOpenHashMap<>(initialChoices);
+        Map<AEKey, Integer> choices = new HashMap<>(initialChoices);
         int retryBudget = Math.max(1, network.reachablePatternCount() + 1);
         SolveState state = null;
         SolveState missingRoute = null;
@@ -153,7 +156,7 @@ public final class AcyclicCraftingSolver {
                 addTrace(network, state, amount, trace);
                 if (!state.unsupported.isEmpty()) {
                     trace.addDiagnostic(new PlannerDiagnostic(PlannerDiagnostic.Code.NATIVE_FALLBACK,
-                        "No batch-safe candidate remains for " + PlannerText.describe(state.unsupported)));
+                        "No batch-safe candidate remains for " + state.unsupported));
                     return new Outcome(PlanningStatus.PARTIAL_UNSUPPORTED, state, trace);
                 }
                 if (addExecutionRepresentabilityDiagnostics(state, trace)) {
@@ -197,7 +200,7 @@ public final class AcyclicCraftingSolver {
             boolean ignorePatternSubstitutions, ECOCancellation cancellation) throws InterruptedException {
         PlannerCounter stock = new PlannerCounter();
         inventory.initialize(stock);
-        Set<AEKey> stockLeaves = new ObjectLinkedOpenHashSet<>(stock.asMap().keySet());
+        Set<AEKey> stockLeaves = new LinkedHashSet<>(stock.asMap().keySet());
         if (additionalGoal) stockLeaves.remove(network.goal());
         while (!stockLeaves.isEmpty()) {
             cancellation.checkpoint();
@@ -225,10 +228,10 @@ public final class AcyclicCraftingSolver {
         Set<AEKey> allowed = network.keys();
         if (!allowed.contains(network.goal())) return List.of();
 
-        Map<AEKey, Set<AEKey>> outgoing = new Object2ObjectLinkedOpenHashMap<>();
-        Map<AEKey, Integer> indegree = new Object2IntLinkedOpenHashMap<>();
+        Map<AEKey, Set<AEKey>> outgoing = new LinkedHashMap<>();
+        Map<AEKey, Integer> indegree = new LinkedHashMap<>();
         ArrayDeque<AEKey> discover = new ArrayDeque<>();
-        Set<AEKey> reachable = new ObjectLinkedOpenHashSet<>();
+        Set<AEKey> reachable = new LinkedHashSet<>();
         for (AEKey goal : goals) {
             discover.add(goal);
             reachable.add(goal);
@@ -294,7 +297,7 @@ public final class AcyclicCraftingSolver {
         state.bytes = PlannerAmount.of(route.keys().size()).multiply(8L);
         SpecialPatternResolver specialResolver = new SpecialPatternResolver(
             network, state, workspace.candidateChoice(), cancellation, ignorePatternSubstitutions);
-        Map<AEKey, CompiledPattern> selected = new Object2ObjectLinkedOpenHashMap<>();
+        Map<AEKey, CompiledPattern> selected = new LinkedHashMap<>();
         for (AEKey key : route.keys()) {
             CompiledPattern pattern = selectedPattern(network, key, workspace.candidateChoice());
             if (pattern != null) selected.put(key, pattern);
@@ -304,7 +307,7 @@ public final class AcyclicCraftingSolver {
         // primary branch can supply it. No additional producer views or speculative firings exist.
         JointOutputDemandQueue pending = new JointOutputDemandQueue(route.keys(), selected,
             deferredPatterns, stockLeaves);
-        Set<AEKey> unsettled = new ObjectLinkedOpenHashSet<>();
+        Set<AEKey> unsettled = new LinkedHashSet<>();
         goals.keySet().forEach(pending::add);
         while (!pending.isEmpty()) {
             cancellation.checkpoint();
@@ -371,7 +374,7 @@ public final class AcyclicCraftingSolver {
             PlannerAmount oldTimes = state.patternTimes.getOrDefault(pattern.details(), PlannerAmount.ZERO);
             state.patternTimes.put(pattern.details(), oldTimes.add(times));
             state.bytes = state.bytes.add(times);
-            Map<AEKey, PlannerAmount> produced = new Object2ObjectLinkedOpenHashMap<>();
+            Map<AEKey, PlannerAmount> produced = new LinkedHashMap<>();
             for (var output : pattern.outputs()) {
                 PlannerAmount total = PlannerAmount.of(output.amount()).multiply(times);
                 produced.put(output.what(), produced.getOrDefault(output.what(), PlannerAmount.ZERO).add(total));
@@ -455,23 +458,12 @@ public final class AcyclicCraftingSolver {
         counter.add(key, amount);
     }
 
-    private static void addTrace(CompiledNetwork network, SolveState state, long goalAmount, ECOPlanTrace trace) {
-        PlannerAmount goal = PlannerAmount.of(goalAmount);
-        trace.addNode(new PlanTraceNode(PlanTraceNode.Kind.GOAL, network.goal(), null, goalAmount, 0, goalAmount,
+    private static void addTrace(CompiledNetwork network, SolveState state, PlannerAmount goal, ECOPlanTrace trace) {
+        trace.addNode(new PlanTraceNode(PlanTraceNode.Kind.GOAL, network.goal(), null, traceLong(goal), 0, traceLong(goal),
             traceLong(state.missing.get(network.goal())), 0, PlanTraceNode.Selection.NOT_APPLICABLE, null)
             .withExact(goal.toBigInteger(), PlannerAmount.ZERO.toBigInteger(), goal.toBigInteger(),
                 state.missing.get(network.goal()).toBigInteger(), PlannerAmount.ZERO.toBigInteger()));
-        for (var demand : state.demand.entrySet()) {
-            PlannerAmount used = state.used.get(demand.getKey());
-            PlannerAmount missing = state.missing.get(demand.getKey());
-            PlannerAmount requested = demand.getValue();
-            PlannerAmount toCraft = demand.getValue().subtract(used).subtract(missing).max(PlannerAmount.ZERO);
-            trace.addNode(new PlanTraceNode(PlanTraceNode.Kind.MATERIAL, demand.getKey(), null, traceLong(requested),
-                traceLong(used), traceLong(toCraft), traceLong(missing), 0,
-                PlanTraceNode.Selection.NOT_APPLICABLE, null)
-                .withExact(requested.toBigInteger(), used.toBigInteger(), toCraft.toBigInteger(),
-                    missing.toBigInteger(), java.math.BigInteger.ZERO));
-        }
+        addMaterialTrace(state.demand, state.usedAmounts(), state.missingAmounts(), trace);
         for (var selected : state.selected.entrySet()) {
             CompiledPattern pattern = selected.getValue();
             long times = traceLong(state.patternTimes.getOrDefault(pattern.details(), PlannerAmount.ZERO));
@@ -490,6 +482,22 @@ public final class AcyclicCraftingSolver {
                 trace.addDiagnostic(new PlannerDiagnostic(PlannerDiagnostic.Code.UNSUPPORTED_INPUT,
                     pattern.unsupportedReason()));
             }
+        }
+    }
+
+    /** The same material arithmetic also describes external DAGs that cannot be committed for execution. */
+    static void addMaterialTrace(Map<AEKey, PlannerAmount> demands, Map<AEKey, PlannerAmount> inventory,
+            Map<AEKey, PlannerAmount> deficits, ECOPlanTrace trace) {
+        for (var demand : demands.entrySet()) {
+            PlannerAmount used = inventory.getOrDefault(demand.getKey(), PlannerAmount.ZERO);
+            PlannerAmount missing = deficits.getOrDefault(demand.getKey(), PlannerAmount.ZERO);
+            PlannerAmount requested = demand.getValue();
+            PlannerAmount toCraft = requested.subtract(used).subtract(missing).max(PlannerAmount.ZERO);
+            trace.addNode(new PlanTraceNode(PlanTraceNode.Kind.MATERIAL, demand.getKey(), null, traceLong(requested),
+                traceLong(used), traceLong(toCraft), traceLong(missing), 0,
+                PlanTraceNode.Selection.NOT_APPLICABLE, null)
+                .withExact(requested.toBigInteger(), used.toBigInteger(), toCraft.toBigInteger(),
+                    missing.toBigInteger(), java.math.BigInteger.ZERO));
         }
     }
 

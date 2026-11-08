@@ -13,7 +13,7 @@ public final class AE2CraftingPlanBridge {
             throw new IllegalArgumentException("Theoretical plan is not representable by AE2 long fields");
         }
         return new CraftingPlan(new GenericStack(goal, amount), Math.max(0, state.bytes()), simulation, multiplePaths,
-            state.usedItems(), state.emittedItems(), state.missingItems(), state.patternTimes());
+            state.usedItems(), state.emittedItems(), state.missingItems(), new it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap<>(state.patternTimes()));
     }
 
     public CraftingPlan unsupported(AEKey goal, long amount) {
@@ -27,6 +27,6 @@ public final class AE2CraftingPlanBridge {
         // be forced into AE2 long fields when the alternative search ends without a usable plan.
         if (!state.executionAmountIssues().isEmpty()) return unsupported(goal, amount);
         return new CraftingPlan(new GenericStack(goal, amount), Math.max(0, state.bytes()), true, multiplePaths,
-            state.usedItems(), state.emittedItems(), state.missingItems(), state.patternTimes());
+            state.usedItems(), state.emittedItems(), state.missingItems(), new it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap<>(state.patternTimes()));
     }
 }
