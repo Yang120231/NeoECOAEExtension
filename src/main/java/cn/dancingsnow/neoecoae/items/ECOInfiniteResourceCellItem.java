@@ -5,8 +5,6 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.storage.cells.ISaveProvider;
-import appeng.api.upgrades.UpgradeInventories;
-import appeng.api.upgrades.IUpgradeInventory;
 import appeng.util.ConfigInventory;
 import cn.dancingsnow.neoecoae.api.IECOTier;
 import cn.dancingsnow.neoecoae.api.storage.ECOCellType;
@@ -44,12 +42,6 @@ public class ECOInfiniteResourceCellItem extends ECOStorageCellItem {
 
     /** One slot per locked key, so the cell reads as partition-configured out of the box. */
     private static final int CONFIG_SLOTS = LOCKED_KEYS.size();
-
-    /**
-     * Installed upgrade slots. Cards are inert here (nothing is stored, so fuzzy/void/inverter have
-     * nothing to act on) but the slots are accepted for parity with the other ECO matrices.
-     */
-    private static final int UPGRADE_SLOTS = 4;
 
     public ECOInfiniteResourceCellItem(Properties properties, IECOTier tier, Supplier<ECOCellType> cellType) {
         super(
@@ -91,10 +83,7 @@ public class ECOInfiniteResourceCellItem extends ECOStorageCellItem {
         return ConfigInventory.configTypes(ECOInfiniteResourceCellItem::isLockedKey, CONFIG_SLOTS, null);
     }
 
-    @Override
-    public IUpgradeInventory getUpgrades(ItemStack stack) {
-        return UpgradeInventories.forItem(stack, UPGRADE_SLOTS);
-    }
+
 
     @Override
     protected ECOInfiniteResourceCell createCellInventory(ItemStack stack, @Nullable ISaveProvider host) {

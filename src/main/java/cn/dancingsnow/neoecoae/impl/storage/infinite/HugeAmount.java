@@ -2,6 +2,7 @@ package cn.dancingsnow.neoecoae.impl.storage.infinite;
 
 import cn.dancingsnow.neoecoae.crafting.amount.U126;
 import java.math.BigInteger;
+import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import java.util.Objects;
 import net.minecraft.nbt.CompoundTag;
 
@@ -155,6 +156,11 @@ public final class HugeAmount implements Comparable<HugeAmount> {
     public U126 toU126() {
         if (bigValue != null) return null;
         return wideValue != null ? wideValue : U126.of(longValue);
+    }
+
+    /** Planning arithmetic view; native storage ownership and its U126 table stay unchanged. */
+    public PlannerAmount quantity() {
+        return PlannerAmount.of(toBigInteger());
     }
 
     public BigInteger toBigInteger() {
