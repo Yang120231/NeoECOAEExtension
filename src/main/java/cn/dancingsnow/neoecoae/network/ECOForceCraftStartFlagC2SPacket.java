@@ -9,11 +9,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import cn.dancingsnow.neoecoae.platform.network.NEPacketContext;
 
-public record ECOForceCraftStartFlagC2SPacket(int containerId, boolean forceStart) {
+public record ECOForceCraftStartFlagC2SPacket(int containerId, boolean forceStart, long revision) {
+    public ECOForceCraftStartFlagC2SPacket(int containerId, boolean forceStart) { this(containerId, forceStart, -1L); }
 
     public static final NEStreamCodec<FriendlyByteBuf, ECOForceCraftStartFlagC2SPacket> STREAM_CODEC =
-        NEStreamCodec.of((buf, packet) -> { buf.writeVarInt(packet.containerId); buf.writeBoolean(packet.forceStart); },
-            buf -> new ECOForceCraftStartFlagC2SPacket(buf.readVarInt(), buf.readBoolean()));
+        NEStreamCodec.of((buf, packet) -> {
+                buf.writeVarInt(packet.containerId); buf.writeBoolean(packet.forceStart); buf.writeLong(packet.revision);
+            }, buf -> new ECOForceCraftStartFlagC2SPacket(buf.readVarInt(), buf.readBoolean(), buf.readLong()));
 
     public static void handle(ECOForceCraftStartFlagC2SPacket packet, NEPacketContext context) {
         context.enqueueWork(() -> {
@@ -38,13 +40,21 @@ public record ECOForceCraftStartFlagC2SPacket(int containerId, boolean forceStar
                     appeng.crafting.execution.CraftingSubmitResult.INCOMPLETE_PLAN);
                 return;
             }
-            sync.neoecoae$setForceCraftStart(packet.forceStart);
-            menu.startJob();
-            var error = menu.submitError.result();
-            if (error != null && !error.successful()) {
-                logger.warn("[craft-submit] Submission failed: container={}, error={}, detail={}",
-                    packet.containerId, error.errorCode(), error.errorDetail());
-            }
+            CraftSubmissionPacketFeedback.submit(menu, "ordinary", packet.forceStart, () -> {
+                if (packet.revision >= 0 && menu instanceof cn.dancingsnow.neoecoae.api.me.menu.ECOCraftConfirmMenuMode mode
+                        && !mode.neoecoae$lockDisplayedPlan(packet.revision)) {
+                    menu.submitError = new CraftConfirmMenu.SyncableSubmitResult(
+                        appeng.crafting.execution.CraftingSubmitResult.INCOMPLETE_PLAN);
+                    return;
+                }
+                sync.neoecoae$setForceCraftStart(packet.forceStart);
+                menu.startJob();
+                var error = menu.submitError.result();
+                if (error != null && !error.successful()) {
+                    logger.warn("[craft-submit] Submission failed: container={}, error={}, detail={}",
+                        packet.containerId, error.errorCode(), error.errorDetail());
+                }
+            });
         });
     }
 
