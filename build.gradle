@@ -15,6 +15,13 @@ if (file('local.properties').isFile()) {
 def gtoLocalVersion = providers.gradleProperty('gtoLocalVersion')
     .getOrElse(localBuildProperties.getProperty('gtoLocalVersion', '')).trim()
 def selectedGtoVersion = gtoLocalVersion ?: gtocore_version
+// Private GTOLib development artifacts stay local and are never bundled or published.
+def gtolibLocalJar = providers.gradleProperty('gtolibLocalJar')
+    .getOrElse(localBuildProperties.getProperty('gtolibLocalJar', '')).trim()
+def gtolibCompileJar = gtolibLocalJar ? file(gtolibLocalJar) : null
+if (gtolibCompileJar != null && !gtolibCompileJar.isFile()) {
+    throw new GradleException("Local GTOLib development JAR not found: ${gtolibCompileJar}")
+}
 // GTO's AE2 dependency uses Java 21 bytecode; retain Java 17 source/output compatibility.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 tasks.withType(JavaCompile).configureEach { options.release = 17 }
@@ -87,6 +94,9 @@ repositories {
 }
 
 dependencies {
+    if (gtolibCompileJar != null) {
+        compileOnly files(gtolibCompileJar)
+    }
     modCompileOnly('maven.modrinth:embeddium:0.3.31+mc1.20.1') { transitive = false }
     ['ae2', 'guideme', 'ldlib'].each { modImplementation pinned(it) }
     // Like the pinned GTO AE2 fork, GTO runs on Java 21 while this addon's output targets Java 17.
