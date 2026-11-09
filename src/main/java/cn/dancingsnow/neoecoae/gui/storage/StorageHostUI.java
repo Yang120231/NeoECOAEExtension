@@ -134,8 +134,17 @@ public final class StorageHostUI {
     public record CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
         long usedBytes, long totalBytes, boolean infinite, CellState state, boolean online,
         @Nullable BlockPos position, ItemStack stack, @Nullable Component extractionBlockReason,
-        @Nullable UUID interactionId, @Nullable Component panelTierName) {
+        @Nullable UUID interactionId, @Nullable Component panelTierName, BigInteger exactUsedBytes, int priority) {
         public static final CellEntry EMPTY = new CellEntry(-1, 0, 0, 0, 0, 0, 0, false, CellState.ABSENT, false);
+
+        public CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
+            long usedBytes, long totalBytes, boolean infinite, CellState state, boolean online,
+            @Nullable BlockPos position, ItemStack stack, @Nullable Component extractionBlockReason,
+            @Nullable UUID interactionId, @Nullable Component panelTierName) {
+            this(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite, state, online,
+                position, stack, extractionBlockReason, interactionId, panelTierName,
+                BigInteger.valueOf(Math.max(0L, usedBytes)), 0);
+        }
 
         public CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
             long usedBytes, long totalBytes, boolean infinite, CellState state, boolean online,
@@ -157,12 +166,12 @@ public final class StorageHostUI {
 
         public CellEntry atDrive(BlockPos position, ItemStack stack, @Nullable Component reason, @Nullable UUID interactionId) {
             return new CellEntry(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
-                state, online, position, stack.copy(), reason, interactionId, panelTierName);
+                state, online, position, stack.copy(), reason, interactionId, panelTierName, exactUsedBytes, priority);
         }
 
         public CellEntry withPanelTier(IECOTier tier) {
             return new CellEntry(typeId, this.tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
-                state, online, position, stack, extractionBlockReason, interactionId, tier.getPanelTierName());
+                state, online, position, stack, extractionBlockReason, interactionId, tier.getPanelTierName(), exactUsedBytes, priority);
         }
 
         public CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
@@ -170,6 +179,12 @@ public final class StorageHostUI {
             this(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
                 usedBytes == 0 ? CellState.EMPTY : totalBytes > 0 && usedBytes >= totalBytes ? CellState.FULL
                     : totalTypes > 0 && usedTypes >= totalTypes ? CellState.TYPES_FULL : CellState.NOT_EMPTY, true);
+        }
+
+        public CellEntry withStorageInfo(BigInteger exactUsedBytes, int priority) {
+            return new CellEntry(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
+                state, online, position, stack, extractionBlockReason, interactionId, panelTierName,
+                exactUsedBytes == null ? BigInteger.ZERO : exactUsedBytes.max(BigInteger.ZERO), priority);
         }
 
         public boolean installed() { return tier > 0 || !stack.isEmpty(); }
