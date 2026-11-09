@@ -56,7 +56,7 @@ GTO 专版适配原生合成 CPU、样板缓存批量投料、容量检查、编
 
 ## 从源码构建
 
-需要 **JDK 17、JDK 21 和 Python 3**。`build-local.ps1` 使用 Java 17 启动 Gradle；GTO AE2 依赖使用 Java 21 字节码，因此编译工具链为 Java 21，ECO 自身仍以 `--release 17` 输出。游戏运行环境仍按上表使用 Java 21。
+需要 **JDK 17、JDK 21 和 Python 3.11 或更新版本**。`build-local.ps1` 使用 Java 17 启动 Gradle；GTO AE2 依赖使用 Java 21 字节码，因此编译工具链为 Java 21，ECO 自身仍以 `--release 17` 输出。游戏运行环境仍按上表使用 Java 21。
 
 在项目根目录使用 PowerShell 执行：
 
@@ -67,11 +67,14 @@ $env:NEOECOAE_JAVA17_HOME = 'C:\path\to\jdk-17'
 # 首次检出：下载并校验固定依赖，生成本地依赖锁
 python tools/compat/bootstrap.py --gto
 
+# 在被 Git 忽略的 local.properties 中配置匹配的本地 GTOLib 开发 JAR：
+# gtolibLocalJar=C:/private/build/gtolib/gtolib-local-compile.jar
+
 # 打包安装包与源码包
 .\build-local.ps1 jar sourcesJar --console=plain
 
 # 检查发布包内容
-python tools/compat/check_artifacts.py --release-only
+python tools/compat/check_artifacts.py --release-only --with-sources
 ```
 
 JDK 21 需能被 Gradle 工具链发现；未自动识别时，可通过 Gradle 的 `org.gradle.java.installations.paths` 指定安装目录。Gradle 验证应串行运行，避免共享输出冲突。依赖缓存齐全后，可为构建命令添加 `--offline`。
@@ -82,6 +85,17 @@ JDK 21 需能被 Gradle 工具链发现；未自动识别时，可通过 Gradle 
 - `neoecoae-20.5.5-GTO-sources.jar`：源码包。
 
 编译与实际 JAR 核对使用 GTO AE2 **`15.2610.47`**，见 [GTO 依赖锁](porting/gto-dependencies.json)。`bootstrap.py --gto` 会恢复构建依赖，不会自动安装完整 GTO 整合包。
+
+### 本地构建与 Release 校验
+
+GTOLib 开发依赖仅在本地编译时使用，不能提交、上传或包含在 ECO 安装包、源码包内。公开 CI 不运行 Gradle，也不下载或构建 GTOLib。
+
+1. 在本地完成构建，并运行上述安装包与源码包检查。
+2. 推送对应 ECO 源码和标签，标签必须与 `gradle.properties` 的 `mod_version` 一致。
+3. 创建该标签的草稿 Release，填写发布说明，并只上传 `build/libs/neoecoae-<版本>.jar` 和 `build/libs/neoecoae-<版本>-sources.jar`。
+4. 发布 Release。CI 下载这两个附件，核对版本、源码及私有内容，成功后附加 `SHA256SUMS.txt` 并保存校验报告。
+
+缺少附件或校验失败时流程会失败，不会自动补建。补齐或修正附件后，可重新运行失败的工作流，或在 Actions 中手动运行 `Verify Local Release Artifacts` 并填写已发布的标签。CI 校验不会撤回已发布的 Release，也不代表游戏内运行验收通过。
 
 ## 目录结构
 

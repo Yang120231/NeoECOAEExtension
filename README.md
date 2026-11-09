@@ -56,7 +56,7 @@ Interactive structure scenes, item components and recipe components in these gui
 
 ## Building from source
 
-You need **JDK 17, JDK 21 and Python 3**. `build-local.ps1` starts Gradle with Java 17. The GTO AE2 dependency uses Java 21 bytecode, so compilation uses a Java 21 toolchain while ECO itself targets Java 17 through `--release 17`. The game still requires Java 21 as listed above.
+You need **JDK 17, JDK 21 and Python 3.11 or newer**. `build-local.ps1` starts Gradle with Java 17. The GTO AE2 dependency uses Java 21 bytecode, so compilation uses a Java 21 toolchain while ECO itself targets Java 17 through `--release 17`. The game still requires Java 21 as listed above.
 
 Run the following in PowerShell from the project root:
 
@@ -67,11 +67,14 @@ $env:NEOECOAE_JAVA17_HOME = 'C:\path\to\jdk-17'
 # First checkout: download and verify pinned dependencies and generate the local lock
 python tools/compat/bootstrap.py --gto
 
+# Configure the matching local GTOLib development JAR in ignored local.properties:
+# gtolibLocalJar=C:/private/build/gtolib/gtolib-local-compile.jar
+
 # Build the mod and sources archives
 .\build-local.ps1 jar sourcesJar --console=plain
 
 # Check the release archive contents
-python tools/compat/check_artifacts.py --release-only
+python tools/compat/check_artifacts.py --release-only --with-sources
 ```
 
 Gradle must be able to discover JDK 21. If automatic detection fails, specify its installation directory with Gradle's `org.gradle.java.installations.paths` property. Run Gradle validation sequentially to avoid conflicts in shared outputs. Once dependencies are cached, you can add `--offline` to the build command.
@@ -82,6 +85,17 @@ Artifacts are written to `build/libs/`:
 - `neoecoae-20.5.5-GTO-sources.jar`: source code.
 
 Compilation and native-JAR checks use GTO AE2 **`15.2610.47`**; see the [GTO dependency lock](porting/gto-dependencies.json). `bootstrap.py --gto` restores build dependencies and does not install the complete modpack.
+
+### Local builds and Release verification
+
+The GTOLib development dependency is for local compilation only. Never commit, upload, or bundle it in either ECO archive. Public CI does not run Gradle or download/build GTOLib.
+
+1. Build locally and run the release and sources archive checker above.
+2. Push the matching ECO source and tag. The tag must equal `mod_version` in `gradle.properties`.
+3. Create a draft Release for that tag, write its release notes, and upload only `build/libs/neoecoae-<version>.jar` and `build/libs/neoecoae-<version>-sources.jar`.
+4. Publish the Release. CI downloads both assets, checks their version, source contents and absence of private content, then attaches `SHA256SUMS.txt` and saves verification reports.
+
+Missing or invalid assets fail verification; CI does not rebuild them. After correcting the assets, rerun the failed workflow or manually run `Verify Local Release Artifacts` in Actions with the published tag. Verification does not retract a published Release or establish in-game compatibility.
 
 ## Repository layout
 
