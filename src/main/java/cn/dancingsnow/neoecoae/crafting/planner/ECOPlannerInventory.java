@@ -14,31 +14,40 @@ import cn.dancingsnow.neoecoae.impl.storage.ECOCreativeCell;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
-import cn.dancingsnow.neoecoae.crafting.display.terminal.ExactAmountCollector;
 import java.util.Set;
 
 /** Captured on the server thread, preserving unlimited-source identity alongside AE2's long counter. */
 public final class ECOPlannerInventory {
     private ECOPlannerInventory() {}
 
+    private record CachedPlan(java.util.Map<AEKey, cn.dancingsnow.neoecoae.crafting.amount.ExactAmount> exact,
+            PlannerInventorySnapshot snapshot) {}
+    // Values do not retain their counter keys or world; old publications disappear after their consumers finish.
+    private static final java.util.Map<appeng.api.stacks.KeyCounter, CachedPlan> PLANS = new java.util.WeakHashMap<>();
+
+    public static void clearRuntimeState() { PLANS.clear(); }
+
     public static PlannerInventorySnapshot capture(IGrid grid) {
-        var storage = grid.getStorageService().getInventory();
-        var amounts = new LinkedHashMap<AEKey, PlannerAmount>();
+        var storage = cn.dancingsnow.neoecoae.crafting.display.terminal.TerminalInventorySnapshot.resolve(
+            grid.getStorageService().getInventory());
+        var server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        var snapshot = cn.dancingsnow.neoecoae.crafting.display.terminal.TerminalInventorySnapshot.sample(
+            storage, server == null ? 0L : server.getTickCount(), true, true, storage::getAvailableStacks);
         Set<AEKey> unbounded = collectUnboundedKeys(grid);
-        ExactAmountCollector.begin();
-        try {
-            var inventory = storage.getAvailableStacks();
-            for (var entry : inventory) if (entry.getLongValue() > 0) amounts.put(entry.getKey(),
-                PlannerAmount.of(entry.getLongValue()));
-            ExactAmountCollector.finish().forEach((key, amount) -> {
-                if (amount.infinite()) unbounded.add(key);
-                else amounts.put(key, amount.quantity());
-            });
-        } catch (RuntimeException | Error failure) {
-            ExactAmountCollector.abort();
-            throw failure;
-        }
-        return PlannerInventorySnapshot.exact(amounts, unbounded);
+        snapshot.amounts().forEach((key, amount) -> { if (amount.infinite()) unbounded.add(key); });
+        CachedPlan previous = PLANS.get(snapshot.inventory());
+        if (previous != null && previous.exact() == snapshot.amounts()
+                && previous.snapshot().unboundedKeys().equals(unbounded)) return previous.snapshot();
+        var amounts = new LinkedHashMap<AEKey, PlannerAmount>();
+        snapshot.visitVisibleAmounts((key, amount) -> {
+            if (amount > 0) amounts.put(key, PlannerAmount.of(amount));
+        });
+        snapshot.amounts().forEach((key, amount) -> {
+            if (!amount.infinite()) amounts.put(key, amount.quantity());
+        });
+        var captured = PlannerInventorySnapshot.exact(amounts, unbounded);
+        PLANS.put(snapshot.inventory(), new CachedPlan(snapshot.amounts(), captured));
+        return captured;
     }
 
     /**
