@@ -119,15 +119,12 @@ final class StorageCellGrid extends UIElement {
 
         @Override
         public List<Component> getFullTooltipTexts(boolean withItemTooltips) {
-            List<Component> lines = super.getFullTooltipTexts(withItemTooltips);
-            lines.addAll(tooltip(index));
-            return lines;
+            return tooltip(index);
         }
 
         @Override
         protected void onHoverTooltips(UIEvent event) {
-            if (getValue().isEmpty()) event.hoverTooltips = new HoverTooltips(tooltip(index), null, null, null);
-            else super.onHoverTooltips(event);
+            event.hoverTooltips = new HoverTooltips(tooltip(index), null, null, null);
         }
 
         @Override
@@ -148,32 +145,18 @@ final class StorageCellGrid extends UIElement {
         List<Component> lines = new ArrayList<>();
         if (index < state.cells().size() && state.cells().get(index).installed()) {
             StorageHostUI.CellEntry cell = state.cells().get(index);
-            StoragePanelState.TypeLine type = state.type(cell.typeId());
-            Component name = type != null ? type.name() : Component.translatable(switch (cell.kind()) {
-                case StorageHostUI.CellEntry.KIND_ITEM -> "gui.neoecoae.storage.legacy.cell_info.item";
-                case StorageHostUI.CellEntry.KIND_FLUID -> "gui.neoecoae.storage.legacy.cell_info.fluid";
-                default -> "gui.neoecoae.storage.legacy.cell_info.other";
-            });
-            lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_info", name, tierName(cell)));
+            lines.add(cell.stack().getHoverName().copy());
+            long byteCapacity = cell.infinite() || cell.totalBytes() == Long.MAX_VALUE ? -1 : cell.totalBytes();
+            lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_bytes",
+                HostText.usedPart(HostText.fullBytes(cell.exactUsedBytes()), cell.usedBytes(), byteCapacity),
+                HostText.totalPart(fullCapacity(byteCapacity))));
             lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_types",
                 HostText.usedPart(HostText.ae2Amount(cell.usedTypes()), cell.usedTypes(), cell.totalTypes()),
                 HostText.totalPart(capacity(cell.totalTypes()))));
-            lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_bytes",
-                HostText.usedPart(HostText.fullBytes(cell.usedBytes()), cell.usedBytes(), cell.totalBytes()),
-                HostText.totalPart(fullCapacity(cell.totalBytes()))));
-            lines.add(Component.translatable("gui.neoecoae.storage.ui.cell_state." +
-                (!cell.online() || !state.formed() ? "offline" : cell.infinite() ? "infinite"
-                    : cell.state().name().toLowerCase(java.util.Locale.ROOT))));
-            if (cell.extractionBlockReason() != null) lines.add(cell.extractionBlockReason().copy().withStyle(neColor -> neColor.withColor(0xFF5555)));
-            else lines.add(Component.translatable("gui.neoecoae.storage.ui.take_cell").withStyle(neColor -> neColor.withColor(HostText.MUTED)));
+            lines.add(Component.translatable("gui.neoecoae.storage.cell.priority.tooltip", cell.priority()));
         } else {
             lines.add(Component.translatable("gui.neoecoae.storage.ui.cell_state.absent"));
-            if (cell(index).position() != null) {
-                lines.add(Component.translatable("gui.neoecoae.storage.ui.insert_cell").withStyle(neColor -> neColor.withColor(HostText.MUTED)));
-            }
         }
-        lines.add(pageText(state, columns * 3));
-        lines.add(Component.translatable("gui.neoecoae.storage.ui.scroll_cells").withStyle(neColor -> neColor.withColor(HostText.MUTED)));
         return lines;
     }
 

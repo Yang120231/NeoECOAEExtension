@@ -8,6 +8,9 @@ import appeng.api.client.AEKeyRendering;
 import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.me.cluster.implementations.CraftingCPUCluster;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEFluidKey;
+import dev.emi.emi.api.stack.EmiStack;
 import appeng.api.util.AEColor;
 import appeng.api.config.TerminalStyle;
 import appeng.core.localization.ButtonToolTips;
@@ -99,6 +102,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
     private static final int TIME_X = 152, TIME_Y = 12, TIME_WIDTH = 100;
     // 1.7.10's light text: the list cells are dark, so dark text loses contrast there.
     private static final int TEXT_LIGHT = 0xF2F3F7;
+    private static final int STATUS_SYNC_INTERVAL = 10;
     private static final ResourceLocation ATLAS =
         new ResourceLocation("neoecoae", "textures/guis/eco_crafting_processing.png");
     // The panel body ends at y=200 with a 237x26 lower extension; the row states sit in the notch beside it.
@@ -137,13 +141,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
     private final BindableValue<CompoundTag> processingOverview = new BindableValue<>(new CompoundTag()) {
         @Override public BindableValue<CompoundTag> setValue(CompoundTag value, boolean notify) {
             super.setValue(value, notify);
-            if (value == null || value.getInt("serial") != selectedSerial) return this;
-            processingByKey.clear();
-            for (var raw : value.getList("items", Tag.TAG_COMPOUND)) {
-                var tag = (CompoundTag) raw;
-                AEKey key = AEKey.fromTagGeneric(tag.getCompound("key"));
-                if (key != null) processingByKey.put(key, ECOProcessingProgress.read(tag.getCompound("progress")));
-            }
+            applyProcessingOverview(value);
             return this;
         }
     };
@@ -206,7 +204,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         var processingDetails = addRPCEvent(RPCEventBuilder.simple(Integer.class, CompoundTag.class, server::processingDetails));
         processingDetailsRequest = (key, page) -> {
             var request = new CompoundTag();
-            request.put("key", key.toTagGeneric());
+            if (key != null) request.put("key", key.toTagGeneric());
             request.putInt("page", page);
             processingDetails.send(selectedSerial, request);
         };
@@ -275,6 +273,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         Button back = new BackButton().noText()
             .setOnClick(event -> {
                 itemActionsPopup.close();
+                hoveredProcessingKey = requestedProcessingKey = null;
                 stopProcessingRequest.run();
                 if (!takeover) backAction.run();
             });
@@ -434,8 +433,11 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         if (value == null || !value.contains("total")) return this;
         total = value.getInt("total");
         int receivedSerial = value.getInt("selectedSerial");
-        if (receivedSerial != selectedSerial) processingByKey.clear();
+        boolean selectionChanged = receivedSerial != selectedSerial;
+        if (selectionChanged) processingByKey.clear();
         selectedSerial = receivedSerial;
+        // LDLib reads child bindings before this panel's initial CPU selection.
+        if (selectionChanged) applyProcessingOverview(processingOverview.getValue());
         itemTotal = value.getInt("itemTotal");
         taskTotal = value.getInt("taskTotal");
         tier = value.getInt("tier");
@@ -474,6 +476,20 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         cancelButton.setActive(busy);
         pauseButton.setText(selected != null && selected.status().equals("suspended") ? Component.translatable("gui.neoecoae.computation.resume") : Component.translatable("gui.neoecoae.computation.pause"));
         return this;
+    }
+
+    private void applyProcessingOverview(@Nullable CompoundTag value) {
+        if (value == null || value.getInt("serial") != selectedSerial) return;
+        if (!value.getBoolean("delta")) processingByKey.clear();
+        for (var raw : value.getList("removed", Tag.TAG_COMPOUND)) {
+            AEKey key = AEKey.fromTagGeneric((CompoundTag) raw);
+            if (key != null) processingByKey.remove(key);
+        }
+        for (var raw : value.getList("items", Tag.TAG_COMPOUND)) {
+            var tag = (CompoundTag) raw;
+            AEKey key = AEKey.fromTagGeneric(tag.getCompound("key"));
+            if (key != null) processingByKey.put(key, ECOProcessingProgress.read(tag.getCompound("progress")));
+        }
     }
 
     private List<ComputationCpuItemEntry> items(ListTag tags) {
@@ -520,10 +536,15 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             event.stopImmediatePropagation();
         });
         hitbox.addEventListener(UIEvents.MOUSE_UP, event -> { if (event.button == 1) event.stopImmediatePropagation(); });
+        hitbox.addEventListener(UIEvents.MOUSE_LEAVE, event -> clearProcessingDetails());
         hitbox.addEventListener(UIEvents.HOVER_TOOLTIPS, event -> {
             ComputationCpuItemEntry item = lookup.at(event.x, event.y);
-            if (item == null) return;
+            if (item == null) {
+                clearProcessingDetails();
+                return;
+            }
             if (item.processing().machineCount() > 0 || item.processing().refreshing()) requestProcessingDetails(item, 0);
+            else clearProcessingDetails();
             event.hoverTooltips = new HoverTooltips(List.of(),
                 ComputationCards.item(AEKeyRendering.getTooltip(item.key()), item), null, null);
         });
@@ -532,6 +553,25 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
     @FunctionalInterface
     private interface ItemLookup {
         @Nullable ComputationCpuItemEntry at(float mouseX, float mouseY);
+    }
+
+    /** Feed the custom rows into LDLib's existing EMI stack provider. */
+    @Override
+    public @Nullable Object getXEIIngredientOverMouse(double mouseX, double mouseY) {
+        if (!effectivelyVisible() || !isAllowXEIIngredientOverMouse()) return null;
+        var ui = getModularUI();
+        if (ui == null) return null;
+        var hit = ui.hitTestAtScreen((float) mouseX, (float) mouseY);
+        // Respect popup layering and the same row/gap bounds as the tooltip and right-click actions.
+        var item = hit == itemHit ? itemAt((float) mouseX, (float) mouseY)
+            : hit == taskHit ? taskAt((float) mouseX, (float) mouseY) : null;
+        if (item == null) return super.getXEIIngredientOverMouse(mouseX, mouseY);
+        if (item.key() instanceof AEItemKey key) return EmiStack.of(key.toStack());
+        if (item.key() instanceof AEFluidKey key) {
+            var stack = key.toStack(1);
+            return EmiStack.of(stack.getFluid(), stack.getTag(), stack.getAmount());
+        }
+        return null;
     }
 
     private ComputationCpuItemEntry itemAt(float mouseX, float mouseY) {
@@ -571,6 +611,12 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         requestedProcessingKey = item.key();
         requestedProcessingPage = hoveredProcessingPage;
         nextProcessingRequest = now + 250;
+    }
+
+    private void clearProcessingDetails() {
+        if (requestedProcessingKey == null) return;
+        hoveredProcessingKey = requestedProcessingKey = null;
+        processingDetailsRequest.accept(null, -1);
     }
 
     private void scrollCpuTo(int value) {
@@ -906,6 +952,9 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         private List<ComputationCpuItemEntry> processingItems = List.of();
         private CompoundTag processingCached;
         private long processingSyncTick = Long.MIN_VALUE;
+        private final Map<AEKey, ECOProcessingProgress> processingSent = new LinkedHashMap<>();
+        private int processingSentSerial = -1;
+        private boolean processingReset = true;
         private int taskOffset;
         private long taskScrollSequence;
         private CompoundTag itemActionResponse = new CompoundTag();
@@ -920,6 +969,8 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         private ServerState(Source source, CpuSelectionState.Identities<ICraftingCPU> identities) {
             this.source = source;
             selection = new CpuSelectionState<>(ROWS, identities);
+            // AE2 opens this page directly. The embedded host page subscribes when a CPU is clicked.
+            viewing = source.serverBack() != null;
         }
 
         private void refresh() {
@@ -934,6 +985,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             rows = next;
             selection.rows(rows);
             cached = null;
+            processingCached = null;
         }
 
         private void select(int serial) {
@@ -949,6 +1001,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             processingDetailKey = null;
             processingItems = List.of();
             processingCached = null;
+            processingReset = true;
             cached = null;
         }
 
@@ -977,6 +1030,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             taskOffset = cn.dancingsnow.neoecoae.platform.JdkCompat.clamp(request.getInt("offset"), 0, Math.max(0, total - rows));
             taskScrollSequence = request.getLong("sequence");
             cached = null;
+            processingCached = null;
         }
 
         private void search(String text) {
@@ -988,6 +1042,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             itemOffset = 0;
             focusPending = !query.isEmpty();
             cached = null;
+            processingCached = null;
         }
 
         private void action(int serial, int action) {
@@ -1006,10 +1061,16 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             if (serial < 0) {
                 viewing = false;
                 processingDetailKey = null;
+                processingItems = List.of();
                 processingCached = null;
                 return;
             }
             if (serial != selection.selectedSerial() || selection.selected() == null) return;
+            if (!request.contains("key")) {
+                processingDetailKey = null;
+                processingCached = null;
+                return;
+            }
             AEKey key = AEKey.fromTagGeneric(request.getCompound("key"));
             if (key == null || !(selection.selected() instanceof ECOCraftingCPU eco)
                 || (eco.getLogic().getWaitingFor(key) <= 0 && eco.getLogic().getPendingOutputs(key) <= 0)) return;
@@ -1108,34 +1169,65 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         }
 
         private CompoundTag processingSnapshot() {
+            // Prepare the selected CPU and visible rows before child bindings serialize their progress.
+            if (viewing) snapshot();
             long tick = source.gameTime().getAsLong();
             // Machine progress is only tracked for ECO jobs; AE2 tasks show their state without a fill.
             var cpu = selection.selected() instanceof ECOCraftingCPU eco ? eco : null;
             boolean active = viewing && source.canInteract().getAsBoolean() && cpu != null;
             if (active) cpu.getLogic().refreshProcessingProgress();
-            if (processingCached != null && tick >= processingSyncTick && tick - processingSyncTick < 10) return processingCached;
+            int serial = selection.selectedSerial();
+            boolean reset = processingReset || processingSentSerial != serial;
+            if (!reset && processingCached != null && tick >= processingSyncTick
+                && tick - processingSyncTick < STATUS_SYNC_INTERVAL) return processingCached;
             processingSyncTick = tick;
-            var tag = new CompoundTag();
-            tag.putInt("serial", selection.selectedSerial());
-            var entries = new ListTag();
+            Map<AEKey, ECOProcessingProgress> next = new LinkedHashMap<>();
             if (active) {
                 for (var item : processingItems) {
                     if (item.active().signum() <= 0 && item.pending().signum() <= 0) continue;
                     var progress = cpu.getLogic().getProcessingProgress(item.key());
                     if (progress == null || (progress.machineCount() == 0 && !progress.refreshing())) continue;
-                    var entry = new CompoundTag();
-                    entry.put("key", item.key().toTagGeneric());
-                    entry.put("progress", progress.forStatusSync().page(item.key().equals(processingDetailKey) ? processingDetailPage : -1).write());
-                    entries.add(entry);
+                    var status = progress.forStatusSync().page(item.key().equals(processingDetailKey) ? processingDetailPage : -1);
+                    // A long cycle need not send sub-percent float changes; hovered machine counters stay exact.
+                    float percent = Math.round(status.progress() * 100) / 100.0F;
+                    if (percent != status.progress()) status = new ECOProcessingProgress(percent, status.hasProgress(),
+                        status.state(), status.machineCount(), status.detailPage(), status.refreshing(), status.machines());
+                    next.put(item.key(), status);
                 }
             }
+            var entries = new ListTag();
+            next.forEach((key, progress) -> {
+                if (!reset && progress.equals(processingSent.get(key))) return;
+                var entry = new CompoundTag();
+                entry.put("key", key.toTagGeneric());
+                entry.put("progress", progress.write());
+                entries.add(entry);
+            });
+            var removed = new ListTag();
+            if (!reset) for (AEKey key : processingSent.keySet()) {
+                if (!next.containsKey(key)) removed.add(key.toTagGeneric());
+            }
+            if (!reset && entries.isEmpty() && removed.isEmpty() && processingCached != null) return processingCached;
+            var tag = new CompoundTag();
+            tag.putInt("serial", serial);
+            if (!reset) tag.putBoolean("delta", true);
             tag.put("items", entries);
+            if (!removed.isEmpty()) tag.put("removed", removed);
+            processingSent.clear();
+            processingSent.putAll(next);
+            processingSentSerial = serial;
+            processingReset = false;
             return processingCached = tag;
         }
 
         private CompoundTag snapshot() {
+            // The host's hidden status page must not enumerate jobs or request machine scans.
+            if (!viewing || !source.canInteract().getAsBoolean()) {
+                if (cached == null) cached = new CompoundTag();
+                return cached;
+            }
             long tick = source.gameTime().getAsLong();
-            if (cached != null && tick >= sampledTick && tick - sampledTick < 3) return cached;
+            if (cached != null && tick >= sampledTick && tick - sampledTick < STATUS_SYNC_INTERVAL) return cached;
             sampledTick = tick;
             refresh();
             CompoundTag tag = new CompoundTag();
@@ -1171,13 +1263,15 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             tag.putInt("itemOffset", itemOffset);
             int itemPageStart = Math.max(0, itemOffset - (ITEM_COLS * rows));
             tag.putInt("itemPageStart", itemPageStart);
-            tag.put("items", page(selectedCpu, all, itemPageStart, Math.min(all.size(), itemOffset + (ITEM_COLS * rows) * 2), visible));
+            tag.put("items", page(selectedCpu, all, itemPageStart, Math.min(all.size(), itemOffset + (ITEM_COLS * rows) * 2),
+                visible, itemOffset, itemOffset + ITEM_COLS * rows));
             tag.putInt("taskTotal", running.size());
             taskOffset = cn.dancingsnow.neoecoae.platform.JdkCompat.clamp(taskOffset, 0, Math.max(0, running.size() - rows));
             tag.putInt("taskOffset", taskOffset);
             int taskPageStart = Math.max(0, taskOffset - rows);
             tag.putInt("taskPageStart", taskPageStart);
-            tag.put("tasks", page(selectedCpu, running, taskPageStart, Math.min(running.size(), taskOffset + rows * 2), visible));
+            tag.put("tasks", page(selectedCpu, running, taskPageStart, Math.min(running.size(), taskOffset + rows * 2),
+                visible, taskOffset, taskOffset + rows));
             processingItems = List.copyOf(visible.values());
             return cached = tag;
         }
@@ -1189,12 +1283,13 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
         }
 
         private ListTag page(@Nullable ICraftingCPU cpu, List<ComputationCpuItemEntry> entries, int from, int to,
-                Map<AEKey, ComputationCpuItemEntry> visible) {
+                Map<AEKey, ComputationCpuItemEntry> visible, int visibleFrom, int visibleTo) {
             ListTag page = new ListTag();
             if (cpu == null) return page;
             var registries = source.registries();
-            for (ComputationCpuItemEntry item : entries.subList(Math.min(from, to), to)) {
-                visible.putIfAbsent(item.key(), item);
+            for (int index = Math.min(from, to); index < to; index++) {
+                var item = entries.get(index);
+                if (index >= visibleFrom && index < visibleTo) visible.putIfAbsent(item.key(), item);
                 page.add(item.write(registries));
             }
             return page;

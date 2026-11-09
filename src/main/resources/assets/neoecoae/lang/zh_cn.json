@@ -335,6 +335,7 @@
   "gui.neoecoae.storage.legacy.cell_info.custom": "%s存储矩阵",
   "gui.neoecoae.storage.legacy.cell_info.other": "其它存储矩阵",
   "gui.neoecoae.storage.legacy.cell_info.empty": "未知",
+  "gui.neoecoae.storage.cell.priority.tooltip": "存储盘优先级：%s",
   "gui.neoecoae.storage.legacy.cell_types": "类型使用: %s / %s",
   "gui.neoecoae.storage.legacy.cell_types.used": "类型使用: %s",
   "gui.neoecoae.storage.legacy.cell_bytes": "字节使用: %s / %s",

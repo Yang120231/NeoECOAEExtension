@@ -35,7 +35,7 @@ final class ECOStorageHostStatistics {
     private final Map<ECODriveBlockEntity, DriveUiSnapshot> driveUiSnapshots = new HashMap<>();
     private record DriveUiSnapshot(IECOStorageCell inventory, long revision, long tick, int type, int tier,
         List<AEKeyType> keyTypes, boolean member, long usedTypes, long totalTypes, long usedBytes, long totalBytes,
-        boolean infiniteResource) {}
+        boolean infiniteResource, BigInteger exactUsedBytes) {}
 
     private final ECOStorageSystemBlockEntity host;
     private final Registry<ECOCellType> cellTypes;
@@ -207,6 +207,8 @@ final class ECOStorageHostStatistics {
                     supported ? view.inventory().getStatus() : CellState.ABSENT,
                     supported && drive.isOnline()
             ).withPanelTier(view.inventory().getTier())
+                .withStorageInfo(!supported || view.member() || view.infiniteResource() ? BigInteger.ZERO : view.exactUsedBytes(),
+                    cn.dancingsnow.neoecoae.gui.storage.StoragePriority.mountPriority(0, view.inventory().prioritizesMarkedInserts()))
                 .atDrive(drive.getBlockPos(), stack, drive.getCellExtractionBlockReasonText(), drive.getCellInteractionId()));
             if (view.infiniteResource()) continue;
             if (view.member()) {
@@ -270,7 +272,11 @@ final class ECOStorageHostStatistics {
                 keyTypes, member,
                 member ? 0L : inventory.getStoredItemTypes(), member ? 0L : inventory.hasInfiniteTypeCapacity() ? -1L : inventory.getTotalItemTypes(),
                 member || infiniteResource ? 0L : inventory.getUsedBytes(),
-                member || infiniteResource ? 0L : inventory.getTotalBytes(), infiniteResource);
+                member || infiniteResource ? 0L : inventory.getTotalBytes(), infiniteResource,
+                member || infiniteResource ? BigInteger.ZERO : inventory instanceof ECOStorageCell cell
+                    ? StorageByteAccounting.usedBytes(inventory.getStoredItemTypes(), cell.getStoredItemCountExact(),
+                        cell.getKeyType().getAmountPerByte(), cell.getBytesPerType())
+                    : BigInteger.valueOf(Math.max(0L, inventory.getUsedBytes())));
             driveUiSnapshots.put(drive, next);
             host.storageFaults().recovered(component);
             return next;
