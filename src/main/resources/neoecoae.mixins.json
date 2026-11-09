@@ -25,6 +25,7 @@
     "ae2.menu.CraftConfirmMenuForceStartMixin",
     "ae2.menu.CraftingCpuListEntryMixin",
     "ae2.menu.GtoCraftingCpuMenuMixin",
+    "ae2.menu.GtoStorageMenuSnapshotMixin",
     "ae2.menu.CraftingCpuMenuMixin",
     "ae2.menu.CraftingStatusMenuMixin",
     "ae2.menu.IOPortMenuMixin",

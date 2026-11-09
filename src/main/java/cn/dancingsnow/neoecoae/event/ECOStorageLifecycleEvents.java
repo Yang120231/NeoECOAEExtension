@@ -34,6 +34,8 @@ public final class ECOStorageLifecycleEvents {
         PatternBusUpdateScheduler.clear(server);
         NELogicalNetworkManager.clearAll();
         ECOPlanningResultRegistry.clear();
+        cn.dancingsnow.neoecoae.crafting.planner.ECOPlannerInventory.clearRuntimeState();
+        cn.dancingsnow.neoecoae.crafting.display.terminal.TerminalInventorySnapshot.clear();
         NetGrowthPatternValidationRegistry.clear();
         ECOCellMutationBatch.clearThreadState();
         ECOCellMutationBatch.drainRetries();
