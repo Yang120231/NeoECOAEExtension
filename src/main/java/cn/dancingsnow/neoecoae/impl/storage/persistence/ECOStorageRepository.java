@@ -70,7 +70,11 @@ public final class ECOStorageRepository {
     public static void flush(MinecraftServer server) { Session s = SESSIONS.get(server); if (s != null) s.flush(); }
     public static void stopped(MinecraftServer server) {
         Session session = SESSIONS.remove(server);
-        if (session != null) { session.closed = true; session.owners.clear(); session.notifications.clear(); session.dirty.clear(); }
+        if (session != null) {
+            session.closed = true; session.owners.clear(); session.notifications.clear();
+            for (StorageSavedData data : session.dirty.keySet()) { data.checkpointDequeued(); data.dirtyListener(null); }
+            session.dirty.clear();
+        }
     }
 
     public static final class Session {
@@ -88,8 +92,9 @@ public final class ECOStorageRepository {
         public MinecraftServer server() { return server; }
         public DimensionDataStorage storage() { return storage; }
         public void track(StorageSavedData data) {
+            data.checkpointDequeued();
             data.dirtyListener(() -> dirty.putIfAbsent(data, currentTick));
-            if (data.isDirty()) dirty.putIfAbsent(data, currentTick);
+            if (data.isDirty()) data.requestCheckpoint();
         }
         public Access open(ItemStack stack, ISaveProvider owner) {
             var root = NEItemData.read(stack);
@@ -131,7 +136,6 @@ public final class ECOStorageRepository {
                     storage.set(key, data);
                 }
                 data.bind(file);
-                if (server != null && data.canRead()) data.amounts().attachNativeStorage();
                 track(data); cells.put(id, data);
                 if (fresh && !data.legacy2042Pending() && (!data.canMutate() || !data.flush())) {
                     throw new IllegalStateException("Cannot import ECO disk; original item contents retained: " + data.failure());
@@ -194,13 +198,14 @@ public final class ECOStorageRepository {
                 StorageSavedData data = entry.getKey();
                 if (data.isDirty() && tick - entry.getValue() < 100) break;
                 dirty.remove(data);
-                if (data.isDirty() && !data.flush()) dirty.put(data, tick);
+                data.checkpointDequeued();
+                if (data.isDirty() && !data.flush()) data.requestCheckpoint();
             }
         }
         public void flush() {
             tick(-1);
             for (StorageSavedData data : new java.util.ArrayList<>(dirty.keySet())) {
-                if (data.flush()) dirty.remove(data);
+                if (data.flush()) { dirty.remove(data); data.checkpointDequeued(); }
             }
             if (!dirty.isEmpty()) throw new IllegalStateException("ECO storage still has " + dirty.size() + " unsaved records");
         }

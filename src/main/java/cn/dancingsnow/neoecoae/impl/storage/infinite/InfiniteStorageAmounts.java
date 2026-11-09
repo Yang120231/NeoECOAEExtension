@@ -1,16 +1,8 @@
 package cn.dancingsnow.neoecoae.impl.storage.infinite;
 
-import appeng.api.stacks.AEKey;
-import cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog;
 import cn.dancingsnow.neoecoae.impl.storage.persistence.StorageAmounts;
 
-/** Compatibility name for the shared server-thread quantity table; records changed keys for incremental listing. */
+/** Infinite domains start with the GTO wide table and share ECO's quantity journal. */
 final class InfiniteStorageAmounts extends StorageAmounts {
     InfiniteStorageAmounts() { super(true); }
-
-    final StorageChangeLog changes = new StorageChangeLog();
-
-    @Override protected void changed(AEKey key) { changes.record(key); }
-
-    @Override protected void cleared() { changes.invalidate(); }
 }

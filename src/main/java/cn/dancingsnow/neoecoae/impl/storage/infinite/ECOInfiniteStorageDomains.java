@@ -127,7 +127,6 @@ public final class ECOInfiniteStorageDomains {
                 factory.deserializer(), factory.constructor(), dataName);
         data.bind(dataFile);
         data.bindDomain(domainId);
-        if (data.canRead()) data.amounts.attachNativeStorage();
         cn.dancingsnow.neoecoae.impl.storage.persistence.ECOStorageRepository.register(server, data);
         if (!catalog.contains(domainId) && data.canMigrate() && (!data.flush() || !catalog.publish(domainId))) {
             data.markUnreadable("Cannot publish the durable infinite domain identity");
