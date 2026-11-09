@@ -4,7 +4,7 @@
 
 Neo ECO AE Extension 是 Applied Energistics 2 的擴充模組，為 ME 網絡提供可擴展的合成、儲存和運算系統，以及用於加工進階組件的整合工作站。
 
-本分支 `1.20.1-GTO` 以 `1.20.1` 為基礎，僅面向 **GregTech Odyssey（GTO）**。目前原始碼版本為 **`20.5.5-GTO`**，以 **GTO `0.6.26`** 為參考實例。一般 AE2 整合包請使用 `1.20.1` 分支。
+本分支 `1.20.1-GTO` 以 `1.20.1` 為基礎，僅面向 **GregTech Odyssey（GTO）**。目前原始碼版本為 **`20.5.6-GTO`**，以 **GTO `0.6.26`** 為參考實例。一般 AE2 整合包請使用 `1.20.1` 分支。
 
 ## 主要功能
 
@@ -40,7 +40,7 @@ GTO 專版適配原生合成 CPU、樣板快取批次投料、容量檢查、程
 
 ## 安裝與使用
 
-1. 從 GitHub Releases 下載對應版本，或按下文從目前原始碼建置 `neoecoae-20.5.5-GTO.jar`。
+1. 從 GitHub Releases 下載對應版本，或按下文從目前原始碼建置 `neoecoae-20.5.6-GTO.jar`。
 2. 將該 JAR 放入目標 GTO 實例的 `mods` 目錄，並移除舊版 NeoECOAE JAR。`-sources.jar` 是原始碼封存檔，不用於安裝。
 3. 連線遊玩時，用戶端與伺服器均安裝相同版本。ECO 網絡握手要求兩端版本完全一致。
 4. 使用 Java 21 啟動目標實例，在配方檢視器中查詢材料與機器配方。
@@ -78,8 +78,8 @@ JDK 21 需能被 Gradle 工具鏈偵測；未自動識別時，可透過 Gradle 
 
 建置產物位於 `build/libs/`：
 
-- `neoecoae-20.5.5-GTO.jar`：安裝包。
-- `neoecoae-20.5.5-GTO-sources.jar`：原始碼封存檔。
+- `neoecoae-20.5.6-GTO.jar`：安裝包。
+- `neoecoae-20.5.6-GTO-sources.jar`：原始碼封存檔。
 
 編譯與實際 JAR 核對使用 GTO AE2 **`15.2610.47`**，見 [GTO 依賴鎖](porting/gto-dependencies.json)。`bootstrap.py --gto` 會還原建置依賴，不會自動安裝完整 GTO 整合包。
 
