@@ -202,12 +202,15 @@ public class ECOMachineInterfaceBlockEntity<C extends NECluster<C>> extends NEBl
 
     public CompoundTag getStorageResourceFilters() { return storageResourceFilters.copy(); }
 
-    public boolean acceptsStorageResource(AEKey key) {
+    public boolean acceptsStorageResource(AEKey key) { return storageResourceFilter().test(key); }
+
+    /** Immutable parsed rules; changing their configuration replaces this view. */
+    public StorageInterfaceFilter storageResourceFilter() {
         if (storageResourceFilter == null || cachedStorageResourceFilters != storageResourceFilters) {
             storageResourceFilter = new StorageInterfaceFilter(storageResourceFilters);
             cachedStorageResourceFilters = storageResourceFilters;
         }
-        return storageResourceFilter.test(key);
+        return storageResourceFilter;
     }
 
     /** Menu RPCs validate the player and decode a complete AE key before reaching this setter. */

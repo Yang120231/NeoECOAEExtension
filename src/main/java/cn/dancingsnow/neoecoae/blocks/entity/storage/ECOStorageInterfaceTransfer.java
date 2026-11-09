@@ -36,19 +36,21 @@ final class ECOStorageInterfaceTransfer {
     }
 
     void invalidateInfiniteStorageView() {
+        ioPortTransfer.reset();
         cachedStorageEngine = null;
         cachedInfiniteStorage = null;
     }
 
     long transferStorageInterfaceContents(ECOMachineInterfaceBlockEntity<NEStorageCluster> storageInterface) {
         if (!host.isFormed() || !storageInterface.isStorageTransferMode() || !storageInterface.isTargetOnline()) {
+            ioPortTransfer.reset();
             return 0L;
         }
         var grid = storageInterface.getMainNode().getGrid();
-        if (grid == null) return 0L;
+        if (grid == null) { ioPortTransfer.reset(); return 0L; }
 
         MEStorage hostStorage = getStorageInterfaceHostStorage();
-        if (hostStorage == null) return 0L;
+        if (hostStorage == null) { ioPortTransfer.reset(); return 0L; }
 
         long moved = ioPortTransfer.transfer(
             grid,
@@ -57,7 +59,7 @@ final class ECOStorageInterfaceTransfer {
             storageInterface.isIgnoringCreativeStorageInput(),
             storageInterface.isExcludingStorageBusContainers(),
             IActionSource.ofMachine(storageInterface),
-            storageInterface::acceptsStorageResource
+            storageInterface.storageResourceFilter()
         );
         if (moved > 0L) {
             host.setChanged();
@@ -96,16 +98,79 @@ final class ECOStorageInterfaceTransfer {
             cachedCombinedStorage = null;
             return null;
         }
-        if (cachedCombinedStorage == null || !cachedCombinedStorage.inventories().equals(cells)) {
+        if (cachedCombinedStorage == null || !cachedCombinedStorage.hasInventories(cells)) {
             cachedCombinedStorage = new CombinedStorage(cells, host.getBlockState().getBlock().getName(),
                     () -> !host.storageHostMode().isInfiniteState() || host.canInsertIntoInfiniteDomain());
         }
         return cachedCombinedStorage;
     }
 
-    record CombinedStorage(List<MEStorage> inventories, net.minecraft.network.chat.Component description,
-            BooleanSupplier allowAccess)
-        implements MEStorage, CombinedExactAmountSource {
+    static final class CombinedStorage implements MEStorage, CombinedExactAmountSource,
+            cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion {
+        private final List<MEStorage> inventories;
+        private final List<MEStorage> itemInserts;
+        private final List<MEStorage> fluidInserts;
+        private final net.minecraft.network.chat.Component description;
+        private final BooleanSupplier allowAccess;
+        private final Map<Object, Object> readers = new java.util.WeakHashMap<>();
+        private final long[] versions;
+        private long listingRevision;
+        private boolean listingValid;
+
+        CombinedStorage(List<MEStorage> inventories, net.minecraft.network.chat.Component description,
+                BooleanSupplier allowAccess) {
+            this.inventories = List.copyOf(inventories);
+            this.description = description;
+            this.allowAccess = allowAccess;
+            versions = new long[inventories.size()];
+            itemInserts = insertCandidates(appeng.api.stacks.AEKeyType.items());
+            fluidInserts = insertCandidates(appeng.api.stacks.AEKeyType.fluids());
+        }
+
+        boolean hasInventories(List<MEStorage> current) {
+            if (inventories.size() != current.size()) return false;
+            for (int i = 0; i < inventories.size(); i++) if (inventories.get(i) != current.get(i)) return false;
+            return true;
+        }
+
+        private List<MEStorage> insertCandidates(appeng.api.stacks.AEKeyType requested) {
+            List<MEStorage> result = new ArrayList<>();
+            for (MEStorage inventory : inventories) {
+                if (inventory.getClass() == cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell.class) {
+                    var type = ((cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell) inventory).getKeyType();
+                    if ((type == appeng.api.stacks.AEKeyType.items() || type == appeng.api.stacks.AEKeyType.fluids())
+                            && type != requested) continue;
+                }
+                result.add(inventory);
+            }
+            return result.size() == inventories.size() ? inventories : List.copyOf(result);
+        }
+
+        @Override public long neoecoae$listingVersion() { return getChangeVersion(); }
+
+        @Override public long getChangeVersion() {
+            if (!allowAccess.getAsBoolean()) { readers.clear(); listingValid = false; return -1; }
+            boolean changed = !listingValid;
+            for (int i = 0; i < inventories.size(); i++) {
+                long version = inventories.get(i).getChangeVersion();
+                if (version < 0) { listingValid = false; return -1; }
+                changed |= versions[i] != version;
+                versions[i] = version;
+            }
+            if (listingRevision == Long.MAX_VALUE) return -1;
+            if (changed) listingRevision++;
+            listingValid = true;
+            return listingRevision;
+        }
+
+        @Override public boolean drainChanges(Object reader, java.util.function.ObjLongConsumer<AEKey> visitor) {
+            if (reader == null) return false;
+            if (!allowAccess.getAsBoolean() || inventories.size() != 1) { readers.clear(); return false; }
+            // A wrapper owns its own subscription; sharing the caller's token would advance another view's cursor.
+            Object token = readers.computeIfAbsent(reader, ignored -> new Object());
+            return inventories.get(0).drainChanges(token, visitor);
+        }
+
         CombinedStorage(List<MEStorage> inventories, net.minecraft.network.chat.Component description) {
             this(inventories, description, () -> true);
         }
@@ -113,9 +178,11 @@ final class ECOStorageInterfaceTransfer {
         @Override
         public long insert(AEKey key, long amount, appeng.api.config.Actionable mode, IActionSource source) {
             if (!allowAccess.getAsBoolean()) return 0L;
+            List<MEStorage> candidates = key instanceof appeng.api.stacks.AEItemKey ? itemInserts
+                : key instanceof appeng.api.stacks.AEFluidKey ? fluidInserts : inventories;
             long inserted = 0L;
             for (int pass = 0; pass < 2 && inserted < amount; pass++) {
-                for (MEStorage inventory : inventories) {
+                for (MEStorage inventory : candidates) {
                     if (inserted >= amount) break;
                     boolean bulk = inventory instanceof IECOStorageCell cell && cell.prioritizesMarkedInserts();
                     if (bulk != (pass == 0)) continue;
