@@ -18,9 +18,20 @@ public abstract class StorageSavedData extends SavedData {
     private long lastSaveNanos;
     private long maximumSaveNanos;
     private String writeFailure;
-    private Runnable dirtyListener = () -> {};
+    private Runnable dirtyListener;
+    // An explicit flush can clean a queued record; dirty state alone does not describe queue membership.
+    private boolean checkpointQueued;
 
     public final void dirtyListener(Runnable listener) { dirtyListener = listener; }
+
+    final void checkpointDequeued() { checkpointQueued = false; }
+
+    final void requestCheckpoint() {
+        if (dirtyListener == null || checkpointQueued) return;
+        checkpointQueued = true;
+        try { dirtyListener.run(); }
+        catch (RuntimeException | Error failure) { checkpointQueued = false; throw failure; }
+    }
 
     public final void bind(Path file) {
         Path absolute = file.toAbsolutePath().normalize();
@@ -37,7 +48,7 @@ public abstract class StorageSavedData extends SavedData {
     @Override public void setDirty(boolean dirty) {
         if (dirty) contentRevision++;
         super.setDirty(dirty);
-        if (dirty) dirtyListener.run();
+        if (dirty) requestCheckpoint();
     }
     protected final void loadPersistence(CompoundTag tag) {
         contentRevision = Math.max(0, tag.getLong("storageRevision"));
@@ -71,6 +82,7 @@ public abstract class StorageSavedData extends SavedData {
                 .error("Cannot save ECO inventory {}; dirty contents retained", file, failure);
             writeFailure = failure.toString();
             super.setDirty(true);
+            requestCheckpoint();
         } finally {
             lastSaveNanos = System.nanoTime() - started;
             maximumSaveNanos = Math.max(maximumSaveNanos, lastSaveNanos);

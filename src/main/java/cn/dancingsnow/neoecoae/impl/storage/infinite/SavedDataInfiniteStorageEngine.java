@@ -396,6 +396,7 @@ public final class SavedDataInfiniteStorageEngine implements ECOInfiniteStorageE
 
     private static final class MutableTypeStats {
         private long types;
-        private final MutableInfiniteStorageTotal total = new MutableInfiniteStorageTotal();
+        private final cn.dancingsnow.neoecoae.impl.storage.persistence.StorageTotal total =
+            new cn.dancingsnow.neoecoae.impl.storage.persistence.StorageTotal();
     }
 }

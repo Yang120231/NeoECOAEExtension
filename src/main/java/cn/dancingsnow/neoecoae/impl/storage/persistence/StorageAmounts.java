@@ -6,8 +6,8 @@ import appeng.api.stacks.AEKeyLongMap;
 import appeng.api.stacks.AEKeyObjectMap;
 import appeng.api.stacks.U126;
 import cn.dancingsnow.neoecoae.compat.gto.GtoAmounts;
-import cn.dancingsnow.neoecoae.compat.gto.GtoBigCellStorage;
-import cn.dancingsnow.neoecoae.compat.gto.GtoCellStorage;
+import cn.dancingsnow.neoecoae.crafting.amount.U128;
+import cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog;
 import cn.dancingsnow.neoecoae.impl.storage.infinite.HugeAmount;
 import it.unimi.dsi.fastutil.objects.AbstractObjectSet;
 import it.unimi.dsi.fastutil.objects.AbstractReference2LongMap;
@@ -20,9 +20,9 @@ import java.util.function.BiConsumer;
 
 /**
  * GTO's quantity tables, shared by finite cells, infinite domains and exact-order inventory.
- * Ordinary cells start with CellDataStorage/AEKeyLongMap and promote once when a key exceeds long.
- * Infinite domains start with BigCellDataStorage/AEKeyBigMap. Persistent records share the native map.
- * Only values beyond GTO's U126 range need an exact overflow record; ordinary IO is native, in-place arithmetic.
+ * Ordinary cells use AEKeyLongMap, promoting to AEKeyBigMap above long. Infinite domains start wide.
+ * ECO owns persistence and the optional change journal; no second cell-cache quantity table is maintained.
+ * Above GTO's U126 range, ECO's U128/segmented quantities retain the exact balance.
  */
 public class StorageAmounts {
     private AEKeyLongMap<AEKey> longAmounts;
@@ -30,8 +30,8 @@ public class StorageAmounts {
     private final Reference2LongMap<AEKey> view = Reference2LongMaps.unmodifiable(new VisibleAmounts());
     private final AEKeyObjectMap<AEKey, OverflowAmount> overflow = new AEKeyObjectMap<>();
     private final StorageTotal total = new StorageTotal();
-    private GtoBigCellStorage nativeStorage;
-    private GtoCellStorage nativeCell;
+    private StorageChangeLog listingChanges;
+    private static final HugeAmount NATIVE_MAX = HugeAmount.of(GtoAmounts.MAX);
     private long contentRevision;
     private long structureRevision;
 
@@ -42,24 +42,13 @@ public class StorageAmounts {
         else longAmounts = new AEKeyLongMap<>();
     }
 
-    public void attachNativeStorage() {
-        if (isNativeBacked()) return;
-        if (longAmounts != null) nativeCell = GtoCellStorage.create(longAmounts);
-        else nativeStorage = GtoBigCellStorage.create(amounts);
-    }
-
     private void promote() {
         if (amounts != null) return;
         amounts = new AEKeyBigMap<>();
         amounts.putAll(longAmounts);
         longAmounts = null;
-        if (nativeCell != null) {
-            nativeStorage = GtoBigCellStorage.create(amounts);
-            nativeCell = null;
-        }
     }
 
-    public boolean isNativeBacked() { return nativeStorage != null || nativeCell != null; }
     /** All aliases share this owner, whose identity survives quantity-table promotion. */
     public Object resourceIdentity() { return this; }
     public long visible(AEKey key) { return longAmounts != null ? longAmounts.getAmount(key) : amounts.getLongAmount(key); }
@@ -101,7 +90,7 @@ public class StorageAmounts {
         if (big != null) return big.snapshot();
         U126 value = amounts.getAmount(key);
         return value == null ? HugeAmount.ZERO : value.isAboveLong()
-            ? HugeAmount.of(cn.dancingsnow.neoecoae.crafting.amount.U126.fromGto(value)) : HugeAmount.of(value.lo());
+            ? HugeAmount.of(U128.ofParts(value.hi() >>> 1, (value.hi() << 63) | value.lo())) : HugeAmount.of(value.lo());
     }
 
     public long available(AEKey key, long removed, long reserved) {
@@ -129,7 +118,7 @@ public class StorageAmounts {
         overflow.remove(key);
         total.subtract(before);
         total.add(value);
-        replaced(key, size);
+        mutated(key, size);
     }
 
     public void set(AEKey key, HugeAmount value) {
@@ -151,7 +140,7 @@ public class StorageAmounts {
         }
         total.subtract(before);
         total.add(value);
-        replaced(key, size);
+        mutated(key, size);
     }
 
     public void add(AEKey key, long amount) {
@@ -163,26 +152,24 @@ public class StorageAmounts {
             long accepted = longAmounts.insert(key, amount, Long.MAX_VALUE);
             if (accepted == amount) {
                 total.add(amount);
-                mutated(key, size, amount);
+                mutated(key, size);
                 return;
             }
             promote();
             remaining -= accepted;
         }
         OverflowAmount big = overflow.isEmpty() ? null : overflow.get(key);
-        long nativeAdded;
         if (big != null) {
             big.add(remaining);
-            nativeAdded = 0;
         } else {
-            nativeAdded = amounts.addTo(key, remaining);
+            long nativeAdded = amounts.addTo(key, remaining);
             if (nativeAdded < remaining) {
-                overflow.put(key, new OverflowAmount(HugeAmount.of(GtoAmounts.MAX)
+                overflow.put(key, new OverflowAmount(NATIVE_MAX
                     .add(remaining - nativeAdded)));
             }
         }
         total.add(amount);
-        mutated(key, size, nativeAdded);
+        mutated(key, size);
     }
 
     /** Compatibility for callers that already read a long window; the container owns the actual balance. */
@@ -203,7 +190,7 @@ public class StorageAmounts {
             long extracted = longAmounts.extract(key, requested);
             if (extracted > 0) {
                 total.subtract(extracted);
-                mutated(key, size, -extracted);
+                mutated(key, size);
             }
             return extracted;
         }
@@ -214,17 +201,17 @@ public class StorageAmounts {
                 amounts.put(key, GtoAmounts.fromExact(remaining.toBigInteger()));
                 overflow.remove(key);
                 total.subtract(requested);
-                replaced(key, size);
+                mutated(key, size);
             } else {
                 total.subtract(requested);
-                mutated(key, size, 0);
+                mutated(key, size);
             }
             return requested;
         }
         long extracted = amounts.extractLong(key, requested);
         if (extracted > 0) {
             total.subtract(extracted);
-            mutated(key, size, -extracted);
+            mutated(key, size);
         }
         return extracted;
     }
@@ -242,32 +229,28 @@ public class StorageAmounts {
         if (longAmounts != null) { longAmounts.clear(); longAmounts.trim(); }
         else { amounts.clear(); amounts.trim(); }
         overflow.clear(); overflow.trim(); total.clear();
-        refreshNativeStorage();
         contentRevision++; structureRevision++;
-        cleared();
+        invalidateListing();
     }
 
-    private void mutated(AEKey key, int beforeSize, long nativeDelta) {
-        if (nativeCell != null) nativeCell.changed(key, nativeDelta);
-        else if (nativeStorage != null) nativeStorage.changed(key, nativeDelta);
+    private void mutated(AEKey key, int beforeSize) {
         contentRevision++;
         if (beforeSize != size()) structureRevision++;
-        changed(key);
+        if (listingChanges != null) listingChanges.record(key);
     }
 
-    private void replaced(AEKey key, int beforeSize) {
-        refreshNativeStorage();
-        contentRevision++;
-        if (beforeSize != size()) structureRevision++;
-        changed(key);
+    /** Allocate the bounded journal only after an incremental reader subscribes. */
+    public StorageChangeLog.Cursor listingCursor() {
+        if (listingChanges == null) listingChanges = new StorageChangeLog();
+        return listingChanges.cursor();
     }
 
-    protected void changed(AEKey key) {}
-    protected void cleared() {}
-    private void refreshNativeStorage() {
-        if (nativeCell != null) nativeCell.refresh();
-        else if (nativeStorage != null) nativeStorage.refresh();
+    public boolean visitListingChanges(StorageChangeLog.Cursor from, java.util.function.ObjLongConsumer<AEKey> visitor) {
+        return listingChanges != null && listingChanges.visitSince(from, key -> visitor.accept(key, visible(key)));
     }
+
+    public void invalidateListing() { if (listingChanges != null) listingChanges.invalidate(); }
+
     public boolean isEmpty() { return longAmounts != null ? longAmounts.isEmpty() : amounts.isEmpty(); }
     public boolean hasOverflow() { return !overflow.isEmpty(); }
     public void forEach(BiConsumer<AEKey, HugeAmount> action) {
@@ -278,7 +261,7 @@ public class StorageAmounts {
         amounts.forEach((key, value) -> {
             OverflowAmount big = overflow.isEmpty() ? null : overflow.get(key);
             action.accept(key, big != null ? big.snapshot() : value.isAboveLong()
-                ? HugeAmount.of(cn.dancingsnow.neoecoae.crafting.amount.U126.fromGto(value)) : HugeAmount.of(value.lo()));
+                ? HugeAmount.of(U128.ofParts(value.hi() >>> 1, (value.hi() << 63) | value.lo())) : HugeAmount.of(value.lo()));
         });
     }
     public void visitExact(BiConsumer<AEKey, BigInteger> action) {
@@ -292,9 +275,7 @@ public class StorageAmounts {
         });
     }
     public void visitVisible(java.util.function.ObjLongConsumer<AEKey> action) {
-        if (nativeCell != null) nativeCell.listing().fastForEach(action);
-        else if (nativeStorage != null) nativeStorage.listing().fastForEach(action);
-        else if (longAmounts != null) longAmounts.fastForEach(action);
+        if (longAmounts != null) longAmounts.fastForEach(action);
         else amounts.fastForEachLong(action);
     }
 
@@ -303,8 +284,8 @@ public class StorageAmounts {
         private long untilNative;
         OverflowAmount(HugeAmount amount) { value.add(amount); threshold(amount); }
         private void threshold(HugeAmount amount) {
-            untilNative = amount.toU126() != null ? 0
-                : amount.toBigInteger().subtract(GtoAmounts.MAX).min(BigInteger.valueOf(Long.MAX_VALUE)).longValueExact();
+            untilNative = amount.compareTo(NATIVE_MAX) <= 0 ? 0
+                : amount.subtract(NATIVE_MAX).toLongSaturated();
         }
         void add(long amount) {
             value.add(amount);

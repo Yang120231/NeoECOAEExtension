@@ -65,6 +65,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     private final int maxItemTypes;
     private final ECOStorageRepository.Access storageAccess;
+    private final java.util.Map<Object, StorageChangeLog.Cursor> readerCursors = new java.util.WeakHashMap<>();
     public ECOCellSavedData storageData() { return storageAccess.data(); }
     public ECOStorageRepository.Session storageSession() { return storageAccess.session(); }
     public boolean storageWritable() { return storageAccess.writable(); }
@@ -85,6 +86,21 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     public long getChangeVersion() {
         long version = neoecoae$listingVersion();
         return version < 0 ? -1L : version;
+    }
+
+    @Override
+    public boolean drainChanges(Object reader, java.util.function.ObjLongConsumer<AEKey> visitor) {
+        if (reader == null) return false;
+        // Unknown subclasses and unreadable/sealed views cannot reuse an ordinary-disk baseline.
+        if (getClass() != ECOStorageCell.class || contentListingVersion() < 0) {
+            readerCursors.remove(reader);
+            return false;
+        }
+        var quantities = storageData().amounts();
+        var from = readerCursors.get(reader);
+        boolean drained = from != null && quantities.visitListingChanges(from, visitor);
+        readerCursors.put(reader, quantities.listingCursor());
+        return drained;
     }
 
     /** For listings that are exactly {@link #getCellItems()} while the cell may be read. */
@@ -179,7 +195,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         int amountPerByte = Math.max(1, keyType.getAmountPerByte());
         if (getStoredItemCount() == Long.MAX_VALUE) {
             var total = storageTotalAmount();
-            var wide = total.toU126();
+            var wide = total.toU128();
             int remainder = wide != null ? (int) wide.remainder(amountPerByte)
                 : total.toBigInteger().mod(BigInteger.valueOf(amountPerByte)).intValue();
             return remainder == 0 ? 0 : amountPerByte - remainder;
@@ -200,7 +216,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     public long getUsedBytes() {
         if (getStoredItemCount() == Long.MAX_VALUE) {
             var total = storageTotalAmount();
-            var wide = total.toU126();
+            var wide = total.toU128();
             if (wide == null) return Long.MAX_VALUE;
             long perByte = Math.max(1L, keyType.getAmountPerByte());
             var quotient = wide.divide(perByte);
