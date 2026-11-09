@@ -160,7 +160,7 @@ legacyForge {
 }
 
 sourceSets.main.resources.srcDir 'src/generated/resources'
-def ecoMixinConfigs = ['neoecoae.mixins.json']
+def ecoMixinConfigs = ['neoecoae.mixins.json', 'neoecoae.compat.merequester.mixins.json']
 mixin {
     add sourceSets.main, 'neoecoae.refmap.json'
     ecoMixinConfigs.each { config it }
