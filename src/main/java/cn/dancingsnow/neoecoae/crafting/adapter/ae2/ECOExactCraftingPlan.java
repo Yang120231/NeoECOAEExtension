@@ -116,5 +116,5 @@ public final class ECOExactCraftingPlan implements ICraftingPlan {
     @Override public KeyCounter usedItems() { return projection.usedItems(); }
     @Override public KeyCounter emittedItems() { return projection.emittedItems(); }
     @Override public KeyCounter missingItems() { return projection.missingItems(); }
-    @Override public it.unimi.dsi.fastutil.objects.Object2LongMap<IPatternDetails> patternTimes() { return projection.patternTimes(); }
+    @Override public Map<IPatternDetails, Long> patternTimes() { return projection.patternTimes(); }
 }

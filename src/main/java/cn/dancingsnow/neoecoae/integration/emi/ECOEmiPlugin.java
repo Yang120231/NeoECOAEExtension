@@ -10,22 +10,19 @@ import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.registry.EmiPluginContainer;
-import java.util.ArrayList;
 import java.util.List;
-import net.minecraft.core.RegistryAccess;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import org.slf4j.LoggerFactory;
 
 /** Native EMI recipes use the same current recipe catalogue as workstation execution. */
 @EmiEntrypoint
 public final class ECOEmiPlugin implements EmiPlugin {
-    public static List<EmiPluginContainer> includeIn(List<EmiPluginContainer> plugins) {
-        for (var container : plugins) {
-            if (container.plugin() instanceof ECOEmiPlugin) return plugins;
-        }
-        var result = new ArrayList<>(plugins);
-        result.add(new EmiPluginContainer(new ECOEmiPlugin(), NeoECOAE.MOD_ID));
-        return result;
+    /** GTO 0.5.6 replaces EMI discovery with this public registration event. */
+    public static void initialize() {
+        var plugin = new EmiPluginContainer(new ECOEmiPlugin(), NeoECOAE.MOD_ID);
+        com.gtolib.api.GTOApi.EMI_PLUGIN_EVENT.addListener(ECOEmiPlugin.class,
+            sink -> sink.accept(plugin));
     }
 
     @Override
@@ -37,6 +34,7 @@ public final class ECOEmiPlugin implements EmiPlugin {
         registry.addCategory(large);
         registry.addWorkstation(regular, workstation);
         registry.addWorkstation(large, workstation);
+        registry.addWorkstation(large, EmiStack.of(NEBlocks.LARGE_INTEGRATED_WORKING_STATION_INTERFACE));
         registerRecipes(registry, regular, large);
     }
 
@@ -50,7 +48,9 @@ public final class ECOEmiPlugin implements EmiPlugin {
             }
         }
         // The adapter includes both native twelve-input recipes and recipes shared with the single block.
-        var largeRecipes = LargeWorkstationRecipes.getAll(manager, RegistryAccess.EMPTY);
+        var level = Minecraft.getInstance().level;
+        var largeRecipes = level == null ? List.<cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipe>of()
+            : LargeWorkstationRecipes.getAll(manager, level.registryAccess());
         for (var recipe : largeRecipes) registry.addRecipe(ECOEmiWorkstationRecipe.large(large, recipe));
         LoggerFactory.getLogger("neoecoae").info("GTO ECO EMI recipes: integrated={}, large={}",
             regularCount, largeRecipes.size());

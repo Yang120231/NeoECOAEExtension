@@ -1,8 +1,44 @@
 {
+  "gtocore": {
+    "mod_id": "gtocore",
+    "version": "0.5.6-beta",
+    "filename": "gtocore-forge-1.20.1-0.5.6-beta.jar",
+    "source": "056/mods/gtocore-forge-1.20.1-0.5.6-beta.jar",
+    "sha256": "fb5b563d98eed58a81e978113895057a09e05aedfcc7f1ed9925126593836b3c"
+  },
+  "gtolib": {
+    "mod_id": "gtolib",
+    "version": "26.7.4",
+    "filename": "gtolib-forge-1.20.1-26.7.4.jar",
+    "source": "056/mods/gtocore-forge-1.20.1-0.5.6-beta.jar!/META-INF/jarjar/gtolib-forge-1.20.1-26.7.4.jar",
+    "sha256": "7384cd66cc844ce8910a2af8b525d9e14db31b950847ad0a5d98f4a9061529ad"
+  },
+  "gtceu": {
+    "mod_id": "gtceu",
+    "version": "26.7.3",
+    "filename": "gtceu-1.20.1-forge-1.20.1-26.7.3.jar",
+    "source": "056/mods/gtocore-forge-1.20.1-0.5.6-beta.jar!/META-INF/jarjar/gtceu-1.20.1-forge-1.20.1-26.7.3.jar",
+    "sha256": "f3f61fe2aa653e520cc7cac268dff8dd7a02e786bc239d7676c5a6ded85655d2"
+  },
   "ae2": {
     "mod_id": "ae2",
-    "filename": "GTO-AE2-15.2610.47.jar",
-    "url": "https://gtodyssey.com/maven/releases/appeng/appliedenergistics2-forge-1.20.1/15.2610.47/appliedenergistics2-forge-1.20.1-15.2610.47.jar",
-    "sha256": "fa925b3be095dedcd3cdb2f528cbefe206edef2982690cf1dc6207df968c6640"
+    "version": "15.267.4",
+    "filename": "appliedenergistics2-forge-1.20.1-15.267.4.jar",
+    "source": "056/mods/gtocore-forge-1.20.1-0.5.6-beta.jar!/META-INF/jarjar/appliedenergistics2-forge-1.20.1-15.267.4.jar",
+    "sha256": "94a211d3c4bd51fdff8136a767460f9e1a9fe700909c0c31bfb877d8407c9bc8"
+  },
+  "emi": {
+    "mod_id": "emi",
+    "version": "1.1.24+1.20.1+forge",
+    "filename": "emi-1.1.24+1.20.1+forge.jar",
+    "source": "056/mods/emi-1.1.24+1.20.1+forge.jar",
+    "sha256": "92784dcf5222d72983a420c90f2e9240468ee0fece96f757c82d7884b6cbdb72"
+  },
+  "ldlib": {
+    "mod_id": "ldlib",
+    "version": "1.0.50",
+    "filename": "ldlib-forge-1.20.1-1.0.50.jar",
+    "source": "056/mods/ldlib-forge-1.20.1-1.0.50.jar",
+    "sha256": "559d2a0cf8f77d7d6487b2c1620a8ee09e6bed94268be6df77cba0f7d8ac5112"
   }
 }

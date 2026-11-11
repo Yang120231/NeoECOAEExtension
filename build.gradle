@@ -7,21 +7,6 @@ plugins {
 group = mod_group_id
 version = mod_version
 base.archivesName = mod_id
-// Private upstream builds are selected locally; the shared Maven baseline stays the default.
-def localBuildProperties = new Properties()
-if (file('local.properties').isFile()) {
-    file('local.properties').withInputStream { localBuildProperties.load(it) }
-}
-def gtoLocalVersion = providers.gradleProperty('gtoLocalVersion')
-    .getOrElse(localBuildProperties.getProperty('gtoLocalVersion', '')).trim()
-def selectedGtoVersion = gtoLocalVersion ?: gtocore_version
-// Private GTOLib development artifacts stay local and are never bundled or published.
-def gtolibLocalJar = providers.gradleProperty('gtolibLocalJar')
-    .getOrElse(localBuildProperties.getProperty('gtolibLocalJar', '')).trim()
-def gtolibCompileJar = gtolibLocalJar ? file(gtolibLocalJar) : null
-if (gtolibCompileJar != null && !gtolibCompileJar.isFile()) {
-    throw new GradleException("Local GTOLib development JAR not found: ${gtolibCompileJar}")
-}
 // GTO's AE2 dependency uses Java 21 bytecode; retain Java 17 source/output compatibility.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 tasks.withType(JavaCompile).configureEach { options.release = 17 }
@@ -30,12 +15,13 @@ java.withSourcesJar()
 def dependencyLock = new groovy.json.JsonSlurper().parse(file('porting/dependencies.lock.json'))
 // The GTO branch compiles against the exact fork installed in the acceptance instance.
 def gtoDependencyLock = new groovy.json.JsonSlurper().parse(file('porting/gto-dependencies.json'))
-dependencyLock.artifacts.removeAll { it.mod_id == 'ae2' }
-dependencyLock.artifacts.add(gtoDependencyLock.ae2)
+dependencyLock.artifacts.removeAll { gtoDependencyLock.containsKey(it.mod_id) }
+dependencyLock.artifacts.addAll(gtoDependencyLock.values())
+
 def releaseJars = dependencyLock.artifacts.collectEntries { artifact ->
     def artifactFile = file("libs/pinned/${artifact.filename}")
     if (!artifactFile.isFile()) {
-        throw new GradleException("Missing pinned release ${artifact.filename}; download it from porting/dependencies.lock.json into libs/pinned/ before building.")
+        throw new GradleException("Missing pinned release ${artifact.filename}; restore the exact artifact recorded in porting/dependencies.lock.json or porting/gto-dependencies.json into libs/pinned/ before building.")
     }
     def actualHash = java.security.MessageDigest.getInstance('SHA-256')
         .digest(artifactFile.bytes).encodeHex().toString()
@@ -44,18 +30,12 @@ def releaseJars = dependencyLock.artifacts.collectEntries { artifact ->
     }
     [(artifact.mod_id): artifactFile]
 }
-def releaseVersions = [ae2: ae2_version, guideme: guideme_version, ldlib: ldlib_version]
+def releaseVersions = dependencyLock.artifacts.collectEntries { [(it.mod_id): it.version] }
 
 def pinned = { String mod ->
     "porting.pinned:${releaseJars[mod].name.take(releaseJars[mod].name.length() - 4)}:${releaseVersions[mod]}"
 }
 repositories {
-    if (gtoLocalVersion) {
-        exclusiveContent {
-            forRepository { mavenLocal() }
-            filter { includeVersion('com.gto', 'gtocore-forge-1.20.1', gtoLocalVersion) }
-        }
-    }
     maven {
         url = 'https://api.modrinth.com/maven'
         content { includeGroup 'maven.modrinth' }
@@ -94,21 +74,11 @@ repositories {
 }
 
 dependencies {
-    if (gtolibCompileJar != null) {
-        compileOnly files(gtolibCompileJar)
-    }
     modCompileOnly('maven.modrinth:embeddium:0.3.31+mc1.20.1') { transitive = false }
-    ['ae2', 'guideme', 'ldlib'].each { modImplementation pinned(it) }
-    // Like the pinned GTO AE2 fork, GTO runs on Java 21 while this addon's output targets Java 17.
-    modImplementation("com.gto:gtocore-forge-1.20.1:${selectedGtoVersion}") {
-        transitive = false
-        attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
+    // Match 0.5.6's installed forks, including DataSyncLib classes embedded in GTCEu.
+    ['ae2', 'guideme', 'ldlib', 'gtocore', 'gtolib', 'gtceu', 'emi'].each {
+        modImplementation pinned(it)
     }
-    modImplementation("com.gto:datasynclib-forge-1.20.1:${datasynclib_version}") {
-        transitive = false
-        attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
-    }
-    modImplementation('dev.emi:emi-forge-1.20.1:1.1.1034') { transitive = false }
     modApi "com.tterrag.registrate:Registrate:${registrate_version}"
     jarJar "com.tterrag.registrate:Registrate:${registrate_version}"
     implementation "io.github.llamalad7:mixinextras-forge:${mixinextras_version}"

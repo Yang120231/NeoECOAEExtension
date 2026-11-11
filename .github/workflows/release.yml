@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   verify:
-    if: startsWith(github.event.release.tag_name || inputs.tag, '20.') && (contains(github.event.release.tag_name || inputs.tag, '-gto.') || endsWith(github.event.release.tag_name || inputs.tag, '-GTO'))
+    if: startsWith(github.event.release.tag_name || inputs.tag, '20.') && (contains(github.event.release.tag_name || inputs.tag, '-gto.') || endsWith(github.event.release.tag_name || inputs.tag, '-GTO') || contains(github.event.release.tag_name || inputs.tag, '-GTO-0.'))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

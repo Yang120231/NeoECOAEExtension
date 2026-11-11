@@ -114,7 +114,8 @@ public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushD
     }
 
     // Observe GTO's merged helpers instead of calls removed from the vanilla pushPattern body.
-    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$findTarget", at = @At("RETURN"))
+    @Inject(method = "findAdapter(Lnet/minecraft/core/Direction;)Lappeng/helpers/patternprovider/PatternProviderTarget;",
+        at = @At("RETURN"))
     private void neoecoae$observeGtoTarget(Direction side, CallbackInfoReturnable<PatternProviderTarget> result) {
         if (result.getReturnValue() != null) {
             if (neoecoae$observingPush) neoecoae$foundTarget = true;

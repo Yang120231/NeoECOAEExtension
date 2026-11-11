@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class GtoStorageMenuSnapshotMixin {
     @Shadow @Final protected MEStorage storage;
 
-    @WrapOperation(method = "sendInventoryUpdate", at = @At(value = "INVOKE", target =
+    @WrapOperation(method = "broadcastChanges()V", remap = true, at = @At(value = "INVOKE", remap = false, target =
         "Lappeng/api/storage/MEStorage;getAvailableStacks(Lappeng/api/stacks/KeyCounter;)V"))
     private void neoecoae$sampleInventory(MEStorage source, KeyCounter output, Operation<Void> original) {
         var server = ((MEStorageMenu) (Object) this).getPlayer().getServer();
@@ -34,7 +34,7 @@ public abstract class GtoStorageMenuSnapshotMixin {
         if (!sampled[0]) output.addAll(snapshot.inventory());
     }
 
-    @Inject(method = {"notifyStorageChanged", "setViewFrozen"}, at = @At("HEAD"))
+    @Inject(method = {"handleInteraction", "onSettingChanged", "putCarriedItemIntoNetwork"}, at = @At("HEAD"))
     private void neoecoae$refreshAfterPlayerChange(CallbackInfo callback) {
         if (storage != null) TerminalInventorySnapshot.invalidate(TerminalInventorySnapshot.resolve(storage));
     }

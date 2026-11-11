@@ -2,11 +2,9 @@ package cn.dancingsnow.neoecoae.impl.storage.persistence;
 
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyBigMap;
-import appeng.api.stacks.AEKeyLongMap;
-import appeng.api.stacks.AEKeyObjectMap;
-import appeng.api.stacks.U126;
+import appeng.api.stacks.AEKeyMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import cn.dancingsnow.neoecoae.compat.gto.GtoAmounts;
-import cn.dancingsnow.neoecoae.crafting.amount.U128;
 import cn.dancingsnow.neoecoae.impl.storage.StorageChangeLog;
 import cn.dancingsnow.neoecoae.impl.storage.infinite.HugeAmount;
 import it.unimi.dsi.fastutil.objects.AbstractObjectSet;
@@ -20,15 +18,15 @@ import java.util.function.BiConsumer;
 
 /**
  * GTO's quantity tables, shared by finite cells, infinite domains and exact-order inventory.
- * Ordinary cells use AEKeyLongMap, promoting to AEKeyBigMap above long. Infinite domains start wide.
+ * Ordinary cells use AEKeyMap, promoting to AEKeyBigMap above long. Infinite domains start wide.
  * ECO owns persistence and the optional change journal; no second cell-cache quantity table is maintained.
- * Above GTO's U126 range, ECO's U128/segmented quantities retain the exact balance.
+ * Above the 126-bit native window, ECO's U128/segmented quantities retain the exact balance.
  */
 public class StorageAmounts {
-    private AEKeyLongMap<AEKey> longAmounts;
+    private AEKeyMap<AEKey> longAmounts;
     private AEKeyBigMap<AEKey> amounts;
     private final Reference2LongMap<AEKey> view = Reference2LongMaps.unmodifiable(new VisibleAmounts());
-    private final AEKeyObjectMap<AEKey, OverflowAmount> overflow = new AEKeyObjectMap<>();
+    private final Reference2ObjectOpenHashMap<AEKey, OverflowAmount> overflow = new Reference2ObjectOpenHashMap<>();
     private final StorageTotal total = new StorageTotal();
     private StorageChangeLog listingChanges;
     private static final HugeAmount NATIVE_MAX = HugeAmount.of(GtoAmounts.MAX);
@@ -39,7 +37,7 @@ public class StorageAmounts {
 
     protected StorageAmounts(boolean wide) {
         if (wide) amounts = new AEKeyBigMap<>();
-        else longAmounts = new AEKeyLongMap<>();
+        else longAmounts = new AEKeyMap<>();
     }
 
     private void promote() {
@@ -59,13 +57,13 @@ public class StorageAmounts {
     public BigInteger totalExact() { return total.snapshot().toBigInteger(); }
     public boolean hasWideAmounts() {
         if (longAmounts != null) return false;
-        for (var entry : amounts) if (entry.getValue().isAboveLong()) return true;
+        for (var entry : amounts) if (entry.getValue().bitLength() > 63) return true;
         return false;
     }
     public boolean isBig(AEKey key) {
         if (longAmounts != null) return false;
-        U126 value = amounts.getAmount(key);
-        return value != null && value.isAboveLong();
+        BigInteger value = amounts.getAmount(key);
+        return value != null && value.bitLength() > 63;
     }
     public long contentRevision() { return contentRevision; }
     public long structureRevision() { return structureRevision; }
@@ -88,9 +86,8 @@ public class StorageAmounts {
         if (longAmounts != null) return HugeAmount.of(longAmounts.getAmount(key));
         OverflowAmount big = overflow.isEmpty() ? null : overflow.get(key);
         if (big != null) return big.snapshot();
-        U126 value = amounts.getAmount(key);
-        return value == null ? HugeAmount.ZERO : value.isAboveLong()
-            ? HugeAmount.of(U128.ofParts(value.hi() >>> 1, (value.hi() << 63) | value.lo())) : HugeAmount.of(value.lo());
+        BigInteger value = amounts.getAmount(key);
+        return value == null ? HugeAmount.ZERO : HugeAmount.of(value);
     }
 
     public long available(AEKey key, long removed, long reserved) {
@@ -113,7 +110,7 @@ public class StorageAmounts {
         if (longAmounts != null) {
             if (value == 0) longAmounts.removeLong(key); else longAmounts.set(key, value);
         } else {
-            if (value == 0) amounts.remove(key); else amounts.set(key, value);
+            if (value == 0) amounts.remove(key); else amounts.set(key, BigInteger.valueOf(value));
         }
         overflow.remove(key);
         total.subtract(before);
@@ -130,12 +127,10 @@ public class StorageAmounts {
         promote();
         BigInteger exact = value.toBigInteger();
         if (exact.bitLength() > 126) {
-            U126 limit = new U126();
-            limit.saturate();
-            amounts.put(key, limit);
+            amounts.put(key, GtoAmounts.MAX);
             overflow.put(key, new OverflowAmount(value));
         } else {
-            amounts.put(key, GtoAmounts.fromExact(exact));
+            amounts.put(key, exact);
             overflow.remove(key);
         }
         total.subtract(before);
@@ -162,7 +157,7 @@ public class StorageAmounts {
         if (big != null) {
             big.add(remaining);
         } else {
-            long nativeAdded = amounts.addTo(key, remaining);
+            long nativeAdded = amounts.insert(key, BigInteger.valueOf(remaining), GtoAmounts.MAX).longValueExact();
             if (nativeAdded < remaining) {
                 overflow.put(key, new OverflowAmount(NATIVE_MAX
                     .add(remaining - nativeAdded)));
@@ -198,7 +193,7 @@ public class StorageAmounts {
         if (big != null) {
             HugeAmount remaining = big.subtract(requested);
             if (remaining != null) {
-                amounts.put(key, GtoAmounts.fromExact(remaining.toBigInteger()));
+                amounts.put(key, remaining.toBigInteger());
                 overflow.remove(key);
                 total.subtract(requested);
                 mutated(key, size);
@@ -260,8 +255,7 @@ public class StorageAmounts {
         }
         amounts.forEach((key, value) -> {
             OverflowAmount big = overflow.isEmpty() ? null : overflow.get(key);
-            action.accept(key, big != null ? big.snapshot() : value.isAboveLong()
-                ? HugeAmount.of(U128.ofParts(value.hi() >>> 1, (value.hi() << 63) | value.lo())) : HugeAmount.of(value.lo()));
+            action.accept(key, big != null ? big.snapshot() : HugeAmount.of(value));
         });
     }
     public void visitExact(BiConsumer<AEKey, BigInteger> action) {
@@ -271,7 +265,7 @@ public class StorageAmounts {
         }
         amounts.forEach((key, value) -> {
             OverflowAmount big = overflow.isEmpty() ? null : overflow.get(key);
-            action.accept(key, big == null ? GtoAmounts.exact(value) : big.snapshot().toBigInteger());
+            action.accept(key, big == null ? value : big.snapshot().toBigInteger());
         });
     }
     public void visitVisible(java.util.function.ObjLongConsumer<AEKey> action) {
@@ -322,12 +316,12 @@ public class StorageAmounts {
                             }
                         };
                     }
-                    var entries = amounts.reference2ObjectEntrySet().fastIterator();
+                    var entries = amounts.reference2ReferenceEntrySet().fastIterator();
                     return new ObjectIterator<>() {
                         @Override public boolean hasNext() { return entries.hasNext(); }
                         @Override public Reference2LongMap.Entry<AEKey> next() {
                             var entry = entries.next();
-                            return new BasicEntry<>(entry.getKey(), entry.getValue().toLong());
+                            return new BasicEntry<>(entry.getKey(), AEKeyBigMap.saturateToLong(entry.getValue()));
                         }
                     };
                 }

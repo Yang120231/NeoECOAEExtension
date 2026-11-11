@@ -9,4 +9,23 @@ public interface StorageListingVersion {
     long UNKNOWN = Long.MIN_VALUE;
 
     long neoecoae$listingVersion();
+
+    default long getChangeVersion() {
+        long version = neoecoae$listingVersion();
+        return version < 0 ? -1 : version;
+    }
+
+    default boolean drainChanges(Object reader, java.util.function.ObjLongConsumer<appeng.api.stacks.AEKey> visitor) {
+        return false;
+    }
+
+    /** Older GTO inventories without a change marker must be listed again. */
+    static long versionOf(Object storage) {
+        return storage instanceof StorageListingVersion versioned ? versioned.getChangeVersion() : -1;
+    }
+
+    static boolean drain(Object storage, Object reader,
+            java.util.function.ObjLongConsumer<appeng.api.stacks.AEKey> visitor) {
+        return storage instanceof StorageListingVersion versioned && versioned.drainChanges(reader, visitor);
+    }
 }

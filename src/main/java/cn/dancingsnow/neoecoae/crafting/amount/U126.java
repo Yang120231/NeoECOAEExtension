@@ -29,9 +29,9 @@ public final class U126 implements Comparable<U126> {
         return value == 0L ? ZERO : new U126(0L, value);
     }
 
-    /** Copies GTO's mutable base-2^63 inventory value into the planner's immutable base-2^64 value. */
-    public static U126 fromGto(appeng.api.stacks.U126 value) {
-        return ofParts(value.hi() >>> 1, (value.hi() << 63) | value.lo());
+    /** Copies GTO 0.5.6's exact inventory value into the planner's immutable middle tier. */
+    public static @Nullable U126 fromGto(BigInteger value) {
+        return of(value);
     }
 
     /** {@code null} when negative or wider than 126 bits. */

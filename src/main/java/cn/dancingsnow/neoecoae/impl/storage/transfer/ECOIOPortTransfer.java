@@ -10,6 +10,7 @@ import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageHelper;
 import cn.dancingsnow.neoecoae.impl.storage.StorageInterfaceFilter;
+import cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion;
 import cn.dancingsnow.neoecoae.crafting.display.terminal.ExactAmountCollector;
 
 /** Full-key transfer with the ordinary branch's candidate reuse and GTO's native change journal. */
@@ -125,14 +126,14 @@ public final class ECOIOPortTransfer {
     private boolean refreshListing(MEStorage source, boolean discoverChanges, Predicate<AEKey> filter) {
         boolean scoped = StorageBusTransferFilter.isActive();
         boolean exact = ExactAmountCollector.isActive();
-        long version = source.getChangeVersion();
+        long version = StorageListingVersion.versionOf(source);
         // Scope-specific listings never reuse an unfiltered native journal.
         boolean scopeIndependent = source instanceof cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion;
         boolean reusable = (!scoped || scopeIndependent) && !exact
             && listedBusScope == scoped && listedVersion >= 0 && version >= 0;
         if (reusable) {
             if (version == listedVersion) return false;
-            if (source.drainChanges(this, (key, amount) -> {
+            if (StorageListingVersion.drain(source, this, (key, amount) -> {
                 outputListing.set(key, amount);
                 if (amount <= 0) queue.remove(key);
                 else if (discoverChanges && filter.test(key)) queue.add(key);
@@ -144,7 +145,7 @@ public final class ECOIOPortTransfer {
         outputListing.clear();
         source.getAvailableStacks(outputListing);
         outputListing.removeZeros();
-        if ((!scoped || scopeIndependent) && !exact && version >= 0) source.drainChanges(this, (key, amount) -> {});
+        if ((!scoped || scopeIndependent) && !exact && version >= 0) StorageListingVersion.drain(source, this, (key, amount) -> {});
         listedVersion = scoped && !scopeIndependent || exact ? -1 : version;
         listedBusScope = scoped;
         return true;

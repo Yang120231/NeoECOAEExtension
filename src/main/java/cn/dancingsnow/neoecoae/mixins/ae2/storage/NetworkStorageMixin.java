@@ -8,7 +8,6 @@ import appeng.api.storage.MEStorage;
 import appeng.me.storage.NetworkStorage;
 import cn.dancingsnow.neoecoae.impl.storage.transfer.StorageBusTransferFilter;
 import cn.dancingsnow.neoecoae.api.storage.ECOBigIntegerStorage;
-import cn.dancingsnow.neoecoae.crafting.display.terminal.StorageListingAccumulator;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Mixin;
@@ -25,8 +24,6 @@ import java.util.Objects;
 @Mixin(value = NetworkStorage.class, remap = false)
 public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
     private static final BigInteger MAX_LONG = BigInteger.valueOf(Long.MAX_VALUE);
-
-    @Unique private final StorageListingAccumulator neoecoae$listing = new StorageListingAccumulator();
 
     @Shadow private boolean mountsInUse;
     @Shadow @Final private it.unimi.dsi.fastutil.objects.ObjectArrayList<Object> priorityInventory;
@@ -110,7 +107,7 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
     }
 
     @WrapOperation(
-        method = {"extract", "extractTracked", "extractFrom"},
+        method = "extract",
         at = @At(value = "INVOKE", target = "Lappeng/api/storage/MEStorage;extract(Lappeng/api/stacks/AEKey;JLappeng/api/config/Actionable;Lappeng/api/networking/security/IActionSource;)J")
     )
     private long neoecoae$filterCreativeInput(MEStorage storage, appeng.api.stacks.AEKey key, long amount,
@@ -124,24 +121,7 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
             storage, key, mode, () -> original.call(storage, key, amount, mode, source));
     }
 
-    @WrapOperation(
-        method = "fill",
-        at = @At(
-            value = "INVOKE",
-            target = "Lappeng/api/storage/MEStorage;getAvailableStacks(Lappeng/api/stacks/KeyCounter;)V"
-        )
-    )
-    private void neoecoae$getAvailableStacksSaturated(
-        MEStorage storage, KeyCounter output, Operation<Void> original
-    ) {
-        if (StorageBusTransferFilter.excludes(storage)) return;
-        // Reuse an isolated counter for sources without a saturating listing. This keeps
-        // Long.MAX_VALUE + ordinary stock safe in either mount order, while trusted ECO
-        // sources can append directly without copying their entire inventory.
-        neoecoae$listing.append(storage, output, counter -> original.call(storage, counter));
-    }
-
-    @WrapOperation(method = {"lambda$getAvailableStacks$1", "lambda$getAvailableStacksTracked$2"},
+    @WrapOperation(method = "lambda$getAvailableStacks$1",
         at = @At(value = "INVOKE", target = "Lappeng/api/storage/MEStorage;getAvailableStacks(Lappeng/api/stacks/KeyCounter;)V"))
     private static void neoecoae$listGtoMount(MEStorage storage, KeyCounter output, Operation<Void> original) {
         if (StorageBusTransferFilter.excludes(storage)) return;

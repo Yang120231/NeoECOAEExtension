@@ -9,7 +9,7 @@ import appeng.api.stacks.KeyCounter;
 import cn.dancingsnow.neoecoae.api.me.bigorder.ECOExactInventory;
 import cn.dancingsnow.neoecoae.crafting.execution.batch.*;
 import cn.dancingsnow.neoecoae.crafting.execution.fastpath.ECOBatchCraftingHelper;
-import appeng.api.stacks.AEKeyLongMap;
+import appeng.api.stacks.AEKeyMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import java.util.Map;
 
@@ -37,8 +37,8 @@ final class ECOBatchDispatchPlanning {
     static final class Prepared {
         private final ECOCraftingDispatchRequest request;
         private final ECOPatternIdentity identity;
-        private final AEKeyLongMap<AEKey> inputs = new AEKeyLongMap<>();
-        private final AEKeyLongMap<AEKey> waitingPerCraft = new AEKeyLongMap<>();
+        private final AEKeyMap<AEKey> inputs = new AEKeyMap<>();
+        private final AEKeyMap<AEKey> waitingPerCraft = new AEKeyMap<>();
         private final long arithmetic;
         private final ECOBatchInputScaling inputScaling;
 
@@ -62,7 +62,7 @@ final class ECOBatchDispatchPlanning {
             arithmetic = limit;
         }
 
-        private static void accumulate(KeyCounter counter, AEKeyLongMap<AEKey> totals) {
+        private static void accumulate(KeyCounter counter, AEKeyMap<AEKey> totals) {
             if (counter != null) {
                 counter.fastForEach((key, count) -> {
                     // An overflowing candidate is discarded by the constructor before any dispatch.
@@ -71,7 +71,7 @@ final class ECOBatchDispatchPlanning {
             }
         }
 
-        private static long arithmeticLimit(AEKeyLongMap<AEKey> totals, ECOBatchInputScaling scaling) {
+        private static long arithmeticLimit(AEKeyMap<AEKey> totals, ECOBatchInputScaling scaling) {
             long limit = Long.MAX_VALUE;
             for (var it = totals.reference2LongEntrySet().fastIterator(); it.hasNext();) {
                 var input = it.next();

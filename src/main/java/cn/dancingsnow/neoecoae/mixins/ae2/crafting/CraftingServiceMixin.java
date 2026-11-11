@@ -113,7 +113,7 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
     private IEnergyService energyGrid;
     @Shadow
     @Final
-    private appeng.api.stacks.AEKeySet<AEKey> currentlyCrafting;
+    private Set<AEKey> currentlyCrafting;
     @Shadow
     @Final
     private NetworkCraftingProviders craftingProviders;
