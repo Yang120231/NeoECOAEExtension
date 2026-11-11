@@ -139,6 +139,7 @@ public class NETextures {
 
     public static IGuiTexture AE2_SLOT_HIGHLIGHT = new IGuiTexture() {
         @Override
+        @net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
         public void draw(
             GuiGraphics graphics,
             float mouseX,
@@ -153,6 +154,7 @@ public class NETextures {
         }
 
         @Override
+        @net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
         public void draw(GUIContext context, float x, float y, float width, float height) {
             // LDLib renders each slot independently. Drawing an outline outside the
             // current 16x16 content area immediately would let adjacent slots cover it.
@@ -166,6 +168,7 @@ public class NETextures {
         }
     };
 
+    @net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
     private static void drawAE2SlotHighlight(
         GuiGraphics graphics,
         float x,

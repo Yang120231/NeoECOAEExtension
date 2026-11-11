@@ -56,6 +56,7 @@ public class ItemSlot extends UIElement implements IBindable<ItemStack>{
     protected void drawItemStack(GUIContext context,ItemStack stack){context.graphics.renderItem(stack,0,0);context.graphics.renderItemDecorations(net.minecraft.client.Minecraft.getInstance().font,stack,0,0);}
     protected void drawSlotOverlay(GUIContext context){if(slotStyle.overlay!=null&&(!slotStyle.overlayEmptyOnly||getDisplayedStack().isEmpty()))context.drawTexture(slotStyle.overlay,0,0,16,16);}
     public List<Component> getFullTooltipTexts(){return getFullTooltipTexts(true);}
+    @net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
     public List<Component> getFullTooltipTexts(boolean withItemTooltips){
         var result=new ArrayList<Component>();var stack=getDisplayedStack();if(withItemTooltips&&!stack.isEmpty())result.addAll(stack.getTooltipLines(net.minecraft.client.Minecraft.getInstance().player,net.minecraft.world.item.TooltipFlag.Default.NORMAL));return result;
     }
