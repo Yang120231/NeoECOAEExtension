@@ -15,12 +15,6 @@ public final class ECOGtoPatternPush {
 
     private ECOGtoPatternPush() {}
 
-    public static void verifyContract() {
-        if (!IPatternProviderLogic.class.isAssignableFrom(PatternProviderLogic.class)) {
-            throw new IllegalStateException("GTO's pattern-provider API has not been applied");
-        }
-    }
-
     /** Mixin's coerced boundary; the holder and callback are GTO's public API objects. */
     @SuppressWarnings("unchecked")
     public static Object dispatchSpecialized(PatternProviderLogic provider, IPatternDetails pattern,

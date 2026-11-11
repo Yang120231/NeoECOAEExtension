@@ -97,9 +97,6 @@ legacyForge {
         server {
             server()
             programArgument '--nogui'
-            if (providers.gradleProperty('storageAcceptanceWorld').isPresent()) {
-                programArguments.addAll '--world', providers.gradleProperty('storageAcceptanceWorld').get(), '--port', '25596'
-            }
         }
         data {
             data()
@@ -108,20 +105,8 @@ legacyForge {
                 '--existing', file('src/main/resources').absolutePath
         }
         configureEach {
-            gameDirectory = project.file(providers.gradleProperty('multiblockAlignmentSmoke').isPresent()
-                ? "run/multiblock-alignment/base/${name}" : "run/base/${name}")
+            gameDirectory = project.file("run/base/${name}")
             logLevel = org.slf4j.event.Level.INFO
-            systemProperty 'neoecoae.bootstrapSmoke', providers.gradleProperty('bootstrapSmoke').getOrElse('false')
-            systemProperty 'neoecoae.clientSmoke', providers.gradleProperty('clientSmoke').getOrElse('false')
-            systemProperty 'neoecoae.clientSmokeMenus', providers.gradleProperty('clientSmokeMenus').getOrElse('false')
-            systemProperty 'neoecoae.clientSmokeInventories', providers.gradleProperty('clientSmokeInventories').getOrElse('false')
-            systemProperty 'neoecoae.upstreamSyncSmoke', providers.gradleProperty('upstreamSyncSmoke').getOrElse('false')
-            systemProperty 'neoecoae.workstationModelSmoke', providers.gradleProperty('workstationModelSmoke').getOrElse('')
-            systemProperty 'neoecoae.multiblockAlignmentSmoke', providers.gradleProperty('multiblockAlignmentSmoke').getOrElse('')
-            systemProperty 'neoecoae.clientSmokeEnergy', providers.gradleProperty('clientSmokeEnergy').getOrElse('false')
-            systemProperty 'neoecoae.storageSavedDataSmoke', providers.gradleProperty('storageSavedDataSmoke').getOrElse('')
-            systemProperty 'neoecoae.legacy2042Smoke', providers.gradleProperty('legacy2042Smoke').getOrElse('')
-            systemProperty 'neoecoae.optionalStorageSmoke', providers.gradleProperty('optionalStorageSmoke').getOrElse('')
         }
     }
     mods {
