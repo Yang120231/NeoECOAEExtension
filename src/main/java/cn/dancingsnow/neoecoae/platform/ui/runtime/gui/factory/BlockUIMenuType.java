@@ -32,6 +32,7 @@ public final class BlockUIMenuType {
     }
     private static final UIFactory<BlockUIHolder> FACTORY=new UIFactory<>(ResourceLocation.fromNamespaceAndPath("neoecoae","block_ui")){
         @Override protected com.lowdragmc.lowdraglib.gui.modular.ModularUI createUITemplate(BlockUIHolder holder,Player player){return holder.isInvalid()?null:holder.createUI(player);}
+        @net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
         @Override protected BlockUIHolder readHolderFromSyncData(FriendlyByteBuf buffer){return ClientHolderReader.read(buffer);}
         @Override protected void writeHolderToSyncData(FriendlyByteBuf buffer,BlockUIHolder holder){buffer.writeBlockPos(holder.pos);}
     };
