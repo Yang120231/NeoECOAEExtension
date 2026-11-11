@@ -37,7 +37,7 @@ public record TerminalInventorySnapshot(KeyCounter inventory, Map<AEKey, ExactAm
         if (tick < cached.tick) cached.reset();
         boolean collect = exact && (refreshExact || cached.exactTick == Long.MIN_VALUE
             || tick - cached.exactTick >= MenuDataTransport.UPDATE_INTERVAL);
-        long version = storage instanceof MEStorage inventory ? inventory.getChangeVersion() : -1;
+        long version = cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion.versionOf(storage);
         boolean changed = version >= 0 ? version != cached.version : cached.tick != tick;
         if (cached.snapshot == null || collect || changed) {
             try {

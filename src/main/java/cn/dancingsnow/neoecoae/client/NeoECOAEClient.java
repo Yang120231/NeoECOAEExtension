@@ -40,6 +40,7 @@ import cn.dancingsnow.neoecoae.network.ECONetwork;
 @EventBusSubscriber(modid =  NeoECOAE.MOD_ID, value = Dist.CLIENT)
 public class NeoECOAEClient {
     public static void initialize(IEventBus modBus) {
+        cn.dancingsnow.neoecoae.integration.emi.ECOEmiPlugin.initialize();
         if ((!net.minecraftforge.fml.loading.FMLEnvironment.production && Boolean.getBoolean("neoecoae.clientSmoke"))
                 || Boolean.getBoolean("neoecoae.gtoAcceptance")) {
             net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(

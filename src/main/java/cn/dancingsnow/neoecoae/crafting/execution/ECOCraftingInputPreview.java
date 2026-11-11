@@ -12,8 +12,8 @@ import appeng.crafting.inv.ListCraftingInventory;
 import cn.dancingsnow.neoecoae.compat.ae2.AE2PatternIntrospection;
 import com.google.common.collect.MapMaker;
 import net.minecraft.world.level.Level;
-import appeng.api.stacks.AEKeyLongMap;
-import appeng.api.stacks.AEKeySet;
+import appeng.api.stacks.AEKeyMap;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 
 import java.util.List;
 import java.util.Map;
@@ -31,7 +31,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
 
     private final ICraftingInventory source;
     // Virtual removals only use exact keys; a fuzzy KeyCounter index needlessly queries item components.
-    private final AEKeyLongMap<AEKey> removed = new AEKeyLongMap<>();
+    private final AEKeyMap<AEKey> removed = new AEKeyMap<>();
     private final Set<AEKey> primaryInputs;
     private final Set<AEKey> possibleInputs;
     private final Set<AEKey> reusableTemplates;
@@ -96,7 +96,7 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
         this.possibleInputs = metadata.possibleInputs();
         this.reusableTemplates = metadata.reusableTemplates();
         this.protectedAmounts = protectedAmounts;
-        this.componentInsensitiveInputs = new AEKeySet<>();
+        this.componentInsensitiveInputs = new ReferenceOpenHashSet<>();
         for (var key : primaryInputs) {
             if (cn.dancingsnow.neoecoae.crafting.ECOProcessingComponentMatching
                     .enabled(pattern, key, fuzzyPlanningItemIds)) componentInsensitiveInputs.add(key);
@@ -112,9 +112,9 @@ final class ECOCraftingInputPreview implements ICraftingInventory {
 
     private static PatternMetadata buildMetadata(IPatternDetails pattern,
             ECOCraftingRemainderCache remainderCache, long reloadGeneration) {
-        Set<AEKey> primaryInputs = new AEKeySet<>();
-        Set<AEKey> possibleInputs = new AEKeySet<>();
-        Set<AEKey> reusableTemplates = new AEKeySet<>();
+        Set<AEKey> primaryInputs = new ReferenceOpenHashSet<>();
+        Set<AEKey> possibleInputs = new ReferenceOpenHashSet<>();
+        Set<AEKey> reusableTemplates = new ReferenceOpenHashSet<>();
         for (var input : pattern.getInputs()) {
             if (input == null || input.getPossibleInputs() == null || input.getPossibleInputs().length == 0) continue;
             var possible = input.getPossibleInputs();

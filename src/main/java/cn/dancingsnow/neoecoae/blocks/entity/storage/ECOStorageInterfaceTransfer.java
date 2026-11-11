@@ -152,7 +152,7 @@ final class ECOStorageInterfaceTransfer {
             if (!allowAccess.getAsBoolean()) { readers.clear(); listingValid = false; return -1; }
             boolean changed = !listingValid;
             for (int i = 0; i < inventories.size(); i++) {
-                long version = inventories.get(i).getChangeVersion();
+                long version = cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion.versionOf(inventories.get(i));
                 if (version < 0) { listingValid = false; return -1; }
                 changed |= versions[i] != version;
                 versions[i] = version;
@@ -168,7 +168,7 @@ final class ECOStorageInterfaceTransfer {
             if (!allowAccess.getAsBoolean() || inventories.size() != 1) { readers.clear(); return false; }
             // A wrapper owns its own subscription; sharing the caller's token would advance another view's cursor.
             Object token = readers.computeIfAbsent(reader, ignored -> new Object());
-            return inventories.get(0).drainChanges(token, visitor);
+            return cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion.drain(inventories.get(0), token, visitor);
         }
 
         CombinedStorage(List<MEStorage> inventories, net.minecraft.network.chat.Component description) {
