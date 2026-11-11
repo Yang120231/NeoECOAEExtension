@@ -80,7 +80,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         Component.translatable("gui.neoecoae.crafting_report.calculating"));
 
     private record ReportSummaryState(@Nullable CraftingPlanSummary plan, boolean loadingDetails,
-            long nanos, @Nullable BigInteger bytes, boolean incompleteBytes,
+            long nanos, @Nullable BigInteger bytes, boolean incompleteBytes, boolean liteCrafting,
             @Nullable CraftingGraphSnapshot.Summary graphSummary, Language language,
             net.minecraft.client.gui.Font font) {}
 
@@ -290,6 +290,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         // Retain calculated bytes for partial reports, but never invent a total from a diagnostic shell.
         if (incompleteBytes && !materialData.hasMaterialDetails()) usedBytes = null;
         var state = new ReportSummaryState(plan, loadingDetails, nanos, usedBytes, incompleteBytes,
+            (Object) menu instanceof ECOCraftConfirmMenuMode liteMode && liteMode.neoecoae$isLiteCraftingMode(),
             graphSummary, Language.getInstance(), font);
         if (state.equals(reportSummaryState)) return;
         reportSummaryState = state;
@@ -311,6 +312,14 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
                 reportSummary = new ECOCraftReportHeaderRenderer.Summary(
                     reportSummary.elapsed(), reportSummary.bytes(), List.copyOf(tooltip));
             }
+        }
+        if ((Object) menu instanceof ECOCraftConfirmMenuMode mode && mode.neoecoae$isLiteCraftingMode()) {
+            var tooltip = new ArrayList<>(reportSummary.tooltip());
+            tooltip.removeIf(line -> line.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents translated
+                && translated.getKey().equals("gui.neoecoae.crafting_report.bytes_partial_hint"));
+            tooltip.add(Component.translatable("gui.neoecoae.crafting_report.card.lite_mode")
+                .withStyle(net.minecraft.ChatFormatting.GREEN));
+            reportSummary = new ECOCraftReportHeaderRenderer.Summary(reportSummary.elapsed(), reportSummary.bytes(), List.copyOf(tooltip));
         }
     }
 
@@ -417,7 +426,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
                 ? "gui.neoecoae.crafting_report.cycle_planning_enabled"
                 : "gui.neoecoae.crafting_report.cycle_planning_disabled";
         Component label = Component.translatable(labelKey)
-            .withStyle(neColor -> neColor.withColor(AE2_TEXT_DARK));
+            .withStyle(neColor -> neColor.withColor((cycleDetected ? 0xFF5BB8D0 : AE2_TEXT_DARK)));
         int labelX = CYCLE_STATUS_X + 18;
         int labelRight = backgroundOptimizing ? OPTIMIZATION_INDICATOR_X - 4 : imageWidth - 4;
         float scale = Math.min(1.0F, (float) (labelRight - labelX) / Math.max(1, font.width(label)));
@@ -427,7 +436,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         try {
             pose.translate(labelX, labelY, 0);
             pose.scale(scale, scale, 1);
-            graphics.drawString(font, label, 0, 0, AE2_TEXT_DARK, false);
+            graphics.drawString(font, label, 0, 0, (cycleDetected ? 0xFF5BB8D0 : AE2_TEXT_DARK), false);
         } finally {
             graphics.flush();
             pose.popPose();

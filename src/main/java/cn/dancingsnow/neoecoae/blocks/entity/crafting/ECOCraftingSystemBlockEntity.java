@@ -106,7 +106,7 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
     private boolean activeCooling = false;
 
     @Persisted
-    private boolean ignorePatternSubstitutions = false;
+    private boolean liteCraftingMode = true;
 
     @Getter
     @Persisted
@@ -806,12 +806,12 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
     }
 
     public boolean isLocallyIgnoringPatternSubstitutions() {
-        return ignorePatternSubstitutions;
+        return liteCraftingMode;
     }
 
     public void applyNetworkIgnoringPatternSubstitutions(boolean value) {
-        if (ignorePatternSubstitutions == value) return;
-        ignorePatternSubstitutions = value;
+        if (liteCraftingMode == value) return;
+        liteCraftingMode = value;
         setChanged();
         markForUpdate();
     }
@@ -1017,7 +1017,7 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
         ECOCraftingNetworkSettings settings = ECOCraftingNetworkSettings.of(getMainNode().getGrid());
         return settings != null
             ? settings.neoecoae$isIgnoringPatternSubstitutions()
-            : ignorePatternSubstitutions;
+            : liteCraftingMode;
     }
 
     private int getSubstitutionPatternCount() {
@@ -1032,7 +1032,7 @@ public class ECOCraftingSystemBlockEntity extends NEBlockEntity<NECraftingCluste
             settings.neoecoae$setIgnoringPatternSubstitutions(
                 !settings.neoecoae$isIgnoringPatternSubstitutions());
         } else {
-            applyNetworkIgnoringPatternSubstitutions(!ignorePatternSubstitutions);
+            applyNetworkIgnoringPatternSubstitutions(!liteCraftingMode);
         }
     }
 

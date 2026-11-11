@@ -111,6 +111,9 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
     @Unique
     private @Nullable ECOPlanningResult neoecoae$confirmedPlanningResult;
     @Unique private ECOPlannerOptions neoecoae$originalOptions;
+    @Unique @GuiSync(12018) private boolean neoecoae$liteCraftingMode;
+
+    @Override public boolean neoecoae$isLiteCraftingMode() { return neoecoae$liteCraftingMode; }
     @Unique @GuiSync(12007) private boolean neoecoae$bigOrderCpu;
     @Unique @GuiSync(12008) private String neoecoae$planningDiagnostic = "";
     @Unique @GuiSync(12010) private int neoecoae$selectedCpuTier;
@@ -478,6 +481,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         neoecoae$craftingGraph = CraftingGraphSnapshot.EMPTY;
         neoecoae$confirmedPlanningResult = null;
         neoecoae$originalOptions = null;
+        neoecoae$liteCraftingMode = false;
         neoecoae$lastStartDiagnostic = null;
         neoecoae$nextStartDiagnosticTick = 0;
     }
@@ -534,6 +538,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         }
         if (useEco) {
             neoecoae$originalOptions = ECOPlannerOptions.from(settings);
+            neoecoae$liteCraftingMode = neoecoae$originalOptions.ignorePatternSubstitutions();
             neoecoae$planningRequest = ECOPlanningService.begin(level, getGrid(), requester.getActionSource(), what,
                 amount, strategy, neoecoae$originalOptions);
             return neoecoae$planningRequest;
@@ -677,6 +682,7 @@ public class CraftConfirmMenuMixin implements ECOCraftConfirmMenuMode, CraftConf
         neoecoae$craftingGraph = CraftingGraphSnapshot.EMPTY;
         ECOPlanningResult planningResult = neoecoae$resolveOwnedPlanningResult(diagnosticPlan);
         if (planningResult != null) {
+            neoecoae$liteCraftingMode = planningResult.liteCraftingMode();
             neoecoae$confirmedPlanningResult = planningResult;
             neoecoae$calculationNanos = planningResult.calculationNanos();
             neoecoae$theoreticalBytes = planningResult.theoreticalBytes().toString();
