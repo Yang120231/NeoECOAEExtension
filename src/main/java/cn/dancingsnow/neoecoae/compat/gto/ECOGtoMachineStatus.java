@@ -1,11 +1,14 @@
 package cn.dancingsnow.neoecoae.compat.gto;
 
 import appeng.api.networking.crafting.ICraftingProvider;
+import appeng.api.stacks.AEFluidKey;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider;
 import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider.Target;
 import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.Machine;
 import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.State;
+import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
@@ -23,7 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
-/** GTO machine observation. No GT classes are linked, inventories probed, or chunks loaded. */
+/** Read-only GTO machine observation. No inventories are probed or chunks loaded. */
 public final class ECOGtoMachineStatus {
     private static final ClassValue<Map<String, Optional<Member>>> MEMBERS = new ClassValue<>() {
         @Override protected Map<String, Optional<Member>> computeValue(Class<?> type) {
@@ -161,17 +164,14 @@ public final class ECOGtoMachineStatus {
     }
 
     private static boolean produces(Object recipe, AEKey output) {
-        for (String field : List.of("itemOutputs", "fluidOutputs")) {
-            Object contents = value(recipe, field);
-            if (contents == null) continue;
-            try {
-                Method size = contents.getClass().getMethod("size");
-                Method key = contents.getClass().getMethod("outputKey", int.class);
-                int count = ((Number) size.invoke(contents)).intValue();
-                for (int i = 0; i < count; i++) if (output.equals(key.invoke(contents, i))) return true;
-            } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
-                return false;
-            }
+        if (!(recipe instanceof GTRecipe nativeRecipe)) return false;
+        if (output instanceof AEItemKey item) {
+            return nativeRecipe.itemOutputs.stream()
+                .anyMatch(content -> content.amount > 0 && content.inner.testAeKay(item));
+        }
+        if (output instanceof AEFluidKey fluid) {
+            return nativeRecipe.fluidOutputs.stream()
+                .anyMatch(content -> content.amount > 0 && content.inner.testAeKay(fluid));
         }
         return false;
     }

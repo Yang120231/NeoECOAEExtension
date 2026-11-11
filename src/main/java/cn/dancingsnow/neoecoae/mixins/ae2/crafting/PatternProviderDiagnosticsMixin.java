@@ -6,9 +6,7 @@ import java.util.Set;
 
 import appeng.api.config.LockCraftingMode;
 import appeng.api.crafting.IPatternDetails;
-import appeng.api.implementations.blockentities.ICraftingMachine;
 import appeng.api.networking.IManagedGridNode;
-import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.helpers.patternprovider.PatternProviderLogic;
@@ -19,7 +17,6 @@ import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider;
 import cn.dancingsnow.neoecoae.config.NEConfig;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.core.Direction;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -113,14 +110,16 @@ public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushD
         }
     }
 
-    // Observe GTO's merged helpers instead of calls removed from the vanilla pushPattern body.
-    @Inject(method = "findAdapter(Lnet/minecraft/core/Direction;)Lappeng/helpers/patternprovider/PatternProviderTarget;",
-        at = @At("RETURN"))
-    private void neoecoae$observeGtoTarget(Direction side, CallbackInfoReturnable<PatternProviderTarget> result) {
-        if (result.getReturnValue() != null) {
-            if (neoecoae$observingPush) neoecoae$foundTarget = true;
-            if (neoecoae$capturingTarget) neoecoae$targetSide = side;
-        }
+    // GT input parts bypass findAdapter; observe their shared inventory-dispatch helper, not its input-sink lambda.
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushTarget",
+        descriptor = "(Lappeng/api/crafting/IPatternDetails;Lcom/gto/datasynclib/util/holder/ObjHolder;"
+            + "Ljava/util/function/Supplier;Ljava/util/function/BooleanSupplier;Lnet/minecraft/core/Direction;"
+            + "Lappeng/helpers/patternprovider/PatternProviderTarget;Z)Lcom/gtolib/api/ae2/IPatternProviderLogic$PushResult;",
+        at = @At("HEAD"))
+    private void neoecoae$observeGtoTarget(CallbackInfoReturnable<Object> result,
+            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Direction side) {
+        if (neoecoae$observingPush) neoecoae$foundTarget = true;
+        if (neoecoae$capturingTarget) neoecoae$targetSide = side;
     }
 
     @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushCraftingMachine", at = @At("HEAD"))
