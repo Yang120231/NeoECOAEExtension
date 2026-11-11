@@ -7,6 +7,7 @@
   "mixins": [
     "ae2.TooltipsByteUnitsMixin",
     "ae2.accessor.AECraftingPatternAccessor",
+    "ae2.accessor.AEBaseMenuClientActionAccessor",
     "ae2.accessor.CraftingPlanSummaryAccessor",
     "ae2.accessor.CraftingPlanSummaryEntryAccessor",
     "ae2.accessor.DelegatingMEInventoryAccessor",
@@ -31,6 +32,7 @@
     "ae2.menu.IOPortMenuMixin",
     "ae2.menu.MenuOpenerMixin",
     "ae2.menu.PatternEncodingTermMenuMixin",
+    "ae2.menu.GtoMe2in1MenuMixin",
     "ae2.storage.AppEngInternalInventoryMixin",
     "ae2.storage.IOPortBlockEntityMixin",
     "ae2.storage.NativeMEStorageCellFilterMixin",
@@ -61,6 +63,7 @@
     "client.ae2.CraftingCpuScreenMixin",
     "client.ae2.CraftingStatusTableMixin",
     "client.ae2.PatternEncodingTermScreenMixin",
+    "client.ae2.GtoMe2in1ScreenMixin",
     "client.minecraft.ModelBakeryMixin",
     "client.minecraft.ChunkRebuildTaskMixin",
     "client.minecraft.EditBoxShadowMixin"
