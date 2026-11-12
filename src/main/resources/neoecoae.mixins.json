@@ -63,6 +63,9 @@
     "client.ae2.CraftingStatusTableMixin",
     "client.ae2.PatternEncodingTermScreenMixin",
     "client.ae2.GtoMe2in1ScreenMixin",
+    "client.ae2.AEKeyExactAmountMixin",
+    "client.ae2.MEStorageScreenExactAmountMixin",
+    "client.ae2.RepoExactAmountMixin",
     "client.minecraft.ModelBakeryMixin",
     "client.minecraft.ChunkRebuildTaskMixin",
     "client.minecraft.EditBoxShadowMixin"

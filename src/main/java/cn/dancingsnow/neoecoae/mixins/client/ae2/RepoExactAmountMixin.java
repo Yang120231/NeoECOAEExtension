@@ -1,4 +1,4 @@
-package cn.dancingsnow.neoecoae.mixins.terminalbigamount.client;
+package cn.dancingsnow.neoecoae.mixins.client.ae2;
 
 import appeng.api.config.SortDir;
 import appeng.api.config.SortOrder;
@@ -19,7 +19,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class RepoExactAmountMixin {
     @Shadow @Final private ISortSource sortSrc;
 
-    @Inject(method = "getComparator", at = @At("HEAD"), cancellable = true, require = 1)
+    @Inject(method = "getComparator", at = @At("HEAD"), cancellable = true)
     private void neoecoae$sortExactAmounts(SortOrder sortOrder, SortDir sortDir,
             CallbackInfoReturnable<Comparator<? super GridInventoryEntry>> cir) {
         if (sortOrder == SortOrder.AMOUNT && sortSrc instanceof MEStorageScreen<?> screen) {
