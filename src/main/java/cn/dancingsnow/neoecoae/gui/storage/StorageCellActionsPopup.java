@@ -171,7 +171,7 @@ final class StorageCellActionsPopup extends UIElement {
             if (i == hovered) context.graphics.fill(x + 4, top + 2, x + width - 4, top + ROW_HEIGHT - 2, 0x807B81B8);
             int color = i == hovered ? 0xFFFFFF : 0x413F54;
             int textY = top + (ROW_HEIGHT - font.lineHeight) / 2;
-            context.graphics.drawString(font, action.label().getString(), x + 8, textY, 0xFF000000 | color, false);
+            context.graphics.drawString(font, action.label(), x + 8, textY, 0xFF000000 | color, false);
             if (action == Action.PRIORITY) {
                 String value = String.valueOf(ECOStorageCellSettings.priority(selected.get().stack()));
                 context.graphics.drawString(font, value, x + width - 8 - font.width(value), textY, PRIORITY_COLOR, false);

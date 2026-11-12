@@ -4,6 +4,30 @@ import com.tterrag.registrate.providers.RegistrateLangProvider;
 
 public class GuiLangs {
     public static void accept(RegistrateLangProvider provider) {
+        provider.add("gui.neoecoae.multiblock.status.idle", "Ready");
+        provider.add("gui.neoecoae.multiblock.status.building", "Building: %s / %s");
+        provider.add("gui.neoecoae.multiblock.status.length_updated", "Build length updated");
+        provider.add("gui.neoecoae.multiblock.status.builder_unavailable", "Auto-build stopped: player unavailable");
+        provider.add("gui.neoecoae.multiblock.status.build_complete", "Build complete");
+        provider.add("gui.neoecoae.multiblock.status.build_already_in_progress", "Auto-build is already in progress");
+        provider.add("gui.neoecoae.multiblock.status.build_failed", "Build failed");
+        provider.add("gui.neoecoae.multiblock.status.dismantled", "Dismantling complete");
+        provider.add("gui.neoecoae.multiblock.status.dismantle_failed", "Dismantling failed");
+        provider.add("gui.neoecoae.processing.output_blocked", "Waiting for output space");
+        provider.add("gui.neoecoae.processing.energy", "Insufficient energy");
+        provider.add("gui.neoecoae.processing.coolant", "Insufficient coolant");
+        provider.add("gui.neoecoae.processing.paused", "Processing paused or worker unavailable");
+        provider.add("gui.neoecoae.processing.association.job", "FX worker cycles for this crafting job");
+        provider.add("gui.neoecoae.workstation.module_current", "Current module: %s");
+        provider.add("soulkey.description", "Soul");
+        provider.add("command.neoecoae.storage_recover.select_host", "Right-click a host that is already in infinite mode.");
+        provider.add("command.neoecoae.storage_recover.success", "Infinite storage recovered: %s");
+        provider.add("command.neoecoae.storage_recover.not_found", "No saved infinite storage data found for UUID %s.");
+        provider.add("command.neoecoae.storage_recover.invalid_host", "Right-click a formed host in infinite mode, keep its infinite storage components installed, and wait for migration or backfill to finish.");
+        provider.add("command.neoecoae.storage_recover.occupied", "Cannot recover: the target storage domain must be empty, healthy, and have no pending backfill. Existing contents can be retained when recovering this host's current UUID.");
+        provider.add("command.neoecoae.storage_recover.mounted", "Cannot recover: another loaded host is using this UUID.");
+        provider.add("command.neoecoae.storage_recover.invalid_members", "Cannot recover: the host contains invalid, duplicate, migrating, or foreign-domain member matrices.");
+        provider.add("command.neoecoae.storage_recover.unhealthy", "Cannot recover: the original storage domain has unresolved data or persistence failures, or pending backfill.");
         provider.add("gui.neoecoae.crafting_report.export_too_large", "This material list is too large to export as one image.");
         provider.add("gui.neoecoae.crafting_graph.details.firings", "Crafts: %s");
         provider.add("gui.neoecoae.crafting_graph.details.outputs", "Outputs: %s");

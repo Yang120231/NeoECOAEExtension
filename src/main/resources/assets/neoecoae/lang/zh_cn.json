@@ -1367,5 +1367,21 @@
   "gui.neoecoae.crafting_graph.summary.amount": "%s：%s",
   "gui.neoecoae.crafting_report.export_too_large": "材料清单过大，无法导出为单张图片。",
   "gui.neoecoae.storage.universal": "通用存储",
-  "tooltip.neoecoae.storage.universal": "可存储所有资源类型，无种类上限"
+  "tooltip.neoecoae.storage.universal": "可存储所有资源类型，无种类上限",
+  "gui.neoecoae.multiblock.status.idle": "就绪",
+  "gui.neoecoae.multiblock.status.building": "搭建中：%s / %s",
+  "gui.neoecoae.multiblock.status.length_updated": "搭建长度已更新",
+  "gui.neoecoae.multiblock.status.builder_unavailable": "自动搭建已停止：玩家不在线",
+  "gui.neoecoae.multiblock.status.build_complete": "搭建完成",
+  "gui.neoecoae.multiblock.status.build_already_in_progress": "正在自动搭建中",
+  "gui.neoecoae.multiblock.status.build_failed": "搭建失败",
+  "gui.neoecoae.multiblock.status.dismantled": "拆除完成",
+  "gui.neoecoae.multiblock.status.dismantle_failed": "拆除失败",
+  "gui.neoecoae.processing.output_blocked": "等待输出空间",
+  "gui.neoecoae.processing.energy": "能量不足",
+  "gui.neoecoae.processing.coolant": "冷却液不足",
+  "gui.neoecoae.processing.paused": "加工已暂停或工作核心不可用",
+  "gui.neoecoae.processing.association.job": "当前合成任务的 FX 工作核心周期",
+  "gui.neoecoae.workstation.module_current": "当前模块：%s",
+  "gui.neoecoae.crafting_report.bookmark_missing": "保存缺失材料"
 }

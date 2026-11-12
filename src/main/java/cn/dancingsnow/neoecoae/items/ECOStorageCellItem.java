@@ -154,7 +154,8 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             return;
         }
         lines.add(bytesUsedLine(handler.getUsedBytes(), handler.getTotalBytes()));
-        lines.add(Component.translatable("tooltip.neoecoae.storage.universal").withStyle(ChatFormatting.GRAY));
+        lines.add(Tooltips.of(Tooltips.ofUnformattedNumber(handler.getStoredItemTypes()),
+            Tooltips.of(" "), Tooltips.of(GuiText.Types)));
 
     }
 
