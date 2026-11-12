@@ -14,6 +14,7 @@ import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.stack.EmiStackInteraction;
 import dev.emi.emi.api.widget.Bounds;
+import cn.dancingsnow.neoecoae.client.gui.crafting.ECOCraftConfirmScreen;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.RetainedUIGuiContainer;
 import dev.emi.emi.registry.EmiPluginContainer;
 import java.util.List;
@@ -60,13 +61,28 @@ public final class ECOEmiPlugin implements EmiPlugin {
     private static void registerRetainedScreen(EmiRegistry registry) {
         registry.addStackProvider(RetainedUIGuiContainer.class, (screen, x, y) -> {
             var main = screen.modularUI.mainGroup;
-            Object ingredient = main.getXEIIngredientOverMouse(screen.toLogical(x), screen.toLogical(y));
+            // EMI passes logical coordinates for key presses (remembered from the scaled render call)
+            // but window coordinates for mouse clicks, so read the pointer directly instead.
+            var minecraft = Minecraft.getInstance();
+            var window = minecraft.getWindow();
+            double mouseX = minecraft.mouseHandler.xpos() * window.getGuiScaledWidth() / window.getScreenWidth();
+            double mouseY = minecraft.mouseHandler.ypos() * window.getGuiScaledHeight() / window.getScreenHeight();
+            Object ingredient = main.getXEIIngredientOverMouse(screen.toLogical(mouseX), screen.toLogical(mouseY));
             if (ingredient instanceof EmiStackInteraction interaction) return interaction;
             if (ingredient instanceof EmiIngredient emi) return new EmiStackInteraction(emi, null, false);
             return EmiStackInteraction.EMPTY;
         });
         registry.addExclusionArea(RetainedUIGuiContainer.class, (screen, consumer) -> screen.getGuiExtraAreas()
-            .forEach(area -> consumer.accept(new Bounds(area.getX(), area.getY(), area.getWidth(), area.getHeight()))));
+            .forEach(area -> consumer.accept(new Bounds(
+                (int) Math.floor(screen.toLogical(area.getX())), (int) Math.floor(screen.toLogical(area.getY())),
+                (int) Math.ceil(screen.toLogical(area.getWidth())), (int) Math.ceil(screen.toLogical(area.getHeight()))))));
+        // EMI ignores every key press on container screens whose menu has no slots unless a bounds
+        // provider claims them. AE2 only claims its own CraftConfirmScreen class, not the ECO report.
+        // EMI lays itself out from Screen.width/height, which this screen keeps in logical units.
+        registry.addScreenBoundsProvider(RetainedUIGuiContainer.class, screen -> new Bounds(
+            screen.getGuiLeft(), screen.getGuiTop(), screen.getXSize(), screen.getYSize()));
+        registry.addScreenBoundsProvider(ECOCraftConfirmScreen.class, screen -> new Bounds(
+            screen.getGuiLeft(), screen.getGuiTop(), screen.getXSize(), screen.getYSize()));
     }
 
     static void registerRecipes(EmiRegistry registry, EmiRecipeCategory regular, EmiRecipeCategory large) {
