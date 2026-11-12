@@ -38,6 +38,10 @@
     {
       "item": "gtceu:ev_sensor",
       "count": 2
+    },
+    {
+      "item": "neoecoae:integrated_working_station_module_empty",
+      "count": 2
     }
   ],
   "energy": 256000,

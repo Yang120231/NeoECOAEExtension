@@ -61,6 +61,14 @@ public class NEItems {
         .model((ctx, provider) -> provider.generated(ctx::get, provider.modLoc("item/structure_terminal")))
         .register();
 
+    // Crafting material for the GTO workstation, without optional-mod upgrade behavior.
+    public static final ItemEntry<MaterialItem> INTEGRATED_WORKING_STATION_MODULE_EMPTY = REGISTRATE
+        .item("integrated_working_station_module_empty", MaterialItem::new)
+        .lang("Blank Integrated Working Station Upgrade Card")
+        .model((ctx, provider) -> provider.generated(ctx::get,
+            provider.modLoc("item/integrated_working_station_modules/empty")))
+        .register();
+
     public static final ItemEntry<AxeItem> ALUMINUM_AXE = REGISTRATE
         .item("aluminum_axe", p -> new AxeItem(NEToolTier.ALUMINUM, 6.0F, -3.2F, p))
         .tag(ItemTags.AXES)
