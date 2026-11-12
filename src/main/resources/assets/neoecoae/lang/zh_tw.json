@@ -1,4 +1,5 @@
 {
+  "item.neoecoae.integrated_working_station_module_empty": "空白整合工作站升級卡",
   "gui.neoecoae.crafting_report.card.lite_mode": "輕量合成模式",
   "gui.neoecoae.large_integrated_working_station.recipe_energy_label": "耗能",
   "gui.neoecoae.large_integrated_working_station.recipe_energy": "耗能：%s AE",

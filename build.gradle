@@ -64,6 +64,7 @@ repositories {
         url = 'https://gtodyssey.com/maven/releases'
         content {
             includeGroup 'com.gto'
+            includeGroup 'com.gregtechceu.gtceu'
             includeGroup 'dev.emi'
         }
     }
@@ -94,6 +95,10 @@ repositories {
 }
 
 dependencies {
+    compileOnly("com.gregtechceu.gtceu:gtceu-1.20.1-forge-1.20.1:${gtceu_version}") {
+        transitive = false
+        attributes { attribute(org.gradle.api.attributes.java.TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 21) }
+    }
     if (gtolibCompileJar != null) {
         compileOnly files(gtolibCompileJar)
     }

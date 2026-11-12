@@ -61,6 +61,14 @@ public class NEItems {
         .model((ctx, provider) -> provider.generated(ctx::get, provider.modLoc("item/structure_terminal")))
         .register();
 
+    // Crafting material for the GTO workstation, without optional-mod upgrade behavior.
+    public static final ItemEntry<MaterialItem> INTEGRATED_WORKING_STATION_MODULE_EMPTY = REGISTRATE
+        .item("integrated_working_station_module_empty", MaterialItem::new)
+        .lang("Blank Integrated Working Station Upgrade Card")
+        .model((ctx, provider) -> provider.generated(ctx::get,
+            provider.modLoc("item/integrated_working_station_modules/empty")))
+        .register();
+
     public static final ItemEntry<AxeItem> ALUMINUM_AXE = REGISTRATE
         .item("aluminum_axe", p -> new AxeItem(NEToolTier.ALUMINUM, 6.0F, -3.2F, p))
         .tag(ItemTags.AXES)
@@ -747,12 +755,6 @@ public class NEItems {
 
     public static final ItemEntry<MaterialItem> SUPERCONDUCTING_PROCESSOR_PRINT = REGISTRATE
         .item("superconducting_processor_print", MaterialItem::new)
-        .recipe((ctx, prov) -> {
-            InscriberRecipeBuilder.inscribe(NEItems.ENERGIZED_SUPERCONDUCTIVE_INGOT, ctx.get(), 1)
-                .setMode(InscriberProcessType.INSCRIBE)
-                .setTop(Ingredient.of(NEItems.SUPERCONDUCTING_PROCESSOR_PRESS))
-                .save(prov, NeoECOAE.id("inscriber/superconducting_processor_print"));
-        })
         .register();
 
     public static final ItemEntry<MaterialItem> SUPERCONDUCTING_PROCESSOR = REGISTRATE
