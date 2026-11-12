@@ -1,10 +1,15 @@
 package cn.dancingsnow.neoecoae.client.rendering;
 
 import cn.dancingsnow.neoecoae.NeoECOAE;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexSorting;
+import com.mojang.math.Axis;
+import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalDouble;
@@ -24,7 +29,8 @@ import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 
 /**
  * Client-only, time-limited see-through outlines for blocks located from a GUI (e.g. pattern providers found via
- * "locate pattern"). Highlights are filtered by dimension and pulse until they expire.
+ * "locate pattern"). Highlights are filtered by dimension, drawn
+ * steadily through all terrain at any distance, and kept until they expire.
  */
 @EventBusSubscriber(modid = NeoECOAE.MOD_ID, value = Dist.CLIENT)
 public final class BlockHighlightRenderer {
@@ -56,8 +62,9 @@ public final class BlockHighlightRenderer {
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS || HIGHLIGHTS.isEmpty()) return;
-        var level = Minecraft.getInstance().level;
+        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_LEVEL || HIGHLIGHTS.isEmpty()) return;
+        var minecraft = Minecraft.getInstance();
+        var level = minecraft.level;
         if (level == null) {
             HIGHLIGHTS.clear();
             return;
@@ -67,19 +74,56 @@ public final class BlockHighlightRenderer {
         if (HIGHLIGHTS.isEmpty()) return;
 
         ResourceLocation dimension = level.dimension().location();
-        Vec3 camera = event.getCamera().getPosition();
-        PoseStack pose = event.getPoseStack();
-        float pulse = 0.55F + 0.45F * (float) Math.sin(now / 150.0);
+        var camera = event.getCamera();
+        Vec3 cameraPos = camera.getPosition();
+        // Keep every box inside the projection's far plane: a box farther than this is drawn scaled toward the
+        // camera along the same ray, which looks identical on screen, so highlights are visible map-wide.
+        double maxDistance = Math.max(16.0, minecraft.gameRenderer.getDepthFar() * 0.5);
+
+        // Build the camera matrices ourselves instead of trusting the stage's pose/model-view state, which other
+        // renderers (Embeddium, Flywheel, Oculus) may have left in a different space by the end of the frame.
+        PoseStack pose = new PoseStack();
+        pose.mulPose(Axis.XP.rotationDegrees(camera.getXRot()));
+        pose.mulPose(Axis.YP.rotationDegrees(camera.getYRot() + 180.0F));
+
         var consumer = BUFFERS.getBuffer(HighlightRenderType.SEE_THROUGH_LINES);
-        pose.pushPose();
-        pose.translate(-camera.x, -camera.y, -camera.z);
         for (var highlight : HIGHLIGHTS) {
             if (!highlight.dimension.equals(dimension)) continue;
-            AABB box = new AABB(highlight.position).inflate(0.004);
-            LevelRenderer.renderLineBox(pose, consumer, box, 1.0F, 0.85F, 0.1F, pulse);
+            double distance = Vec3.atCenterOf(highlight.position).distanceTo(cameraPos);
+            float scale = (float) (distance > maxDistance ? maxDistance / distance : 1.0);
+            pose.pushPose();
+            pose.scale(scale, scale, scale);
+            AABB box = new AABB(highlight.position).move(-cameraPos.x, -cameraPos.y, -cameraPos.z).inflate(0.004);
+            LevelRenderer.renderLineBox(pose, consumer, box, 1.0F, 0.85F, 0.1F, 1.0F);
+            pose.popPose();
         }
-        pose.popPose();
-        BUFFERS.endBatch(HighlightRenderType.SEE_THROUGH_LINES);
+
+        Matrix4f previousProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+        VertexSorting previousSorting = RenderSystem.getVertexSorting();
+        var modelView = RenderSystem.getModelViewStack();
+        modelView.pushPose();
+        modelView.setIdentity();
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.setProjectionMatrix(event.getProjectionMatrix(), VertexSorting.DISTANCE_TO_ORIGIN);
+        // The lines shader applies fog; push it out so distant boxes stay fully bright.
+        float fogStart = RenderSystem.getShaderFogStart();
+        float fogEnd = RenderSystem.getShaderFogEnd();
+        boolean depthTest = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
+        try {
+            RenderSystem.setShaderFogStart(Float.MAX_VALUE);
+            RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+            // In 1.20.1 NO_DEPTH_TEST is a no-op: it does not disable a depth test left enabled by world rendering.
+            RenderSystem.disableDepthTest();
+            BUFFERS.endBatch(HighlightRenderType.SEE_THROUGH_LINES);
+        } finally {
+            if (depthTest) RenderSystem.enableDepthTest();
+            else RenderSystem.disableDepthTest();
+            RenderSystem.setShaderFogStart(fogStart);
+            RenderSystem.setShaderFogEnd(fogEnd);
+            RenderSystem.setProjectionMatrix(previousProjection, previousSorting);
+            modelView.popPose();
+            RenderSystem.applyModelViewMatrix();
+        }
     }
 
     /** Subclass only to reach RenderType's protected render-state shards. */
@@ -89,7 +133,6 @@ public final class BlockHighlightRenderer {
             CompositeState.builder()
                 .setShaderState(RENDERTYPE_LINES_SHADER)
                 .setLineState(new LineStateShard(OptionalDouble.of(3.0)))
-                .setLayeringState(VIEW_OFFSET_Z_LAYERING)
                 .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
                 .setWriteMaskState(COLOR_WRITE)
                 .setCullState(NO_CULL)
