@@ -55,6 +55,12 @@ public final class StorageHostUI {
         }
     }
 
+    /** Context-menu actions of an installed cell. {@code eject} is the only removal path in infinite mode. */
+    public record CellActions(java.util.function.BiConsumer<BlockPos, UUID> openPriority, CellExtractor eject) {
+        public static final CellActions NONE =
+            new CellActions((position, expected) -> {}, (position, expected, toInventory) -> false);
+    }
+
     public record Config(Supplier<Component> title, IntSupplier tier, BooleanSupplier formed,
         LongSupplier storedEnergy, LongSupplier maxEnergy, LongSupplier energyConsumePerTick,
         Supplier<String> totalUsedBytesText, Supplier<List<CellEntry>> cellEntries, List<StorageTypeLine> storageTypes,
@@ -62,10 +68,26 @@ public final class StorageHostUI {
         BooleanSupplier canExtractInfiniteComponents, Supplier<String> domainId, IntSupplier missingMembers,
         IItemHandlerModifiable infiniteComponentInventory, @Nullable Player player, CellExtractor cellExtractor,
         CellInserter cellInserter, Supplier<ItemStack> hostItem, IntSupplier migrationProgress,
-        Supplier<String> migrationBlockedReason) {
+        Supplier<String> migrationBlockedReason, CellActions cellActions) {
         public Config {
             if (migrationProgress == null) migrationProgress = () -> 0;
             if (migrationBlockedReason == null) migrationBlockedReason = () -> "";
+            if (cellActions == null) cellActions = CellActions.NONE;
+        }
+
+        /** Compatibility constructor: installs {@link CellActions#NONE}, leaving the context menu without actions. */
+        public Config(Supplier<Component> title, IntSupplier tier, BooleanSupplier formed,
+            LongSupplier storedEnergy, LongSupplier maxEnergy, LongSupplier energyConsumePerTick,
+            Supplier<String> totalUsedBytesText, Supplier<List<CellEntry>> cellEntries, List<StorageTypeLine> storageTypes,
+            BooleanSupplier infiniteStorage, BooleanSupplier migratingToInfinite,
+            BooleanSupplier canExtractInfiniteComponents, Supplier<String> domainId, IntSupplier missingMembers,
+            IItemHandlerModifiable infiniteComponentInventory, @Nullable Player player, CellExtractor cellExtractor,
+            CellInserter cellInserter, Supplier<ItemStack> hostItem, IntSupplier migrationProgress,
+            Supplier<String> migrationBlockedReason) {
+            this(title, tier, formed, storedEnergy, maxEnergy, energyConsumePerTick, totalUsedBytesText, cellEntries,
+                storageTypes, infiniteStorage, migratingToInfinite, canExtractInfiniteComponents, domainId,
+                missingMembers, infiniteComponentInventory, player, cellExtractor, cellInserter, hostItem,
+                migrationProgress, migrationBlockedReason, CellActions.NONE);
         }
 
         public Config(Supplier<Component> title, IntSupplier tier, BooleanSupplier formed,
@@ -134,7 +156,8 @@ public final class StorageHostUI {
     public record CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
         long usedBytes, long totalBytes, boolean infinite, CellState state, boolean online,
         @Nullable BlockPos position, ItemStack stack, @Nullable Component extractionBlockReason,
-        @Nullable UUID interactionId, @Nullable Component panelTierName, BigInteger exactUsedBytes, int priority) {
+        @Nullable UUID interactionId, @Nullable Component panelTierName, BigInteger exactUsedBytes, int priority,
+        boolean decorative) {
         public static final CellEntry EMPTY = new CellEntry(-1, 0, 0, 0, 0, 0, 0, false, CellState.ABSENT, false);
 
         public CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
@@ -143,7 +166,7 @@ public final class StorageHostUI {
             @Nullable UUID interactionId, @Nullable Component panelTierName) {
             this(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite, state, online,
                 position, stack, extractionBlockReason, interactionId, panelTierName,
-                BigInteger.valueOf(Math.max(0L, usedBytes)), 0);
+                BigInteger.valueOf(Math.max(0L, usedBytes)), 0, false);
         }
 
         public CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
@@ -166,12 +189,14 @@ public final class StorageHostUI {
 
         public CellEntry atDrive(BlockPos position, ItemStack stack, @Nullable Component reason, @Nullable UUID interactionId) {
             return new CellEntry(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
-                state, online, position, stack.copy(), reason, interactionId, panelTierName, exactUsedBytes, priority);
+                state, online, position, stack.copy(), reason, interactionId, panelTierName, exactUsedBytes, priority,
+                decorative);
         }
 
         public CellEntry withPanelTier(IECOTier tier) {
             return new CellEntry(typeId, this.tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
-                state, online, position, stack, extractionBlockReason, interactionId, tier.getPanelTierName(), exactUsedBytes, priority);
+                state, online, position, stack, extractionBlockReason, interactionId, tier.getPanelTierName(), exactUsedBytes, priority,
+                decorative);
         }
 
         public CellEntry(int typeId, int tier, int kind, long usedTypes, long totalTypes,
@@ -184,7 +209,14 @@ public final class StorageHostUI {
         public CellEntry withStorageInfo(BigInteger exactUsedBytes, int priority) {
             return new CellEntry(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
                 state, online, position, stack, extractionBlockReason, interactionId, panelTierName,
-                exactUsedBytes == null ? BigInteger.ZERO : exactUsedBytes.max(BigInteger.ZERO), priority);
+                exactUsedBytes == null ? BigInteger.ZERO : exactUsedBytes.max(BigInteger.ZERO), priority, decorative);
+        }
+
+        /** An ordinary matrix inserted in infinite mode: installed, but neither a member nor mounted. */
+        public CellEntry withDecorative(boolean decorative) {
+            return new CellEntry(typeId, tier, kind, usedTypes, totalTypes, usedBytes, totalBytes, infinite,
+                state, online, position, stack, extractionBlockReason, interactionId, panelTierName,
+                exactUsedBytes, priority, decorative);
         }
 
         public boolean installed() { return tier > 0 || !stack.isEmpty(); }

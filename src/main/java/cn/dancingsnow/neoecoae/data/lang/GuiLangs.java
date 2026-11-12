@@ -371,6 +371,14 @@ public class GuiLangs {
         provider.add("gui.neoecoae.host.crafting.subtitle", "Crafting System Host");
         provider.add("gui.neoecoae.storage_priority.open", "Open priority panel");
         provider.add("gui.neoecoae.storage_priority.close", "Close priority panel");
+        provider.add("gui.neoecoae.storage.cell.action.eject", "Remove storage cell");
+        provider.add("gui.neoecoae.storage.cell.action.eject.hint", "Hold Shift to move it straight into your inventory");
+        provider.add("gui.neoecoae.storage.bulk_cell.action.priority", "Adjust storage priority");
+        provider.add("gui.neoecoae.storage.cell.priority.title", "Cell priority (relative to host)");
+        provider.add("gui.neoecoae.storage.cell.priority.tooltip", "Storage cell priority: %s");
+        provider.add("gui.neoecoae.storage.cell.decorative", "Decorative matrix: inserted in infinite mode, it does not join the infinite domain and accepts no resources");
+        provider.add("gui.neoecoae.storage.cell.decorative_hint", "Matrices inserted in infinite mode are decorative: they do not join the infinite domain or accept resources");
+        provider.add("gui.neoecoae.storage.cell.menu_hint", "Right-click for actions");
         provider.add("gui.neoecoae.storage.bulk_mark", "Right-click: only mark network compressible items above %s; Shift + right-click: mark and migrate all matching network items into this host's bulk cells");
         provider.add("gui.neoecoae.storage.bulk_mark.result.success",
             "Auto-marked %s; already marked %s; no space %s; migrated %s");

@@ -36,7 +36,8 @@ import java.util.List;
 import java.util.UUID;
 
 public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.NEBlockEntity<cn.dancingsnow.neoecoae.multiblock.cluster.NEStorageCluster, ECODriveBlockEntity>
-    implements NEManagedBlockEntity, IStorageProvider, ICellHost, ISaveProvider {
+    implements NEManagedBlockEntity, IStorageProvider, ICellHost, ISaveProvider,
+    cn.dancingsnow.neoecoae.api.storage.IECOConfigurableCellDrive {
     private static final String RESTORE_RECEIPTS_TAG = "neoecoae_restore_receipts";
 
     @Getter
@@ -52,6 +53,10 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
     private ItemStack cellStack = null;
     @Persisted
     private CompoundTag unresolvedCellStack = new CompoundTag();
+    // An ordinary matrix inserted while the host is in infinite mode: kept installed, never mounted or migrated.
+    @Persisted
+    private boolean decorativeCell;
+    private boolean menuEjecting;
 
     // UI requests identify this installation, independently of mutable or transient item components.
     // Recreated on load; no persistent disk data or save migration is needed.
@@ -89,8 +94,9 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
         if (cellStack != null && !isItemValid(cellStack)) return;
         if (this.cellStack != null && cachedCellInventory instanceof cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell ordinary
             && !ordinary.storageData().flush()) return;
+        IECOStorageCell prepared = null;
         if (cellStack != null) {
-            try { ECOStorageCells.getCellInventory(cellStack, this); }
+            try { prepared = ECOStorageCells.getCellInventory(cellStack, this); }
             catch (RuntimeException failure) {
                 org.slf4j.LoggerFactory.getLogger(ECODriveBlockEntity.class).error("Cannot prepare ECO disk installation", failure);
                 return;
@@ -100,6 +106,10 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
         if (controller != null) controller.rememberInfiniteMembers();
         ECOStorageCells.releaseCellInventory(this.cellStack, this);
         this.cellStack = cellStack;
+        decorativeCell = controller != null && controller.isFormedInfiniteMode()
+            && prepared instanceof cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell
+            && !(prepared instanceof cn.dancingsnow.neoecoae.impl.storage.ECOInfiniteResourceCell)
+            && !ECOInfiniteStorageMember.isSealed(cellStack);
         cellInteractionId = UUID.randomUUID();
         invalidateCellInventoryCache();
         if (getLevel() != null && !isServerStopping()) {
@@ -137,6 +147,42 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
 
     /** Shared by manual interaction and automation; querying this never releases ownership. */
     public CellExtractionBlockReason getCellExtractionBlockReason() {
+        return extractionBlockReason(menuEjecting);
+    }
+
+    /** What still prevents the host UI's context menu from removing this cell. */
+    public CellExtractionBlockReason getMenuEjectBlockReason() {
+        return extractionBlockReason(true);
+    }
+
+    /** The only removal path in infinite mode; migration, restore and persistence locks still apply. */
+    public boolean ejectCellFromMenu() {
+        if (cellStack == null || extractionBlockReason(true) != CellExtractionBlockReason.NONE) return false;
+        menuEjecting = true;
+        try {
+            setCellStack(null);
+        } finally {
+            menuEjecting = false;
+        }
+        return cellStack == null;
+    }
+
+    /** True for a matrix that is installed for display only while the host stays in infinite mode. */
+    public boolean isDecorativeCell() {
+        ECOStorageSystemBlockEntity controller = getStorageController();
+        return decorativeCell && cellStack != null && !cellStack.isEmpty() && controller != null
+            && controller.isInfiniteMode() && !ECOInfiniteStorageMember.isSealed(cellStack);
+    }
+
+    /** Leaving infinite mode turns a decorative matrix back into ordinary storage. */
+    void clearDecorativeCell() {
+        if (!decorativeCell) return;
+        decorativeCell = false;
+        setChanged();
+        IStorageProvider.requestUpdate(getMainNode());
+    }
+
+    private CellExtractionBlockReason extractionBlockReason(boolean viaMenu) {
         if (!unresolvedCellStack.isEmpty()) return CellExtractionBlockReason.PERSISTENCE_FAILED;
         if (cachedCellInventory instanceof cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell ordinary
             && (!ordinary.storageData().canMutate() || ordinary.storageData().writeFailure() != null))
@@ -148,6 +194,10 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
             || !getStorageController().isFormedInfiniteMode())) {
             return CellExtractionBlockReason.INFINITE_MEMBER;
         }
+        if (!viaMenu && cellStack != null && !cellStack.isEmpty() && getStorageController() != null
+            && getStorageController().isFormedInfiniteMode()) {
+            return CellExtractionBlockReason.INFINITE_MENU_ONLY;
+        }
         return CellExtractionBlockReason.NONE;
     }
 
@@ -155,7 +205,8 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
         NONE(""),
         PERSISTENCE_FAILED("tooltip.neoecoae.storage.persistence_failed"),
         INFINITE_MIGRATION("tooltip.neoecoae.storage.infinite_migration_locked"),
-        INFINITE_MEMBER("tooltip.neoecoae.storage.infinite_member_locked");
+        INFINITE_MEMBER("tooltip.neoecoae.storage.infinite_member_locked"),
+        INFINITE_MENU_ONLY("tooltip.neoecoae.storage.infinite_menu_only");
 
         private final String translationKey;
 
@@ -270,6 +321,7 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
     @Override
     public void mountInventories(IStorageMounts storageMounts) {
         if (cluster != null && cluster.getController() != null) {
+            if (decorativeCell && !cluster.getController().isInfiniteMode()) decorativeCell = false;
             IECOTier mainTier = cluster.getController().getTier();
             IECOStorageCell cellInventory = getCellInventory();
             if (cellInventory != null
@@ -278,9 +330,11 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
                 && (!cluster.getController().isInfiniteMode()
                     || cluster.getController().canUseHostDomainStorage())
                 && !ECOInfiniteStorageMember.isMigrating(cellStack)
-                && !ECOInfiniteStorageMember.isMember(cellStack)) {
+                && !ECOInfiniteStorageMember.isMember(cellStack)
+                && !isDecorativeCell()) {
                 int priority = cn.dancingsnow.neoecoae.gui.storage.StoragePriority.mountPriority(
-                    cluster.getController().getStoragePriority(), cellInventory.prioritizesMarkedInserts());
+                    cluster.getController().getStoragePriority(), cellInventory.prioritizesMarkedInserts(),
+                    getConfiguredCellPriority());
                 storageMounts.mount(cellInventory, priority);
                 mounted = true;
                 updateCellState();
@@ -349,6 +403,21 @@ public class ECODriveBlockEntity extends cn.dancingsnow.neoecoae.blocks.entity.N
     @Nullable
     public ECOStorageSystemBlockEntity getStorageController() {
         return cluster != null ? cluster.getController() : null;
+    }
+
+    @Override
+    public int getConfiguredCellPriority() {
+        return cellStack == null ? 0 : cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellSettings.priority(cellStack);
+    }
+
+    @Override
+    public void setConfiguredCellPriority(int priority) {
+        if (cellStack == null || !cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellSettings.canConfigure(cellStack)
+            || isDecorativeCell() || priority == getConfiguredCellPriority()) return;
+        cn.dancingsnow.neoecoae.impl.storage.ECOStorageCellSettings.setPriority(cellStack, priority);
+        onCellConfigurationChanged();
+        var controller = getStorageController();
+        if (controller != null) controller.notifyStorageConfigurationChanged();
     }
 
     /** Persists an in-place CellConfig mutation and refreshes this drive's AE2 storage mount. */

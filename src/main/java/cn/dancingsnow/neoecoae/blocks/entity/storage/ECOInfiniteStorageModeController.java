@@ -131,6 +131,9 @@ final class ECOInfiniteStorageModeController {
 
     private void syncModeChanges(ECOStorageHostMode previous) {
         if (previous != host.storageHostMode()) {
+            if (!host.storageHostMode().isInfiniteState() && host.getCluster() != null) {
+                for (ECODriveBlockEntity drive : host.getCluster().getDrives()) drive.clearDecorativeCell();
+            }
             host.storageInterfaceTransfer().invalidateInfiniteStorageView();
             host.infiniteRestore().invalidateExtractionCheck();
             host.invalidateStorageStatistics();

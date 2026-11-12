@@ -210,10 +210,12 @@ final class ECOStorageHostStatistics {
                     supported && drive.isOnline()
             ).withPanelTier(view.inventory().getTier())
                 .withStorageInfo(!supported || view.member() || view.infiniteResource() ? BigInteger.ZERO : view.exactUsedBytes(),
-                    cn.dancingsnow.neoecoae.gui.storage.StoragePriority.mountPriority(0, view.inventory().prioritizesMarkedInserts()))
+                    cn.dancingsnow.neoecoae.gui.storage.StoragePriority.mountPriority(0,
+                        view.inventory().prioritizesMarkedInserts(), drive.getConfiguredCellPriority()))
+                .withDecorative(drive.isDecorativeCell())
                 .atDrive(drive.getBlockPos(), stack, drive.getCellExtractionBlockReasonText(), drive.getCellInteractionId()));
             if (view.infiniteResource()) continue;
-            if (view.member()) {
+            if (view.member() || drive.isDecorativeCell()) {
                 continue;
             }
 

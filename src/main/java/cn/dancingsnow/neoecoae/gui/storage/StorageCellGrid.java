@@ -30,6 +30,8 @@ final class StorageCellGrid extends UIElement {
     private final Supplier<IECOTier> panelTier;
     private final RPCEmitter extraction;
     private final RPCEmitter insertion;
+    private final RPCEmitter ejection;
+    private final StorageCellActionsPopup actionsPopup;
     private boolean interacting;
 
     StorageCellGrid(StoragePanelSync sync, int columns, StorageHostUI.Config config) {
@@ -44,6 +46,9 @@ final class StorageCellGrid extends UIElement {
             (position, expected, shift) -> isOpenMenu(config) && config.cellExtractor().extract(position, expected, shift)));
         insertion = addRPCEvent(RPCEventBuilder.simple(BlockPos.class, ItemStack.class, Boolean.class,
             (position, expected) -> isOpenMenu(config) && config.cellInserter().insert(position, expected)));
+        ejection = addRPCEvent(RPCEventBuilder.simple(BlockPos.class, UUID.class, Boolean.class, Boolean.class,
+            (position, expected, shift) -> isOpenMenu(config) && config.cellActions().eject().extract(position, expected, shift)));
+        actionsPopup = new StorageCellActionsPopup(this::requestEject, config.cellActions().openPriority());
         for (int i = 0; i < columns * 3; i++) {
             addChild(new CellSlot(i));
         }
@@ -52,6 +57,31 @@ final class StorageCellGrid extends UIElement {
             sync.scroll(event.deltaY < 0 ? 1 : -1);
             event.stopImmediatePropagation();
         });
+    }
+
+    private void requestEject(BlockPos position, UUID expected, boolean toInventory) {
+        if (interacting) return;
+        interacting = true;
+        if (!ejection.send((Boolean success) -> interacting = false, position, expected, toInventory)) interacting = false;
+    }
+
+    private void openActionsPopup(StorageHostUI.CellEntry cell, int index, UIEvent event) {
+        UIElement root = this;
+        while (root.getParentElement() != null) root = root.getParentElement();
+        if (actionsPopup.getParentElement() == null) {
+            // Client-only and appended last: keeps the menu above every host section without moving synced children.
+            root.addChild(actionsPopup);
+            root.addEventListener(UIEvents.MOUSE_DOWN, outside -> {
+                if (actionsPopup.isOpen() && !actionsPopup.isMouseOverElement(outside.x, outside.y)) {
+                    actionsPopup.close();
+                    if (outside.button != 1) outside.stopImmediatePropagation();
+                }
+            }, true);
+        }
+        actionsPopup.open(cell, () -> cell(index),
+            event.x - root.getPositionX() + 2,
+            event.y - root.getPositionY() + 2,
+            Math.round(root.getSizeWidth()), Math.round(root.getSizeHeight()));
     }
 
     private boolean isOpenMenu(StorageHostUI.Config config) {
@@ -102,6 +132,10 @@ final class StorageCellGrid extends UIElement {
             if (event.button != 0 && event.button != 1 || interacting) return;
             var cell = cell(index);
             if (cell.position() == null) return;
+            if (event.button == 1 && !cell.stack().isEmpty() && cell.interactionId() != null) {
+                openActionsPopup(cell, index, event);
+                return;
+            }
             var mui = getModularUI();
             if (mui == null || mui.getMenu() == null) return;
             ItemStack carried = mui.getMenu().getCarried();
@@ -119,12 +153,13 @@ final class StorageCellGrid extends UIElement {
 
         @Override
         public List<Component> getFullTooltipTexts(boolean withItemTooltips) {
+            if (actionsPopup.isOpen()) return List.of();
             return tooltip(index);
         }
 
         @Override
         protected void onHoverTooltips(UIEvent event) {
-            event.hoverTooltips = new HoverTooltips(tooltip(index), null, null, null);
+            event.hoverTooltips = new HoverTooltips(actionsPopup.isOpen() ? List.of() : tooltip(index), null, null, null);
         }
 
         @Override
@@ -134,7 +169,7 @@ final class StorageCellGrid extends UIElement {
 
         @Override
         protected void drawHover(GUIContext context) {
-            if (!sync.state().formed() || cell(index).position() == null) return;
+            if (actionsPopup.isOpen() || !sync.state().formed() || cell(index).position() == null) return;
             // Custom slot subclasses do not inherit the item-slot stylesheet selector.
             context.drawTexture(NETextures.AE2_SLOT_HIGHLIGHT, 0, 0, 16, 16);
         }
@@ -155,9 +190,23 @@ final class StorageCellGrid extends UIElement {
                     HostText.usedPart(HostText.ae2Amount(cell.usedTypes()), cell.usedTypes(), cell.totalTypes()),
                     HostText.totalPart(capacity(cell.totalTypes()))));
             }
-            lines.add(Component.translatable("gui.neoecoae.storage.cell.priority.tooltip", cell.priority()));
+            if (cell.decorative()) {
+                lines.add(Component.translatable("gui.neoecoae.storage.cell.decorative")
+                    .withStyle(net.minecraft.ChatFormatting.GOLD));
+            } else if (!cell.infinite()) {
+                lines.add(Component.translatable("gui.neoecoae.storage.cell.priority.tooltip", cell.priority()));
+            }
+            if (cell.extractionBlockReason() != null) {
+                lines.add(cell.extractionBlockReason().copy().withStyle(net.minecraft.ChatFormatting.RED));
+            }
+            lines.add(Component.translatable("gui.neoecoae.storage.cell.menu_hint")
+                .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
         } else {
             lines.add(Component.translatable("gui.neoecoae.storage.ui.cell_state.absent"));
+            if (state.infinite() && index < state.cells().size() && state.cells().get(index).position() != null) {
+                lines.add(Component.translatable("gui.neoecoae.storage.cell.decorative_hint")
+                    .withStyle(net.minecraft.ChatFormatting.GOLD));
+            }
         }
         return lines;
     }

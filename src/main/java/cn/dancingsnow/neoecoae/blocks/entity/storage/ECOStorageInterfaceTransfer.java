@@ -90,7 +90,8 @@ final class ECOStorageInterfaceTransfer {
             IECOStorageCell cell = drive.getCellInventory();
             if (cell != null
                 && host.getTier().compareTo(cell.getTier()) >= 0
-                && !host.isInfiniteMemberCell(drive.getCellStack())) {
+                && !host.isInfiniteMemberCell(drive.getCellStack())
+                && !drive.isDecorativeCell()) {
                 cells.add(cell);
             }
         }

@@ -136,6 +136,7 @@ public class NELangGenerator {
         );
         provider.add("tooltip.neoecoae.storage.infinite_component_locked", "Cannot remove infinite components: stored contents cannot safely fit back into normal matrices");
         provider.add("tooltip.neoecoae.storage.infinite_member_locked", "Infinite storage matrices cannot be removed while the storage host is in infinite mode");
+        provider.add("tooltip.neoecoae.storage.infinite_menu_only", "In infinite mode, storage cells can only be removed from the right-click menu in the host UI");
         provider.add("gui.neoecoae.storage.members_missing", "Missing %s member matrices");
         provider.add("gui.neoecoae.storage.members_return", "Please insert them again");
         provider.add("tooltip.neoecoae.storage.persistence_failed", "Storage data could not be saved; cell extraction is temporarily locked.");
