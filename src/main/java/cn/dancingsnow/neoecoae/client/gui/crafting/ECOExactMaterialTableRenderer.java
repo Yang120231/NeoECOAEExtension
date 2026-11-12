@@ -37,6 +37,7 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
         private List<CraftingGraphSnapshot.MaterialNode> sorted = List.of();
         private List<AEKey> missing = List.of();
         private Set<AEKey> participants = Set.of();
+        private Set<AEKey> startupSeeds = Set.of();
         private Set<AEKey> missingSeeds = Set.of();
         private Set<AEKey> estimatedSeeds = Set.of();
         private Set<Integer> componentIds = Set.of();
@@ -50,9 +51,11 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
             this.snapshot = snapshot;
             this.cycles = cycles;
             Map<Integer, Set<AEKey>> requiredSeeds = new HashMap<>();
+            startupSeeds = new HashSet<>();
             for (var cycle : snapshot.cycleGroups()) {
                 Set<AEKey> seeds = new HashSet<>();
                 cycle.requiredSeed().forEach(seed -> seeds.add(seed.key()));
+                startupSeeds.addAll(seeds);
                 requiredSeeds.put(cycle.componentId(), seeds);
             }
             participants = new HashSet<>();
@@ -81,6 +84,7 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
         List<CraftingGraphSnapshot.MaterialNode> sorted() { return sorted; }
         List<AEKey> missing() { return missing; }
         boolean isCycleParticipant(AEKey key) { return participants.contains(key); }
+        boolean isCycleSeed(AEKey key) { return startupSeeds.contains(key); }
         boolean isMissingStartupSeed(AEKey key) { return missingSeeds.contains(key); }
         boolean isEstimatedStartupSeed(AEKey key) { return estimatedSeeds.contains(key); }
         boolean hasEstimatedStartupSeed() { return !estimatedSeeds.isEmpty(); }

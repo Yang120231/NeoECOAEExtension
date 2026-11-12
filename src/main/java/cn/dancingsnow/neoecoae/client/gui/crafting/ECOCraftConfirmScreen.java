@@ -519,6 +519,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
 
     private Component exportType(AEKey key, boolean missing) {
         if (missing) return Component.translatable("gui.neoecoae.crafting_report.card.missing");
+        if (materialData.isCycleSeed(key)) return Component.translatable("gui.neoecoae.crafting_graph.recursion.seed");
         if (isCycleParticipant(key)) return Component.translatable("gui.neoecoae.crafting_report.export_cycle");
         if (isFuzzyPlanningItem(key)) return Component.translatable("gui.neoecoae.crafting_report.export_fuzzy");
         return Component.empty();

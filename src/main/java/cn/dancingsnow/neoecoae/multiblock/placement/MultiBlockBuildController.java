@@ -5,6 +5,7 @@ import cn.dancingsnow.neoecoae.platform.JdkCompat;
 import cn.dancingsnow.neoecoae.multiblock.definition.MultiBlockDefinition;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -62,7 +63,16 @@ public final class MultiBlockBuildController {
             case WAITING, ADVANCED -> {
             }
             case COMPLETED -> finish(true);
-            case BLOCKED -> finish(false);
+            case MISSING_ITEMS -> {
+                reportFailure(buildPlayer, MultiBlockPlacementService.missingItemsMessage(buildPlayer,
+                    java.util.List.of(new RequiredItem(buildSession.getCurrentBlock().requiredItem(),
+                        buildSession.getCurrentBlock().requiredItem().getCount()))));
+                finish(false);
+            }
+            case BLOCKED -> {
+                reportFailure(buildPlayer, blockedPositionMessage(buildSession.getCurrentBlock().worldPos()));
+                finish(false);
+            }
         }
     }
 
@@ -117,10 +127,12 @@ public final class MultiBlockBuildController {
             host.isMirrorBuild()
         );
         if (!plan.getConflictPositions().isEmpty()) {
+            reportFailure(serverPlayer, blockedPositionMessage(plan.getConflictPositions().get(0)));
             return;
         }
         if (!serverPlayer.isCreative()
             && !MultiBlockPlacementService.hasRequiredItems(serverPlayer, plan.getRequiredItems())) {
+            reportFailure(serverPlayer, MultiBlockPlacementService.missingItemsMessage(serverPlayer, plan.getRequiredItems()));
             return;
         }
 
@@ -131,6 +143,7 @@ public final class MultiBlockBuildController {
         }
         if (serverPlayer.isCreative()) {
             if (!MultiBlockPlacementService.buildInstant(serverLevel, plan, serverPlayer)) {
+                reportFailure(serverPlayer, Component.translatable("gui.neoecoae.multiblock.status.build_interrupted"));
                 return;
             }
             host.rebuildAfterBuild();
@@ -143,6 +156,15 @@ public final class MultiBlockBuildController {
         host.setBuildInProgress(true);
         host.buildStateChanged();
         serverPlayer.closeContainer();
+    }
+
+    private static Component blockedPositionMessage(BlockPos pos) {
+        return Component.translatable("gui.neoecoae.multiblock.build_space_blocked", pos.getX(), pos.getY(), pos.getZ());
+    }
+
+    private static void reportFailure(ServerPlayer player, Component message) {
+        player.closeContainer();
+        player.displayClientMessage(message, false);
     }
 
     public void setMirrorBuild(Player player, boolean mirrorBuild) {

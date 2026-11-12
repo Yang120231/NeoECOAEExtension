@@ -5,6 +5,7 @@ import appeng.api.networking.crafting.ICraftingProvider;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyMap;
 import appeng.api.stacks.KeyCounter;
 import cn.dancingsnow.neoecoae.crafting.execution.batch.ECOBatchInputScaling;
 import com.google.common.collect.BiMap;
@@ -106,8 +107,7 @@ public final class ECOGtoProcessingDispatch {
                     : input.getKey() instanceof AEFluidKey ? inventories.fluids() : null;
                 if (field == null) return 0;
                 Object inventory = field.get(slot);
-                long available = ((Number) INSERT.get(inventory.getClass())
-                    .invoke(inventory, input.getKey(), Long.MAX_VALUE, true)).longValue();
+                long available = availableCapacity(inventory, input.getKey());
                 if (available < input.getValue()) return 0;
                 if (!CIRCUIT_SCALING.perBatch().test(input.getKey()))
                     requested = Math.min(requested, available / input.getValue());
@@ -117,6 +117,17 @@ public final class ECOGtoProcessingDispatch {
             // No physical inputs have moved. An unknown layout must not authorize a lossy push.
             return 0;
         }
+    }
+
+    private static long availableCapacity(Object inventory, AEKey key) throws ReflectiveOperationException {
+        if (inventory instanceof AEKeyMap<?> amounts) {
+            // GTO 0.5.6 inserts directly into a long-valued map. Bound the accumulated
+            // amount as well as this batch so an otherwise valid push cannot overflow it.
+            long stored = amounts.getLong(key);
+            return stored < 0 ? 0 : Long.MAX_VALUE - stored;
+        }
+        return ((Number) INSERT.get(inventory.getClass())
+            .invoke(inventory, key, Long.MAX_VALUE, true)).longValue();
     }
 
     /** Preserve the catalog pattern at public admission; scale only its native input emission. */
@@ -150,7 +161,8 @@ public final class ECOGtoProcessingDispatch {
         Field found = null;
         for (var current = type; current != null; current = current.getSuperclass()) {
             for (var field : current.getDeclaredFields()) {
-                if (!field.getType().getName().equals(INVENTORY)
+                if ((!field.getType().getName().equals(INVENTORY)
+                        && field.getType() != AEKeyMap.class)
                         || !(field.getGenericType() instanceof ParameterizedType generic)
                         || generic.getActualTypeArguments().length != 1
                         || generic.getActualTypeArguments()[0] != key) continue;
