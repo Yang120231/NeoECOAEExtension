@@ -5,6 +5,7 @@
   "plugin": "cn.dancingsnow.neoecoae.platform.mixin.CraftingMenuPlanningMixinPlugin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "gto.GTORecipeRegistrationMixin",
     "ae2.TooltipsByteUnitsMixin",
     "ae2.accessor.AECraftingPatternAccessor",
     "ae2.accessor.AEBaseMenuClientActionAccessor",
