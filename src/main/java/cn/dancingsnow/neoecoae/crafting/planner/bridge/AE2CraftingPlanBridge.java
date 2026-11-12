@@ -5,20 +5,21 @@ import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.KeyCounter;
 import appeng.crafting.CraftingPlan;
 import cn.dancingsnow.neoecoae.crafting.planner.solve.SolveState;
-import java.util.Map;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 
 public final class AE2CraftingPlanBridge {
     public CraftingPlan success(AEKey goal, long amount, boolean simulation, boolean multiplePaths, SolveState state) {
         if (!state.executionAmountIssues().isEmpty()) {
             throw new IllegalArgumentException("Theoretical plan is not representable by AE2 long fields");
         }
+        // GTO 0.5.6's ExecutingCraftingJob casts patternTimes to this concrete map type.
         return new CraftingPlan(new GenericStack(goal, amount), Math.max(0, state.bytes()), simulation, multiplePaths,
-            state.usedItems(), state.emittedItems(), state.missingItems(), new it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap<>(state.patternTimes()));
+            state.usedItems(), state.emittedItems(), state.missingItems(), new Object2LongOpenHashMap<>(state.patternTimes()));
     }
 
     public CraftingPlan unsupported(AEKey goal, long amount) {
         return new CraftingPlan(new GenericStack(goal, amount), 0, true, false,
-            new KeyCounter(), new KeyCounter(), new KeyCounter(), new it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap<>());
+            new KeyCounter(), new KeyCounter(), new KeyCounter(), new Object2LongOpenHashMap<>());
     }
 
     /** Partial structural plans are explanatory only and can never be submitted to an AE2 CPU. */
@@ -27,6 +28,6 @@ public final class AE2CraftingPlanBridge {
         // be forced into AE2 long fields when the alternative search ends without a usable plan.
         if (!state.executionAmountIssues().isEmpty()) return unsupported(goal, amount);
         return new CraftingPlan(new GenericStack(goal, amount), Math.max(0, state.bytes()), true, multiplePaths,
-            state.usedItems(), state.emittedItems(), state.missingItems(), new it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap<>(state.patternTimes()));
+            state.usedItems(), state.emittedItems(), state.missingItems(), new Object2LongOpenHashMap<>(state.patternTimes()));
     }
 }
