@@ -87,7 +87,6 @@ public final class StorageTransferCoordinator {
             observer.accept(Phase.DESTINATION_SAVED);
             source.amounts().clear();
             source.legacyMigration(false);
-            source.clearLegacy2042();
             metadata.putBoolean("neoecoae_infinite_member", true);
             metadata.putUUID("neoecoae_infinite_domain", domain);
             metadata.putUUID("neoecoae_member_identity", transaction);

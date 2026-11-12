@@ -64,10 +64,6 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
     private long journalSequence;
     private KeyCodec codec;
     private UUID domainIdentity;
-    private CompoundTag legacy2042 = new CompoundTag();
-    private ListTag legacy2042Receipts = new ListTag();
-    private final Map<UUID, CompoundTag> legacy2042ReceiptIndex = new HashMap<>();
-    private boolean legacy2042RestoreBlocked;
     private final Map<AEKey, CompoundTag> encodedKeys = new HashMap<>();
 
     public static ECOInfiniteStorageData createNew() {
@@ -114,21 +110,6 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
         ECOInfiniteStorageData data = createNew();
         data.codec = codec;
         data.loadPersistence(tag);
-        data.legacy2042RestoreBlocked = tag.getBoolean("legacy2042RestoreBlocked");
-        data.legacy2042 = tag.getCompound(cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage.ORIGIN).copy();
-        if (tag.contains(cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage.RECEIPTS)) {
-            try {
-                data.legacy2042Receipts = cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage
-                    .compounds(tag, cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage.RECEIPTS).copy();
-                for (Tag raw : data.legacy2042Receipts) {
-                    CompoundTag receipt = (CompoundTag) raw;
-                    if (!receipt.hasUUID("id") || data.legacy2042ReceiptIndex.putIfAbsent(receipt.getUUID("id"), receipt) != null
-                        || receipt.contains("contents_sha256") && (!receipt.contains("contents_sha256", Tag.TAG_STRING)
-                            || !receipt.getString("contents_sha256").matches("[0-9a-f]{64}")))
-                        throw new IllegalArgumentException("Invalid 20.4.2 receipt proof");
-                }
-            } catch (RuntimeException invalid) { data.markUnreadable("Invalid 20.4.2 receipt metadata"); return data; }
-        }
         if (tag.contains("domainIdentity")) {
             if (!tag.hasUUID("domainIdentity")) { data.markUnreadable("Invalid domain identity"); return data; }
             data.domainIdentity = tag.getUUID("domainIdentity");
@@ -154,7 +135,7 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
                 HugeAmount amount = HugeAmount.read(amountTag);
                 AEKey key = codec == null ? AEKey.fromTagGeneric(entry.getCompound("key"))
                         : codec.decode(entry.getCompound("key"));
-                if (!cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage.resolved(key))
+                if (!resolved(key))
                     throw new IllegalArgumentException("Unknown key");
                 Restore restore = null;
                 if (entry.contains("restore")) {
@@ -231,11 +212,6 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
     public CompoundTag save(CompoundTag tag) {
         if (unreadable || incompleteLegacy) throw new IllegalStateException("Refusing to save an incomplete domain");
         tag.putInt("version", CURRENT_VERSION);
-        if (legacy2042RestoreBlocked) tag.putBoolean("legacy2042RestoreBlocked", true);
-        if (!legacy2042.isEmpty()) {
-            tag.put(cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage.ORIGIN, legacy2042.copy());
-            tag.put(cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage.RECEIPTS, legacy2042Receipts.copy());
-        }
         if (domainIdentity != null) tag.putUUID("domainIdentity", domainIdentity);
         encodedKeys.keySet().removeIf(key -> amounts.visible(key) == 0);
         ListTag entries = new ListTag();
@@ -274,18 +250,6 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
     }
 
     @Override protected boolean canSaveSnapshot() { return !unreadable && !incompleteLegacy; }
-
-    public boolean imported2042() { return !legacy2042.isEmpty(); }
-
-    public void blockLegacyRestore() {
-        if (!legacy2042RestoreBlocked) { legacy2042RestoreBlocked = true; setDirty(); }
-        flush();
-    }
-
-    public CompoundTag receipt2042(UUID id) {
-        CompoundTag receipt = legacy2042ReceiptIndex.get(id);
-        return receipt == null ? null : receipt.copy();
-    }
 
     @Override protected void snapshotSaved() throws IOException {
         Files.deleteIfExists(journalPath(dataFile()));
@@ -360,7 +324,7 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
     }
 
     public boolean canWrite() {
-        return !unreadable && !incompleteLegacy && !legacy2042RestoreBlocked;
+        return !unreadable && !incompleteLegacy;
     }
 
     public boolean canWrite(AEKey key) {
@@ -461,7 +425,7 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
 
     public DomainStatus status() {
         if (unreadable) return DomainStatus.UNAVAILABLE;
-        if (incompleteLegacy || legacy2042RestoreBlocked) return DomainStatus.RECOVERY_READ_ONLY;
+        if (incompleteLegacy) return DomainStatus.RECOVERY_READ_ONLY;
         if (writeFailure() != null || !rawEntries.isEmpty() || !unresolvedMetadata.isEmpty()
                 || restores.values().stream().anyMatch(r -> !r.failure().isEmpty())) return DomainStatus.DEGRADED;
         return DomainStatus.HEALTHY;
@@ -472,7 +436,6 @@ public final class ECOInfiniteStorageData extends cn.dancingsnow.neoecoae.impl.s
         String write = writeFailure();
         if (write != null) result.add("Last snapshot write failed, retrying on next save: " + write);
         if (failure != null) result.add(failure);
-        if (legacy2042RestoreBlocked) result.add("Interrupted 20.4.2 restore requires reconciliation; original inventories retained");
         if (!rawEntries.isEmpty()) result.add("Unresolved entries retained: " + rawEntries.size());
         if (!unresolvedMetadata.isEmpty()) result.add("Unresolved transfer metadata retained");
         restores.values().stream().map(Restore::failure).filter(s -> !s.isEmpty()).forEach(result::add);

@@ -109,11 +109,6 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
     @Persisted
     @DescSynced
     private int activePages = NEConfig.getCraftingPatternBusPages();
-    @Persisted
-    @DescSynced
-    private int importedLegacyPages;
-    @Persisted
-    private net.minecraft.nbt.CompoundTag legacyPatternData = new net.minecraft.nbt.CompoundTag();
     @DescSynced
     private int currentPage;
     @DescSynced
@@ -121,7 +116,7 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
 
     @Override
     public List<IPatternDetails> getAvailablePatterns() {
-        return legacyPatternData.isEmpty() ? catalog.availablePatterns() : List.of();
+        return catalog.availablePatterns();
     }
 
     public List<PatternSearchKeywords.Directions> getAuxiliaryPatternSearchDirections() {
@@ -136,16 +131,16 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
 
     @Override
     public boolean pushPattern(IPatternDetails patternDetails, KeyCounter[] inputHolder, @Nullable UUID craftingJobId) {
-        return legacyPatternData.isEmpty() && dispatcher.pushPattern(patternDetails, inputHolder, craftingJobId);
+        return dispatcher.pushPattern(patternDetails, inputHolder, craftingJobId);
     }
 
     /** Ordinary single-craft fallback without another FastPath lookup. */
     public boolean pushPatternSlow(IPatternDetails pattern, KeyCounter[] inputs, @Nullable UUID craftingJobId) {
-        return legacyPatternData.isEmpty() && dispatcher.pushPatternSlow(pattern, inputs, craftingJobId);
+        return dispatcher.pushPatternSlow(pattern, inputs, craftingJobId);
     }
 
     public boolean pushPattern(ECOExtractedPatternExecution execution, @Nullable UUID craftingJobId) {
-        return legacyPatternData.isEmpty() && dispatcher.pushPattern(execution, craftingJobId);
+        return dispatcher.pushPattern(execution, craftingJobId);
     }
 
     @Override
@@ -451,7 +446,6 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
     /** Decodes and validates an incoming pattern once for reuse across destination buses. */
     @Nullable
     public ECOPreparedPattern preparePattern(ItemStack itemStack) {
-        if (!legacyPatternData.isEmpty()) return null;
         if (itemStack.isEmpty()) {
             return null;
         }
@@ -742,7 +736,6 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
     @Override
     public void addAdditionalDrops(Level level, BlockPos pos, List<ItemStack> drops) {
         super.addAdditionalDrops(level, pos, drops);
-        if (!legacyPatternData.isEmpty()) return; // The dismantled block carries the undecodable original inventory.
         IntStream.range(0, inventory.size())
             .mapToObj(inventory::getStackInSlot)
             .filter(s -> !s.isEmpty())
@@ -750,61 +743,10 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
     }
 
     @Override
-    public void loadTag(net.minecraft.nbt.CompoundTag data) {
-        super.loadTag(data);
-        readLegacyPatterns(data);
-    }
-
-    private void readLegacyPatterns(net.minecraft.nbt.CompoundTag data) {
-        if (legacyPatternData.isEmpty() && (data.contains("inventory")
-            || !data.contains("patternInventory") && !data.contains("patternInventoryPages"))) return;
-        var original = legacyPatternData.isEmpty() ? new net.minecraft.nbt.CompoundTag() : legacyPatternData.copy();
-        if (legacyPatternData.isEmpty()) {
-            if (data.contains("patternInventory")) original.put("patternInventory", data.get("patternInventory").copy());
-            else original.put("patternInventory", new net.minecraft.nbt.ListTag());
-            if (data.contains("patternInventoryPages")) original.put("patternInventoryPages", data.get("patternInventoryPages").copy());
-        }
-        try {
-            if (!inventory.isEmpty()) throw new IllegalStateException("Conflicting current and 20.4.2 pattern inventories");
-            var restored = cn.dancingsnow.neoecoae.platform.nbt.Legacy2042Inventory
-                .read(original, "patternInventory", inventory.size(), 64);
-            int pages = cn.dancingsnow.neoecoae.platform.nbt.Legacy2042Inventory
-                .pages(original, restored, SLOTS_PER_PAGE, NEConfig.PATTERN_BUS_MAX_PAGES);
-            importedLegacyPages = pages;
-            legacyPatternData = new net.minecraft.nbt.CompoundTag();
-            beginPatternBatch();
-            try {
-                for (int slot = 0; slot < restored.size(); slot++) if (!restored.get(slot).isEmpty())
-                    setPatternDirect(slot, restored.get(slot));
-            } finally { endPatternBatch(); }
-            updatePatternDetails();
-        } catch (RuntimeException failure) {
-            legacyPatternData = original;
-            LOGGER.error("Cannot import 20.4.2 patterns at {}; original inventory retained and bus locked", worldPosition, failure);
-        }
-    }
-
-    @Override
-    public void importSettings(appeng.util.SettingsFrom mode, net.minecraft.nbt.CompoundTag input, @Nullable Player player) {
-        super.importSettings(mode, input, player);
-        if (mode == appeng.util.SettingsFrom.DISMANTLE_ITEM && inventory.isEmpty()) {
-            if (input.contains("legacyPatternData")) loadManagedPersistentData(input);
-            readLegacyPatterns(input);
-        }
-    }
-
-    @Override
-    public void exportSettings(appeng.util.SettingsFrom mode, net.minecraft.nbt.CompoundTag output, @Nullable Player player) {
-        super.exportSettings(mode, output, player);
-        if (mode == appeng.util.SettingsFrom.DISMANTLE_ITEM && !legacyPatternData.isEmpty())
-            saveManagedPersistentData(output, false);
-    }
-
-    @Override
     public void clearContent() {
         super.clearContent();
         beginPatternBatch();
-        try { inventory.clear(); legacyPatternData = new net.minecraft.nbt.CompoundTag(); }
+        try { inventory.clear(); }
         finally { endPatternBatch(); }
     }
 
@@ -820,7 +762,7 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
         // 那时只可能知道配置页数——构造期还没有磁盘可读，配置值就是当时唯一正确的答案。
         int highestOccupiedSlot = catalog == null ? -1 : catalog.highestOccupiedSlot();
         int pages = clampPages(Math.max(
-            Math.max(NEConfig.getCraftingPatternBusPages(), importedLegacyPages),
+            NEConfig.getCraftingPatternBusPages(),
             highestOccupiedSlot < 0 ? 1 : highestOccupiedSlot / SLOTS_PER_PAGE + 1
         ));
         // 只在变化时写：本方法被每一次槽位查找调用，读一次就写一次会让这个同步字段来回改。
@@ -842,7 +784,7 @@ public class ECOCraftingPatternBusBlockEntity extends cn.dancingsnow.neoecoae.bl
     }
 
     public int getPatternSlotCount() {
-        return legacyPatternData.isEmpty() ? getPageCount() * SLOTS_PER_PAGE : 0;
+        return getPageCount() * SLOTS_PER_PAGE;
     }
 
     private void changePage(int targetPage) {

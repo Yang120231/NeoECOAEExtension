@@ -22,6 +22,11 @@ public abstract class StorageSavedData extends SavedData {
     // An explicit flush can clean a queued record; dirty state alone does not describe queue membership.
     private boolean checkpointQueued;
 
+    /** False for AE2's placeholder of a key whose mod or registry entry is missing. */
+    public static boolean resolved(appeng.api.stacks.AEKey key) {
+        return key != null && !key.getId().toString().equals("ae2:missing_content");
+    }
+
     public final void dirtyListener(Runnable listener) { dirtyListener = listener; }
 
     final void checkpointDequeued() { checkpointQueued = false; }

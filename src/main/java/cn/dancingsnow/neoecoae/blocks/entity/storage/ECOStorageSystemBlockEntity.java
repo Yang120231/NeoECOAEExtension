@@ -116,8 +116,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     // every ItemStack in LDLib's descriptive/advanced-data synchronization packet. A populated infinite
     // component inventory can exceed the packet's fixed 2392-byte buffer before the UI is even opened.
     private final AppEngInternalInventory infiniteComponentInventory = new AppEngInternalInventory(this, 1, INFINITE_COMPONENT_REQUIRED);
-    @Persisted
-    private CompoundTag legacy2042ComponentData = new CompoundTag();
     // Keep LDLib-managed fields on the block entity; delegate domain-specific behavior and caches.
     private final ECOStorageHostStatistics statistics = new ECOStorageHostStatistics(this);
     private final ECOStorageInterfaceTransfer interfaceTransfer = new ECOStorageInterfaceTransfer(this);
@@ -698,25 +696,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
         if (!infiniteComponentInventory.getStackInSlot(0).isEmpty()) {
             return;
         }
-        if (!legacy2042ComponentData.isEmpty() || !data.contains(INFINITE_COMPONENT_INVENTORY_PERSIST_KEY)
-            && data.contains("infiniteComponentSlot")) {
-            CompoundTag original = legacy2042ComponentData.isEmpty() ? data.getCompound("infiniteComponentSlot").copy()
-                : legacy2042ComponentData.copy();
-            if (original.isEmpty() && data.contains("infiniteComponentSlot")
-                && !data.contains("infiniteComponentSlot", net.minecraft.nbt.Tag.TAG_COMPOUND))
-                original.put("malformedOriginal", data.get("infiniteComponentSlot").copy());
-            try {
-                var restored = cn.dancingsnow.neoecoae.platform.nbt.Legacy2042Inventory
-                    .read(original, "Items", 1, INFINITE_COMPONENT_REQUIRED);
-                infiniteComponentInventory.setItemDirect(0, restored.get(0));
-                legacy2042ComponentData = new CompoundTag();
-            } catch (RuntimeException failure) {
-                legacy2042ComponentData = original;
-                if (legacy2042ComponentData.isEmpty()) legacy2042ComponentData.putBoolean("invalid", true);
-                LOGGER.error("Cannot import 20.4.2 controller components at {}; original retained", worldPosition, failure);
-            }
-            return;
-        }
         CompoundTag managed = data.getCompound("managed");
         if (!managed.contains(LEGACY_COMPONENT_INVENTORY_PERSIST_KEY)) {
             return;
@@ -730,8 +709,6 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     public boolean canExtractInfiniteComponents() {
         return blockedInfiniteComponentExtractionReason() == null;
     }
-
-    boolean hasLegacyCompatibilityFailure() { return !legacy2042ComponentData.isEmpty(); }
 
     @Nullable
     public String blockedInfiniteComponentExtractionReason() {

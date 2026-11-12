@@ -140,17 +140,6 @@ public final class ECOInfiniteStorageDomains {
     static ECOInfiniteStorageData importLegacy(UUID domainId, Path legacyFile, boolean requireExisting) {
         ECOInfiniteStorageData data = ECOInfiniteStorageData.createNew();
         try {
-            Path releaseFile = legacyFile.getParent().resolve("neoecoae_infinite/domain_" + domainId + ".dat");
-            boolean releasePresent = cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042DomainSnapshot.exists(releaseFile);
-            if (releasePresent) {
-                if (LegacyInfiniteStorageReader.exists(legacyFile))
-                    throw new java.io.IOException("Conflicting 20.4.2 and main legacy domain sources");
-                data = ECOInfiniteStorageData.load(cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042Storage
-                    .domain(cn.dancingsnow.neoecoae.impl.storage.persistence.Legacy2042DomainSnapshot.read(releaseFile), domainId));
-                if (data.canMigrate()) data.setDirty();
-                else data.markIncompleteLegacy(java.util.List.of("Unresolved 20.4.2 inventory; original domain retained"));
-                return data;
-            }
             if (!LegacyInfiniteStorageReader.exists(legacyFile)) {
                 if (requireExisting) data.markUnreadable("Existing infinite domain is missing; refusing to create an empty domain: " + domainId);
                 return data;
