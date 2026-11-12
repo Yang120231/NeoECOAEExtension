@@ -2,6 +2,8 @@ package cn.dancingsnow.neoecoae.integration.emi;
 
 import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.all.NEBlocks;
+import cn.dancingsnow.neoecoae.all.NEMultiBlocks;
+import cn.dancingsnow.neoecoae.integration.emi.recipe.MultiblockEmiRecipe;
 import cn.dancingsnow.neoecoae.recipe.IntegratedWorkingStationRecipe;
 import cn.dancingsnow.neoecoae.recipe.LargeWorkstationRecipes;
 import dev.emi.emi.api.EmiEntrypoint;
@@ -36,6 +38,13 @@ public final class ECOEmiPlugin implements EmiPlugin {
         registry.addWorkstation(large, workstation);
         registry.addWorkstation(large, EmiStack.of(NEBlocks.LARGE_INTEGRATED_WORKING_STATION_INTERFACE));
         registerRecipes(registry, regular, large);
+        var multiblock = category("multiblock", EmiStack.of(NEBlocks.STORAGE_SYSTEM_L4));
+        registry.addCategory(multiblock);
+        for (var definition : NEMultiBlocks.DEFINITIONS) {
+            registry.addWorkstation(multiblock, EmiStack.of(definition.getOwner().value()));
+            registry.addRecipe(new MultiblockEmiRecipe(multiblock, definition));
+        }
+        LoggerFactory.getLogger("neoecoae").info("GTO ECO EMI multiblocks: {}", NEMultiBlocks.DEFINITIONS.size());
     }
 
     static void registerRecipes(EmiRegistry registry, EmiRecipeCategory regular, EmiRecipeCategory large) {
