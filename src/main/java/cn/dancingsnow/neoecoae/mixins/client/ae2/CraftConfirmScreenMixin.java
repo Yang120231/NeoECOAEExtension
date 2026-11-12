@@ -36,7 +36,8 @@ public abstract class CraftConfirmScreenMixin extends AEBaseScreen<CraftConfirmM
             start.active = !getMenu().hasNoCPU();
             start.setMessage(Component.translatable("gui.neoecoae.force_start"));
             selectCPU.active = true;
-        } else {
+        } else if (plan == null || !plan.isSimulation()) {
+            // A partial plan keeps the label GTO just chose: "start with missing" or plain "start".
             start.setMessage(GuiText.Start.text());
         }
     }
