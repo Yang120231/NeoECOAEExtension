@@ -1,6 +1,8 @@
 package cn.dancingsnow.neoecoae.impl.storage.persistence;
 
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEKeyType;
+import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import appeng.api.stacks.AEKeyBigMap;
 import appeng.api.stacks.AEKeyMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -14,6 +16,8 @@ import it.unimi.dsi.fastutil.objects.ObjectSet;
 import it.unimi.dsi.fastutil.objects.Reference2LongMap;
 import it.unimi.dsi.fastutil.objects.Reference2LongMaps;
 import java.math.BigInteger;
+import java.util.Map;
+import java.util.IdentityHashMap;
 import java.util.function.BiConsumer;
 
 /**
@@ -28,6 +32,9 @@ public class StorageAmounts {
     private final Reference2LongMap<AEKey> view = Reference2LongMaps.unmodifiable(new VisibleAmounts());
     private final Reference2ObjectOpenHashMap<AEKey, OverflowAmount> overflow = new Reference2ObjectOpenHashMap<>();
     private final StorageTotal total = new StorageTotal();
+    // Built only when finite-cell capacity is queried; mutations then update one channel in constant time.
+    private Map<AEKeyType, StorageTotal> channelTotals;
+
     private StorageChangeLog listingChanges;
     private static final HugeAmount NATIVE_MAX = HugeAmount.of(GtoAmounts.MAX);
     private long contentRevision;
@@ -38,6 +45,31 @@ public class StorageAmounts {
     protected StorageAmounts(boolean wide) {
         if (wide) amounts = new AEKeyBigMap<>();
         else longAmounts = new AEKeyMap<>();
+    }
+
+    private void ensureChannels() {
+        if (channelTotals != null) return;
+        channelTotals = new IdentityHashMap<>();
+        forEach((key, amount) -> channelTotals.computeIfAbsent(key.getType(), ignored -> new StorageTotal()).add(amount));
+    }
+
+    private StorageTotal channel(AEKeyType type) {
+        ensureChannels();
+        return channelTotals.computeIfAbsent(type, ignored -> new StorageTotal());
+    }
+
+    public HugeAmount channelAmount(AEKeyType type) {
+        return channel(type).snapshot();
+    }
+
+    public PlannerAmount usedBytes(long bytesPerType) {
+        ensureChannels();
+        var bytes = PlannerAmount.of(size()).multiply(Math.max(0L, bytesPerType));
+        for (var entry : channelTotals.entrySet()) {
+            bytes = bytes.add(entry.getValue().snapshot().quantity().ceilDiv(
+                PlannerAmount.of(Math.max(1, entry.getKey().getAmountPerByte()))));
+        }
+        return bytes;
     }
 
     private void promote() {
@@ -115,6 +147,11 @@ public class StorageAmounts {
         overflow.remove(key);
         total.subtract(before);
         total.add(value);
+        if (channelTotals != null) {
+            var channel = channel(key.getType());
+            channel.subtract(before);
+            channel.add(value);
+        }
         mutated(key, size);
     }
 
@@ -135,6 +172,11 @@ public class StorageAmounts {
         }
         total.subtract(before);
         total.add(value);
+        if (channelTotals != null) {
+            var channel = channel(key.getType());
+            channel.subtract(before);
+            channel.add(value);
+        }
         mutated(key, size);
     }
 
@@ -147,6 +189,7 @@ public class StorageAmounts {
             long accepted = longAmounts.insert(key, amount, Long.MAX_VALUE);
             if (accepted == amount) {
                 total.add(amount);
+                if (channelTotals != null) channel(key.getType()).add(amount);
                 mutated(key, size);
                 return;
             }
@@ -164,6 +207,7 @@ public class StorageAmounts {
             }
         }
         total.add(amount);
+        if (channelTotals != null) channel(key.getType()).add(amount);
         mutated(key, size);
     }
 
@@ -185,6 +229,7 @@ public class StorageAmounts {
             long extracted = longAmounts.extract(key, requested);
             if (extracted > 0) {
                 total.subtract(extracted);
+                if (channelTotals != null) channel(key.getType()).subtract(extracted);
                 mutated(key, size);
             }
             return extracted;
@@ -196,9 +241,11 @@ public class StorageAmounts {
                 amounts.put(key, remaining.toBigInteger());
                 overflow.remove(key);
                 total.subtract(requested);
+                if (channelTotals != null) channel(key.getType()).subtract(requested);
                 mutated(key, size);
             } else {
                 total.subtract(requested);
+                if (channelTotals != null) channel(key.getType()).subtract(requested);
                 mutated(key, size);
             }
             return requested;
@@ -206,6 +253,7 @@ public class StorageAmounts {
         long extracted = amounts.extractLong(key, requested);
         if (extracted > 0) {
             total.subtract(extracted);
+            if (channelTotals != null) channel(key.getType()).subtract(extracted);
             mutated(key, size);
         }
         return extracted;
@@ -224,6 +272,7 @@ public class StorageAmounts {
         if (longAmounts != null) { longAmounts.clear(); longAmounts.trim(); }
         else { amounts.clear(); amounts.trim(); }
         overflow.clear(); overflow.trim(); total.clear();
+        if (channelTotals != null) channelTotals.clear();
         contentRevision++; structureRevision++;
         invalidateListing();
     }

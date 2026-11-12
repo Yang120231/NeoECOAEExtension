@@ -7,6 +7,7 @@ import cn.dancingsnow.neoecoae.platform.nbt.NEItemData;
 import cn.dancingsnow.neoecoae.impl.storage.persistence.ECOStorageRepository;
 import cn.dancingsnow.neoecoae.impl.storage.persistence.ECOCellReference;
 import cn.dancingsnow.neoecoae.impl.storage.persistence.ECOCellSavedData;
+import cn.dancingsnow.neoecoae.impl.storage.persistence.StorageAmounts;
 import cn.dancingsnow.neoecoae.impl.storage.infinite.HugeAmount;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
@@ -175,7 +176,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         if (this.canHoldNewItem()) {
             return CellState.NOT_EMPTY;
         }
-        if (this.getRemainingItemCount() > 0) {
+        if (!hasInfiniteTypeCapacity() && this.getRemainingItemCount() > 0) {
             return CellState.TYPES_FULL;
         }
         return CellState.FULL;
@@ -193,20 +194,9 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     public int getUnusedItemCount() {
         int amountPerByte = Math.max(1, keyType.getAmountPerByte());
-        if (getStoredItemCount() == Long.MAX_VALUE) {
-            var total = storageTotalAmount();
-            var wide = total.toU128();
-            int remainder = wide != null ? (int) wide.remainder(amountPerByte)
-                : total.toBigInteger().mod(BigInteger.valueOf(amountPerByte)).intValue();
-            return remainder == 0 ? 0 : amountPerByte - remainder;
-        }
-        final int div = (int) (this.getStoredItemCount() % amountPerByte);
-
-        if (div == 0) {
-            return 0;
-        }
-
-        return amountPerByte - div;
+        var remainder = storageData().amounts().channelAmount(keyType).quantity()
+            .remainder(PlannerAmount.of(amountPerByte));
+        return remainder.isZero() ? 0 : amountPerByte - (int) remainder.longValueExact();
     }
 
     public int getBytesPerType() {
@@ -214,34 +204,32 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     }
 
     public long getUsedBytes() {
-        if (getStoredItemCount() == Long.MAX_VALUE) {
-            var total = storageTotalAmount();
-            var wide = total.toU128();
-            if (wide == null) return Long.MAX_VALUE;
-            long perByte = Math.max(1L, keyType.getAmountPerByte());
-            var quotient = wide.divide(perByte);
-            if (!quotient.fitsLong()) return Long.MAX_VALUE;
-            long bytes = NEMath.saturatingAdd(quotient.longValue(), wide.remainder(perByte) == 0 ? 0 : 1);
-            return NEMath.saturatingAdd(NEMath.saturatingMultiply(getStoredItemTypes(), getBytesPerType()), bytes);
+        return PlannerAmount.of(getUsedBytesExact()).longValueSaturated();
+    }
+
+    public BigInteger getUsedBytesExact() {
+        if (storageAccess.session() == null && ECOCellReference.id(cellStack) != null) {
+            var ref = NEItemData.read(cellStack).getCompound(ECOCellReference.TAG);
+            // Older references contain one channel only. Their UUID and authoritative contents stay unchanged.
+            if (!ref.contains("contentBytes")) return StorageByteAccounting.usedBytes(
+                getStoredItemTypes(), getStoredItemCountExact(), keyType.getAmountPerByte(), getBytesPerType());
+            return new BigInteger(ref.getString("contentBytes")).add(BigInteger.valueOf(getStoredItemTypes())
+                .multiply(BigInteger.valueOf(getBytesPerType())));
         }
-        long storedAmount = Math.max(0L, getStoredItemCount());
-        long amountPerByte = Math.max(1L, keyType.getAmountPerByte());
-        long bytesForItems = ceilDivide(storedAmount, amountPerByte);
-        return NEMath.saturatingAdd(
-            NEMath.saturatingMultiply(getStoredItemTypes(), getBytesPerType()), bytesForItems);
+        return storageData().amounts().usedBytes(getBytesPerType()).toBigInteger();
     }
 
     public long getTotalBytes() {
         return cellType.getBytes();
     }
 
-    private HugeAmount storageTotalAmount() {
-        return storageAccess.session() == null && ECOCellReference.id(cellStack) != null
-            ? HugeAmount.of(getStoredItemCountExact()) : storageData().amounts().totalAmount();
+    public long getTotalItemTypes() {
+        return hasInfiniteTypeCapacity() ? Long.MAX_VALUE : this.maxItemTypes;
     }
 
-    public long getTotalItemTypes() {
-        return this.maxItemTypes;
+    @Override
+    public boolean hasInfiniteTypeCapacity() {
+        return maxItemTypes == Integer.MAX_VALUE;
     }
 
     public long getRemainingItemTypes() {
@@ -252,9 +240,13 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     private boolean canHoldNewItem() {
         final long bytesFree = this.getFreeBytes();
-        return (bytesFree > this.getBytesPerType()
-                || bytesFree == this.getBytesPerType() && this.getUnusedItemCount() > 0)
-                && this.getRemainingItemTypes() > 0;
+        if (bytesFree < getBytesPerType() || getRemainingItemTypes() <= 0) return false;
+        if (bytesFree > getBytesPerType()) return true;
+        for (AEKeyType type : cellType.getKeyTypes()) {
+            var amount = storageData().amounts().channelAmount(type).quantity();
+            if (!amount.remainder(PlannerAmount.of(Math.max(1, type.getAmountPerByte()))).isZero()) return true;
+        }
+        return false;
     }
 
     public long getStoredItemTypes() {
@@ -313,9 +305,9 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         if (this.container != null) this.container.saveChanges();
     }
 
-    /** Specialized cells may accept multiple channels with the same amount-per-byte accounting. */
+    /** Registered channels are accepted independently of the legacy item/fluid disk identity. */
     protected boolean acceptsKey(AEKey key) {
-        return keyType.contains(key);
+        return hasInfiniteTypeCapacity() || cellType.getKeyTypes().contains(key.getType());
     }
 
     @Override
@@ -375,56 +367,14 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
      * real cell because some cell implementations back copied ItemStacks with world-level storage.
      */
     public long simulateInsertForMigration(AEKey what, long amount, KeyCounter simulatedContents) {
-        if (simulatedContents == null) return 0L;
+        if (simulatedContents == null || what == null || amount <= 0) return 0L;
 
-        long currentAmount = simulatedContents.get(what);
-        long storedTypes = 0L;
-        long storedItemCount = 0L;
-        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : simulatedContents) {
-            if (entry.getLongValue() > 0L) {
-                storedTypes = NEMath.saturatingAdd(storedTypes, 1L);
-                storedItemCount = NEMath.saturatingAdd(storedItemCount, entry.getLongValue());
-            }
+        var contents = new StorageAmounts();
+        for (var entry : simulatedContents) {
+            if (entry.getLongValue() > 0) contents.setLong(entry.getKey(), entry.getLongValue());
         }
-
-        return simulateInsertForMigration(what, amount, currentAmount, storedTypes, storedItemCount);
-    }
-
-    public long simulateInsertForMigration(AEKey what, long amount, long currentAmount, long storedTypes, long storedItemCount) {
-        if (amount <= 0L || !acceptsKey(what) || !partitionList.matchesFilter(what, partitionListMode)
-            || cellType.isBlackListed(cellStack, what)) return 0L;
-
-        // A key already present in the simulated contents was accepted when it was inserted.
-        // Avoid probing nested-cell handlers again during migration preflight.
-        if (currentAmount <= 0L && !canStoreKeyInsideStorageCell(what)) return 0L;
-
-        long amountPerByte = Math.max(1L, keyType.getAmountPerByte());
-        long unusedItemCount = storedItemCount % amountPerByte == 0L
-            ? 0L
-            : amountPerByte - storedItemCount % amountPerByte;
-        long bytesForItems = ceilDivide(storedItemCount, amountPerByte);
-        long typeBytes = NEMath.saturatingMultiply(storedTypes, getBytesPerType());
-        long usedBytes = NEMath.saturatingAdd(typeBytes, bytesForItems);
-        long freeBytes = Math.max(0L, getTotalBytes() - usedBytes);
-        long remainingItemCount = NEMath.saturatingAdd(
-            NEMath.saturatingMultiply(freeBytes, amountPerByte), unusedItemCount);
-        long remainingTypes = Math.min(
-            Math.max(0L, getTotalItemTypes() - Math.min(getTotalItemTypes(), storedTypes)),
-            getBytesPerType() <= 0 ? 0L : freeBytes / getBytesPerType());
-
-        if (currentAmount <= 0L) {
-            boolean canHoldNewType = (freeBytes > getBytesPerType()
-                || freeBytes == getBytesPerType() && unusedItemCount > 0L)
-                && remainingTypes > 0L;
-            if (!canHoldNewType) {
-                return 0L;
-            }
-            remainingItemCount = Math.max(
-                0L,
-                remainingItemCount - NEMath.saturatingMultiply(getBytesPerType(), amountPerByte));
-        }
-
-        return Math.min(amount, remainingItemCount);
+        return simulateInsertForMigrationQuantity(what, PlannerAmount.of(amount), contents.get(what).quantity(),
+            contents.size(), contents.usedBytes(getBytesPerType()), contents.channelAmount(what.getType()).quantity()).longValueSaturated();
     }
 
     @Override
@@ -435,8 +385,7 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         long simulatedTypes,
         long simulatedAmount
     ) {
-        return simulateInsertForMigration(
-            what, amount, simulatedContents.get(what), simulatedTypes, simulatedAmount);
+        return simulateInsertForMigration(what, amount, simulatedContents);
     }
 
     @Override
@@ -444,56 +393,19 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
         if (simulatedContents == null) {
             return 0L;
         }
-        long storedTypes = 0L;
-        long storedItemCount = 0L;
-        for (it.unimi.dsi.fastutil.objects.Reference2LongMap.Entry<AEKey> entry : simulatedContents) {
-            if (entry.getLongValue() > 0L) {
-                storedTypes = NEMath.saturatingAdd(storedTypes, 1L);
-                storedItemCount = NEMath.saturatingAdd(storedItemCount, entry.getLongValue());
-            }
+        var contents = new StorageAmounts();
+        for (var entry : simulatedContents) {
+            if (entry.getLongValue() > 0) contents.setLong(entry.getKey(), entry.getLongValue());
         }
-        long amountPerByte = Math.max(1L, keyType.getAmountPerByte());
-        long unusedItemCount = storedItemCount % amountPerByte == 0L
-            ? 0L
-            : amountPerByte - storedItemCount % amountPerByte;
-        long bytesForItems = ceilDivide(storedItemCount, amountPerByte);
-        return NEMath.saturatingAdd(
-            NEMath.saturatingMultiply(storedTypes, getBytesPerType()), bytesForItems);
-    }
-
-    private static long ceilDivide(long amount, long divisor) {
-        long quotient = amount / divisor;
-        return amount % divisor == 0L ? quotient : quotient + 1L;
+        return contents.usedBytes(getBytesPerType()).longValueSaturated();
     }
 
     private long innerInsert(AEKey what, long amount, Actionable mode) {
-        var currentAmount = this.getCellItems().getLong(what);
-        long remainingItemCount = this.getRemainingItemCount();
-
-        if (currentAmount <= 0) {
-            if (!canStoreKeyInsideStorageCell(what)) {
-                return 0;
-            }
-            if (!canHoldNewItem()) {
-                // 无更多类型空间
-                return 0;
-            }
-
-            remainingItemCount = Math.max(0L, remainingItemCount
-                - NEMath.saturatingMultiply(this.getBytesPerType(), keyType.getAmountPerByte()));
-            if (remainingItemCount <= 0) {
-                return 0;
-            }
-        }
-
-        remainingItemCount = Math.max(0, remainingItemCount);
-
-        if (amount > remainingItemCount) {
-            amount = remainingItemCount;
-        }
-        if (amount <= 0) {
-            return 0;
-        }
+        var amounts = storageData().amounts();
+        long acceptable = simulateInsertForMigrationQuantity(what, PlannerAmount.of(amount), amounts.get(what).quantity(),
+            amounts.size(), amounts.usedBytes(getBytesPerType()), amounts.channelAmount(what.getType()).quantity()).longValueSaturated();
+        amount = Math.min(amount, acceptable);
+        if (amount <= 0) return 0;
 
         if (mode == Actionable.MODULATE) {
             storageData().amounts().add(what, amount);
@@ -551,37 +463,30 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
 
     @Override public BigInteger getMigrationAmountBigInteger(AEKey key) { return storageData().amounts().get(key).toBigInteger(); }
 
-    public BigInteger simulateInsertForMigrationBigInteger(AEKey key, BigInteger offered,
-            BigInteger current, long types, BigInteger total) {
-        if (key == null || offered == null || offered.signum() <= 0) return BigInteger.ZERO;
-        return simulateInsertForMigrationQuantity(key, PlannerAmount.of(offered), PlannerAmount.of(current),
-            types, PlannerAmount.of(total)).toBigInteger();
-    }
-
+    /** Capacity of a mixed-channel snapshot; the bucket is the total of the offered key's channel. */
     public PlannerAmount simulateInsertForMigrationQuantity(AEKey key, PlannerAmount offered,
-            PlannerAmount current, long types, PlannerAmount total) {
+            PlannerAmount current, long types, PlannerAmount usedBytes, PlannerAmount channelAmount) {
         if (key == null || offered == null || offered.signum() <= 0 || !acceptsKey(key)
             || !partitionList.matchesFilter(key, partitionListMode) || cellType.isBlackListed(cellStack, key)) return PlannerAmount.ZERO;
         if (current.signum() == 0 && !canStoreKeyInsideStorageCell(key)) return PlannerAmount.ZERO;
-        PlannerAmount perByte = PlannerAmount.of(Math.max(1, keyType.getAmountPerByte()));
-        PlannerAmount free = PlannerAmount.of(getTotalBytes()).subtract(StorageByteAccounting.usedBytesQuantity(
-            types, total, keyType.getAmountPerByte(), getBytesPerType())).max(PlannerAmount.ZERO);
-        PlannerAmount remainder = total.remainder(perByte);
+        PlannerAmount free = PlannerAmount.of(getTotalBytes()).subtract(usedBytes);
+        if (free.signum() < 0) return PlannerAmount.ZERO;
+        PlannerAmount perByte = PlannerAmount.of(Math.max(1, key.getType().getAmountPerByte()));
+        PlannerAmount remainder = channelAmount.remainder(perByte);
         PlannerAmount unused = remainder.isZero() ? PlannerAmount.ZERO : perByte.subtract(remainder);
-        PlannerAmount remaining = free.multiply(perByte).add(unused);
         if (current.signum() == 0) {
-            PlannerAmount typeBytes = PlannerAmount.of(getBytesPerType());
-            if (types >= getTotalItemTypes() || free.compareTo(typeBytes) < 0
-                || free.equals(typeBytes) && unused.signum() == 0) return PlannerAmount.ZERO;
-            remaining = remaining.subtract(typeBytes.multiply(perByte)).max(PlannerAmount.ZERO);
+            if (!hasInfiniteTypeCapacity() && types >= getTotalItemTypes()) return PlannerAmount.ZERO;
+            free = free.subtract(Math.max(0, getBytesPerType()));
+            if (free.signum() < 0) return PlannerAmount.ZERO;
         }
-        return offered.min(remaining);
+        return offered.min(free.multiply(perByte).add(unused));
     }
 
     private BigInteger insertExact(AEKey key, BigInteger amount, Actionable mode) {
         BigInteger current = getMigrationAmountBigInteger(key);
-        BigInteger inserted = simulateInsertForMigrationBigInteger(key, amount, current,
-            getStoredItemTypes(), getStoredItemCountExact());
+        var amounts = storageData().amounts();
+        BigInteger inserted = simulateInsertForMigrationQuantity(key, PlannerAmount.of(amount), PlannerAmount.of(current),
+            amounts.size(), amounts.usedBytes(getBytesPerType()), amounts.channelAmount(key.getType()).quantity()).toBigInteger();
         if (mode == Actionable.MODULATE && inserted.signum() > 0) {
             storageData().amounts().set(key, HugeAmount.of(current).add(HugeAmount.of(inserted))); saveChanges();
         }

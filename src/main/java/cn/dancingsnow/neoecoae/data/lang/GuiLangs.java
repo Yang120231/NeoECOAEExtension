@@ -275,6 +275,8 @@ public class GuiLangs {
         provider.add("gui.neoecoae.storage.ui.scroll_cells", "Scroll to browse storage cells");
         provider.add("gui.neoecoae.storage.ui.take_cell", "Click to take the cell; Shift-click to move it to your inventory");
         provider.add("gui.neoecoae.storage.ui.insert_cell", "Click with a storage cell to install it in this drive");
+        provider.add("gui.neoecoae.storage.universal", "Universal storage");
+        provider.add("tooltip.neoecoae.storage.universal", "Stores all resource types; no type limit");
         provider.add("gui.neoecoae.storage.ui.scroll_types", "Scroll to browse storage types");
         provider.add("gui.neoecoae.storage.ui.energy", "Energy stored: %s / %s AE");
         provider.add("gui.neoecoae.storage.ui.resource_distribution", "Resource distribution");

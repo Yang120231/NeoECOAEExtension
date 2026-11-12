@@ -1314,5 +1314,7 @@
   "gui.neoecoae.crafting_graph.recursion.no_output": "無需交付產物",
   "gui.neoecoae.crafting_graph.recursion.output_types": "交付 %s 種產物",
   "gui.neoecoae.crafting_graph.recursion.module_target": "請求：%s",
-  "gui.neoecoae.crafting_report.export_too_large": "物料之錄過巨，不可合為一圖。"
+  "gui.neoecoae.crafting_report.export_too_large": "物料之錄過巨，不可合為一圖。",
+  "gui.neoecoae.storage.universal": "通用儲藏",
+  "tooltip.neoecoae.storage.universal": "可藏萬物，不限其類"
 }

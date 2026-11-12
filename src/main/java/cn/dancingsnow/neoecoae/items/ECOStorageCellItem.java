@@ -109,6 +109,13 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
     }
 
     @Override
+    public java.util.Set<AEKeyType> getKeyTypes() {
+        var types = new java.util.HashSet<AEKeyType>();
+        appeng.api.stacks.AEKeyTypes.getAll().forEach(types::add);
+        return types;
+    }
+
+    @Override
     public long getBytes() {
         return totalBytes;
     }
@@ -125,7 +132,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
 
     @Override
     public int getTotalTypes() {
-        return cellType.get().typeCount();
+        return Integer.MAX_VALUE;
     }
 
     @Override
@@ -147,7 +154,8 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
             return;
         }
         lines.add(bytesUsedLine(handler.getUsedBytes(), handler.getTotalBytes()));
-        lines.add(Tooltips.typesUsed(handler.getStoredItemTypes(), handler.getTotalItemTypes()));
+        lines.add(Component.translatable("tooltip.neoecoae.storage.universal").withStyle(ChatFormatting.GRAY));
+
     }
 
     /**
@@ -267,7 +275,7 @@ public class ECOStorageCellItem extends Item implements IBasicECOCellItem {
 
     @Override
     public ConfigInventory getConfigInventory(ItemStack is) {
-        return CellConfig.create(key -> getKeyTypes().contains(key.getType()), is);
+        return CellConfig.create(key -> true, is);
     }
 
     @Override

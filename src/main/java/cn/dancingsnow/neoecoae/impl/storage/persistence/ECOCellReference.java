@@ -45,6 +45,7 @@ public final class ECOCellReference {
         ref.putInt("types", data.amounts().size()); ref.putLong("amount", data.amounts().totalVisible());
         if (data.amounts().totalVisible() == Long.MAX_VALUE)
             ref.putString("exactAmount", data.amounts().totalExact().toString());
+        ref.putString("contentBytes", data.amounts().usedBytes(0).toBigInteger().toString());
         ref.put("preview", data.preview());
         if (data.failure() != null) ref.putString("failure", data.failure());
         NEItemData.update(stack, root -> {

@@ -69,6 +69,11 @@ public class ECOInfiniteResourceCellItem extends ECOStorageCellItem {
     }
 
     @Override
+    public int getTotalTypes() {
+        return LOCKED_KEYS.size();
+    }
+
+    @Override
     public Set<AEKeyType> getKeyTypes() {
         return Set.of(AEKeyType.items(), AEKeyType.fluids());
     }

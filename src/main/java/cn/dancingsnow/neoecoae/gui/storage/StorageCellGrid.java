@@ -150,9 +150,11 @@ final class StorageCellGrid extends UIElement {
             lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_bytes",
                 HostText.usedPart(HostText.fullBytes(cell.exactUsedBytes()), cell.usedBytes(), byteCapacity),
                 HostText.totalPart(fullCapacity(byteCapacity))));
-            lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_types",
-                HostText.usedPart(HostText.ae2Amount(cell.usedTypes()), cell.usedTypes(), cell.totalTypes()),
-                HostText.totalPart(capacity(cell.totalTypes()))));
+            if (cell.totalTypes() >= 0) {
+                lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_types",
+                    HostText.usedPart(HostText.ae2Amount(cell.usedTypes()), cell.usedTypes(), cell.totalTypes()),
+                    HostText.totalPart(capacity(cell.totalTypes()))));
+            }
             lines.add(Component.translatable("gui.neoecoae.storage.cell.priority.tooltip", cell.priority()));
         } else {
             lines.add(Component.translatable("gui.neoecoae.storage.ui.cell_state.absent"));

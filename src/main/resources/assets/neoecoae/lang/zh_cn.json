@@ -1357,5 +1357,7 @@
   "gui.neoecoae.crafting_graph.summary.from_storage": "原料（库存）",
   "gui.neoecoae.crafting_graph.summary.outputs": "产物／余量",
   "gui.neoecoae.crafting_graph.summary.amount": "%s：%s",
-  "gui.neoecoae.crafting_report.export_too_large": "材料清单过大，无法导出为单张图片。"
+  "gui.neoecoae.crafting_report.export_too_large": "材料清单过大，无法导出为单张图片。",
+  "gui.neoecoae.storage.universal": "通用存储",
+  "tooltip.neoecoae.storage.universal": "可存储所有资源类型，无种类上限"
 }
