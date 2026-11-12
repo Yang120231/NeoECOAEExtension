@@ -1,6 +1,7 @@
 package cn.dancingsnow.neoecoae.gui.computation;
 
 import appeng.api.stacks.AEKey;
+import cn.dancingsnow.neoecoae.client.rendering.BlockHighlightRenderer;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.texture.SpriteTexture;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.UIElement;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.event.HoverTooltips;
@@ -173,9 +174,12 @@ final class ComputationItemActionsPopup extends UIElement {
     }
 
     private void showLocations() {
+        BlockHighlightRenderer.clear();
         for (var source : sources) {
             Component name = Component.Serializer.fromJson(source.getString("name"));
             BlockPos position = BlockPos.of(source.getLong("position"));
+            var dimension = ResourceLocation.tryParse(source.getString("dimension"));
+            if (dimension != null) BlockHighlightRenderer.add(dimension, position);
             var coordinates = Component.literal(position.toShortString()).withStyle(style -> style
                 .withColor(ChatFormatting.AQUA).withUnderlined(true)
                 .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
