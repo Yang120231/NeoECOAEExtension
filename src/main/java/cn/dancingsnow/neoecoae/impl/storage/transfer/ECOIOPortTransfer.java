@@ -56,7 +56,8 @@ public final class ECOIOPortTransfer {
         transferring = true;
         try {
             return StorageBusTransferFilter.transfer(excludeStorageBuses,
-                () -> transferContents(grid, hostStorage, fillHost, ignoreCreativeInput, excludeStorageBuses, source, filter));
+                () -> ECOCreativeExtractionFilter.transfer(fillHost && ignoreCreativeInput,
+                    () -> transferContents(grid, hostStorage, fillHost, ignoreCreativeInput, excludeStorageBuses, source, filter)));
         } catch (RuntimeException | Error failure) {
             reset();
             throw failure;

@@ -102,7 +102,10 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
     )
     private long neoecoae$excludeStorageBusOutput(MEStorage storage, AEKey key, long amount,
             Actionable mode, IActionSource source, Operation<Long> original) {
-        if (StorageBusTransferFilter.excludes(storage)) return 0L;
+        if (StorageBusTransferFilter.excludes(storage)
+                || cn.dancingsnow.neoecoae.impl.storage.transfer.ECOCreativeExtractionFilter.excludesInsert(storage)) {
+            return 0L;
+        }
         return original.call(storage, key, amount, mode, source);
     }
 
@@ -118,7 +121,7 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
             return 0L;
         }
         return cn.dancingsnow.neoecoae.impl.storage.transfer.ECOCreativeExtractionFilter.extractSource(
-            storage, key, mode, () -> original.call(storage, key, amount, mode, source));
+            storage, () -> original.call(storage, key, amount, mode, source));
     }
 
     @WrapOperation(method = "lambda$getAvailableStacks$1",

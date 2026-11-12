@@ -167,6 +167,7 @@ final class ECOStorageInterfaceTransfer {
             for (int pass = 0; pass < 2 && inserted < amount; pass++) {
                 for (MEStorage inventory : candidates) {
                     if (inserted >= amount) break;
+                    if (cn.dancingsnow.neoecoae.impl.storage.transfer.ECOCreativeExtractionFilter.excludesInsert(inventory)) continue;
                     boolean bulk = inventory instanceof IECOStorageCell cell && cell.prioritizesMarkedInserts();
                     if (bulk != (pass == 0)) continue;
                     inserted += inventory.insert(key, amount - inserted, mode, source);
