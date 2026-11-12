@@ -264,15 +264,7 @@ final class ECOProcessingPatternDispatcher {
                 || request.pattern().getInputs().length == 0
                 || request.pattern().getOutputs().length == 0
                 || !request.pattern().supportsPushInputsToExternalInventory()) return false;
-        // Known directional/wireless provider modes split one push across targets and are not atomic here.
-        for (String method : new String[]{"getProviderMode", "getWirelessDispatchMode", "getPushDirection"}) {
-            try {
-                Object value = provider.getClass().getMethod(method).invoke(provider);
-                if (value != null && !value.toString().equalsIgnoreCase("NORMAL")) return false;
-            } catch (NoSuchMethodException ignored) {
-                // Absence is normal for the stock provider.
-            } catch (ReflectiveOperationException | RuntimeException unavailable) { return false; }
-        }
+        // GTO's provider hands one push to a single target that accepts all inputs, so it stays atomic here.
         return true;
     }
 
