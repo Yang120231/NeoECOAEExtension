@@ -209,9 +209,54 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
         }
         // 只有普通推送计入滚动操作窗口。
         dispatchStrategy.finishTick(acceptedNormalPushes);
+        if (job != null && completeGtoOrder(job)) {
+            return;
+        }
         if (job != null) {
             taskScheduler.check(job);
         }
+    }
+
+    /**
+     * GTO 订单的完成判定，与 GTO {@code OptimizedCraftingCpuLogic.tickCraftingLogic} 一致。
+     *
+     * <p>订单物品不会以实体产物返回：普通订单在全部样板已发出、等待中的订单数覆盖剩余数量时完成；
+     * 临时订单的样板没有供应器，其余任务与等待清单清空后完成，CPU 内已合成的物品随后存回网络。</p>
+     */
+    private boolean completeGtoOrder(ExecutingCraftingJob current) {
+        var output = current.finalOutput;
+        if (!cn.dancingsnow.neoecoae.compat.gto.ECOGtoOrders.isOrder(output) || current.suspended) {
+            return false;
+        }
+        current.waitingFor.list.removeZeros();
+        long waiting = getWaitingFor(output.what());
+        boolean complete;
+        if (waiting > 0L) {
+            complete = !taskScheduler.hasPendingTasks(current) && current.remainingAmount - waiting <= 0L;
+        } else {
+            complete = cn.dancingsnow.neoecoae.compat.gto.ECOGtoOrders.isTemporaryOrder(output)
+                    && current.waitingFor.list.isEmpty()
+                    && onlyTemporaryOrderTasksRemain(current);
+        }
+        if (!complete) {
+            return false;
+        }
+        current.remainingAmount = 0L;
+        finishJob(true);
+        return true;
+    }
+
+    private static boolean onlyTemporaryOrderTasksRemain(ExecutingCraftingJob current) {
+        if (!current.deferredStock.isEmpty() || !current.deferredEmitted.isEmpty()) return false;
+        boolean found = false;
+        for (var entry : current.tasks.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().value <= 0L) continue;
+            if (!cn.dancingsnow.neoecoae.compat.gto.ECOGtoOrders.producesTemporaryOrder(entry.getKey())) {
+                return false;
+            }
+            found = true;
+        }
+        return found;
     }
 
     /** 从所有配方输入共用的实际库存中重试交付产物。 */
