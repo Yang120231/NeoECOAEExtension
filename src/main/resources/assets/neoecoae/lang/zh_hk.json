@@ -1,6 +1,5 @@
 {
   "item.neoecoae.integrated_working_station_module_empty": "空白整合工作站升級卡",
-  "gui.neoecoae.crafting_report.card.lite_mode": "輕量合成模式",
   "gui.neoecoae.large_integrated_working_station.recipe_energy_label": "耗能",
   "gui.neoecoae.large_integrated_working_station.recipe_energy": "耗能：%s AE",
   "gui.neoecoae.storage_interface.exclude_storage_bus.on": "排除儲存匯流排容器：開啟",
@@ -403,8 +402,8 @@
   "gui.neoecoae.crafting.virtual_status.title": "無限模式狀態",
   "gui.neoecoae.crafting.virtual_status.infinite": "已處於無限模式狀態",
   "gui.neoecoae.crafting.mode_switch_blocked": "正處於工作狀態不可切換",
-  "gui.neoecoae.crafting.planning.ignore_substitutions.on": "關閉輕量合成模式",
-  "gui.neoecoae.crafting.planning.ignore_substitutions.off": "開啟輕量合成模式",
+  "gui.neoecoae.crafting.planning.ignore_substitutions.on": "開啟深度規劃模式",
+  "gui.neoecoae.crafting.planning.ignore_substitutions.off": "關閉深度規劃模式",
   "gui.neoecoae.crafting.planning.substitution_pattern_count": "目前有 %d 個開啟替代的樣板",
   "gui.neoecoae.host.network_frequency.cycle": "切換網絡頻道（目前：%d）",
   "gui.neoecoae.host.network_frequency.cycle.unassigned": "切換網絡頻道（未分配）",
@@ -1014,7 +1013,7 @@
   "gui.neoecoae.crafting_interface.preview.read_only": "磁碟內容 · 唯讀；請在樣板管理終端編輯",
   "gui.neoecoae.large_integrated_working_station.pause.power_missing": "暫停：電力不足",
   "gui.neoecoae.big_order.remaining": "剩餘 %s",
-  "gui.neoecoae.computation.ui.switch.substitutions": "輕量",
+  "gui.neoecoae.computation.ui.switch.substitutions": "深度",
   "gui.neoecoae.large_integrated_working_station.pause.output_blocked.detail.cpu_route": "（嘗試返回所屬 CPU 失敗：CPU 路由無法使用）",
   "gui.neoecoae.computation.ui.switch.fast_planner": "快速",
   "gui.neoecoae.big_order.reason.output_storage": "等待網路接收剩餘產物",
@@ -1023,7 +1022,7 @@
   "gui.neoecoae.computation.ui.endgame_card.tier.missing": "存在非 C9 主機",
   "gui.neoecoae.computation.ui.endgame_card.drives": "驅動器槽位",
   "gui.neoecoae.computation.ui.endgame_card.drives.missing": "存在空槽或缺少 CE9 快閃晶陣",
-  "gui.neoecoae.computation.ui.switch.substitutions.desc": "禁用部分樣板功能，大幅加快合成計算速度。",
+  "gui.neoecoae.computation.ui.switch.substitutions.desc": "啟用完整規劃，搜尋替代路線並考慮替代輸入及工具、容器返還，計算可能耗時更長。",
   "gui.neoecoae.cpu.status.running": "執行中",
   "gui.neoecoae.computation.ui.parallel": "並行",
   "gui.neoecoae.crafting.virtual_blocked.coolant_hint": "請先取消任務、退出無限模式，並停止補入舊冷卻液。",
@@ -1083,7 +1082,7 @@
   "gui.neoecoae.computation.ui.parallel_shared": "每個執行緒都享有全部並行數。",
   "gui.neoecoae.crafting_report.seed_parallelism_hint": "實際吞吐量還受機器與執行順序限制；增加種子庫存後重新規劃可提高上限。",
   "gui.neoecoae.crafting_report.quantity_unknown": "數量未確定",
-  "gui.neoecoae.computation.settings.substitutions": "輕量合成模式",
+  "gui.neoecoae.computation.settings.substitutions": "深度規劃模式",
   "gui.neoecoae.storage.ui.title": "可擴充儲存子系統主機",
   "gui.neoecoae.crafting_report.planning_failed": "規劃未完成（游標停留在 CPU 按鈕上查看原因）",
   "gui.neoecoae.cpu.status.returning": "等待存回",
@@ -1292,5 +1291,6 @@
   "gui.neoecoae.crafting_graph.details.target_label": "請求目標：",
   "gui.neoecoae.crafting_graph.recursion.no_output": "無需交付產物",
   "gui.neoecoae.crafting_graph.recursion.output_types": "交付 %s 種產物",
-  "gui.neoecoae.crafting_graph.recursion.module_target": "請求：%s"
+  "gui.neoecoae.crafting_graph.recursion.module_target": "請求：%s",
+  "gui.neoecoae.crafting_report.export_too_large": "材料清單過大，無法匯出為單張圖片。"
 }
