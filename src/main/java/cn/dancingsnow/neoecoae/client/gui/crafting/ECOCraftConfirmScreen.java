@@ -23,6 +23,7 @@ import cn.dancingsnow.neoecoae.crafting.planner.result.PlanningStatus;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import cn.dancingsnow.neoecoae.gui.theme.ECOIcon;
 import cn.dancingsnow.neoecoae.network.ECOForceCraftStartFlagC2SPacket;
+import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.utils.ModularUITooltipComponent;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +79,14 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     private ReportSummaryState reportSummaryState;
     private ECOCraftReportHeaderRenderer.Summary reportSummary = ECOCraftReportHeaderRenderer.pending(
         Component.translatable("gui.neoecoae.crafting_report.calculating"));
+    private ModularUITooltipComponent statisticsTooltip;
+    private boolean statisticsTooltipExact;
+    private ECOCraftReportTooltips.Material pendingMaterialTooltip;
+    private ECOCraftReportTooltips.Material cachedMaterialTooltip;
+    private ModularUITooltipComponent materialTooltip;
+    private boolean materialTooltipExact;
+    private Language materialTooltipLanguage;
+    private net.minecraft.client.gui.Font materialTooltipFont;
 
     private record ReportSummaryState(@Nullable CraftingPlanSummary plan, boolean loadingDetails,
             long nanos, @Nullable BigInteger bytes, boolean incompleteBytes, boolean liteCrafting,
@@ -87,11 +96,11 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     public ECOCraftConfirmScreen(CraftConfirmMenu menu, Inventory playerInventory, Component title,
             ScreenStyle style) {
         super(menu, playerInventory, title, style);
-        table = new ECOCraftConfirmTableRenderer(this, 9, 27, this::isCycleParticipant,
+        table = new ECOCraftConfirmTableRenderer(this, 9, 27, this::isCycleParticipant, materialData::isCycleSeed,
             this::isFuzzyPlanningItem);
-        exactTable = new ECOExactMaterialTableRenderer(this, 9, 27, this::isCycleParticipant,
+        exactTable = new ECOExactMaterialTableRenderer(this, 9, 27, this::isCycleParticipant, materialData::isCycleSeed,
             this::isMissingStartupSeed, this::isEstimatedStartupSeed, this::isFuzzyPlanningItem);
-        cycleItems = new ECOCycleItemListRenderer(this, 237, 27, this::isMissingStartupSeed);
+        cycleItems = new ECOCycleItemListRenderer(this, 237, 27, materialData::isCycleSeed, this::isMissingStartupSeed);
         scrollbar = widgets.addScrollBar("scrollbar", cn.dancingsnow.neoecoae.client.gui.widget.NEScrollbars.BIG);
         cycleScrollbar = widgets.addScrollBar("cycleScrollbar", cn.dancingsnow.neoecoae.client.gui.widget.NEScrollbars.BIG);
         start = addTextButton("start", GuiText.Start.text(), this::start);
@@ -271,6 +280,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     private void updateReportSummary(@Nullable CraftingPlanSummary plan, boolean incompleteBytes) {
         if ((Object) menu instanceof ECOCraftConfirmMenuMode mode && mode.neoecoae$getReportSyncFailure() == 1) {
             reportSummaryState = null;
+            statisticsTooltip = null;
             reportSummary = ECOCraftReportHeaderRenderer.pending(
                 Component.translatable("gui.neoecoae.crafting_report.material_sync_failed"));
             return;
@@ -294,6 +304,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
             graphSummary, Language.getInstance(), font);
         if (state.equals(reportSummaryState)) return;
         reportSummaryState = state;
+        statisticsTooltip = null;
         if (loadingDetails) {
             reportSummary = ECOCraftReportHeaderRenderer.pending(
                 Component.translatable("gui.neoecoae.crafting_report.loading_details"));
@@ -354,17 +365,43 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     }
 
     @Override public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTicks) {
+        pendingMaterialTooltip = null;
         super.render(graphics, mouseX, mouseY, partialTicks);
         renderReportTooltip(graphics, mouseX, mouseY);
+    }
+
+    void queueMaterialTooltip(ECOCraftReportTooltips.Material material) {
+        pendingMaterialTooltip = material;
     }
 
     void renderReportTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
         int localMouseX = mouseX - leftPos;
         int localMouseY = mouseY - topPos;
         if (ECOCraftReportHeaderRenderer.isHovered(localMouseX, localMouseY)) {
-            // 1.20.1 tooltips render immediately. Wait until the foreground pose is restored,
-            // then use screen coordinates for both the cursor and vanilla edge placement.
-            drawTooltipWithHeader(graphics, mouseX, mouseY, reportSummary.tooltip());
+            boolean exact = Screen.hasShiftDown();
+            if (statisticsTooltip == null || statisticsTooltipExact != exact) {
+                var state = reportSummaryState;
+                var card = state == null || state.plan() == null || state.loadingDetails()
+                    ? ECOCraftReportTooltips.pending(reportSummary.elapsed(),
+                        (Object) menu instanceof ECOCraftConfirmMenuMode mode && mode.neoecoae$isLiteCraftingMode())
+                    : ECOCraftReportTooltips.statistics(state.nanos(), state.bytes(), !state.incompleteBytes(),
+                        state.graphSummary(), exact, state.liteCrafting());
+                statisticsTooltip = card.build();
+                statisticsTooltipExact = exact;
+            }
+            drawReportCard(graphics, mouseX, mouseY, statisticsTooltip);
+        } else if (pendingMaterialTooltip != null) {
+            boolean exact = Screen.hasShiftDown();
+            Language language = Language.getInstance();
+            if (materialTooltip == null || !pendingMaterialTooltip.equals(cachedMaterialTooltip)
+                    || materialTooltipExact != exact || materialTooltipLanguage != language || materialTooltipFont != font) {
+                materialTooltip = ECOCraftReportTooltips.material(pendingMaterialTooltip, exact).build();
+                cachedMaterialTooltip = pendingMaterialTooltip;
+                materialTooltipExact = exact;
+                materialTooltipLanguage = language;
+                materialTooltipFont = font;
+            }
+            drawReportCard(graphics, mouseX, mouseY, materialTooltip);
         } else if (backgroundOptimizing
                 && localMouseX >= OPTIMIZATION_INDICATOR_X
                 && localMouseX < OPTIMIZATION_INDICATOR_X + OPTIMIZATION_INDICATOR_SIZE
@@ -373,6 +410,13 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
             drawTooltipWithHeader(graphics, mouseX, mouseY,
                 List.of(Component.translatable("gui.neoecoae.crafting_report.optimizing")));
         }
+    }
+
+    private void drawReportCard(GuiGraphics graphics, int mouseX, int mouseY, ModularUITooltipComponent card) {
+        // Use the existing Forge tooltip factory after the screen's foreground pose is restored.
+        graphics.renderComponentTooltipFromElements(font,
+            List.of(com.mojang.datafixers.util.Either.right(card)), mouseX, mouseY,
+            net.minecraft.world.item.ItemStack.EMPTY);
     }
 
     private void drawOptimizationIndicator(GuiGraphics graphics) {
@@ -507,7 +551,8 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         var graph = state == null ? null : state.graphSummary();
         var unknown = Component.translatable("gui.neoecoae.crafting_report.card.unknown");
         var elapsed = state == null || state.loadingDetails() ? reportSummary.elapsed()
-            : Component.literal(java.math.BigDecimal.valueOf(Math.max(0L, state.nanos()), 6).toPlainString() + " ms");
+            : Component.literal(cn.dancingsnow.neoecoae.crafting.display.format.DisplayNumbers.grouped(
+                java.math.BigDecimal.valueOf(Math.max(0L, state.nanos()), 6)) + " ms");
         var bytes = state == null || state.bytes() == null ? unknown
             : Component.literal(cn.dancingsnow.neoecoae.crafting.display.format.DisplayNumbers.grouped(state.bytes()) + " B");
         var header = new ECOCraftingListImageExport.Header(target, requested, elapsed, bytes,

@@ -55,7 +55,6 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
             for (var cycle : snapshot.cycleGroups()) {
                 Set<AEKey> seeds = new HashSet<>();
                 cycle.requiredSeed().forEach(seed -> seeds.add(seed.key()));
-                startupSeeds.addAll(seeds);
                 requiredSeeds.put(cycle.componentId(), seeds);
             }
             participants = new HashSet<>();
@@ -65,6 +64,10 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
             for (var entry : cycles) {
                 participants.add(entry.what());
                 componentIds.add(entry.componentId());
+                if (entry.exactTotalNetOutput().signum() >= 0
+                        && requiredSeeds.getOrDefault(entry.componentId(), Set.of()).contains(entry.what())) {
+                    startupSeeds.add(entry.what());
+                }
                 if (entry.seedShortfallIsEstimate()) estimatedSeeds.add(entry.what());
                 if (entry.exactMissing().signum() > 0
                         && entry.solveStatus() == CycleSolveStatus.INSUFFICIENT_EXTERNAL_INPUT
@@ -123,16 +126,19 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
     private static final int MISSING_OVERLAY = 0x1AFF0000;
     private static final int CYCLE_OVERLAY = 0x1AB86BFF;
     private static final int FUZZY_PLANNING_OVERLAY = 0x264CAF70;
+    static final int CYCLE_SEED_OVERLAY = 0x33FFC107;
     private final Predicate<AEKey> cycleParticipant;
+    private final Predicate<AEKey> cycleSeed;
     private final Predicate<AEKey> missingStartupSeed;
     private final Predicate<AEKey> estimatedStartupSeed;
     private final Predicate<AEKey> fuzzyPlanningItem;
 
     ECOExactMaterialTableRenderer(AEBaseScreen<?> screen, int x, int y,
-            Predicate<AEKey> cycleParticipant, Predicate<AEKey> missingStartupSeed,
+            Predicate<AEKey> cycleParticipant, Predicate<AEKey> cycleSeed, Predicate<AEKey> missingStartupSeed,
             Predicate<AEKey> estimatedStartupSeed, Predicate<AEKey> fuzzyPlanningItem) {
         super(screen, x, y, 7);
         this.cycleParticipant = cycleParticipant;
+        this.cycleSeed = cycleSeed;
         this.missingStartupSeed = missingStartupSeed;
         this.estimatedStartupSeed = estimatedStartupSeed;
         this.fuzzyPlanningItem = fuzzyPlanningItem;
@@ -174,30 +180,16 @@ final class ECOExactMaterialTableRenderer extends AbstractTableRenderer<Crafting
 
     @Override
     protected List<Component> getEntryTooltip(CraftingGraphSnapshot.MaterialNode entry) {
-        List<Component> lines = AEKeyRendering.getTooltip(entry.key());
-        BigInteger stored = entry.fromInventoryBigInteger();
-        BigInteger missing = entry.missingBigInteger();
-        BigInteger craft = entry.toCraftBigInteger();
-        if (stored.signum() > 0) {
-            lines.add(GuiText.FromStorage.text(formatAmount(entry.key(), stored, AmountFormat.FULL)));
-        }
-        if (missing.signum() > 0) {
-            lines.add(missingDescription(entry.key(), missing, AmountFormat.FULL));
-            if (isEstimatedStartupSeed(entry.key())) {
-                lines.add(Component.translatable("gui.neoecoae.crafting_report.seed_shortfall_estimate_hint"));
-            }
-        }
-        if (craft.signum() > 0) {
-            lines.add(GuiText.ToCraft.text(formatAmount(entry.key(), craft, AmountFormat.FULL)));
-        }
-        lines.add(Component.translatable("gui.neoecoae.crafting_report.requested_exact",
-            BigNumberFormatter.format(new BigInteger(entry.exactRequested()), 1, true)));
-        return lines;
+        ((ECOCraftConfirmScreen) screen).queueMaterialTooltip(new ECOCraftReportTooltips.Material(entry.key(),
+            entry.fromInventoryBigInteger(), entry.missingBigInteger(), entry.toCraftBigInteger(), entry.requestedBigInteger(),
+            isMissingStartupSeed(entry.key()), isEstimatedStartupSeed(entry.key()), cycleSeed.test(entry.key())));
+        return List.of();
     }
 
     @Override
     protected int getEntryOverlayColor(CraftingGraphSnapshot.MaterialNode entry) {
         if (entry.missingBigInteger().signum() > 0) return MISSING_OVERLAY;
+        if (cycleSeed.test(entry.key())) return CYCLE_SEED_OVERLAY;
         if (cycleParticipant.test(entry.key())) return CYCLE_OVERLAY;
         if (fuzzyPlanningItem.test(entry.key())) return FUZZY_PLANNING_OVERLAY;
         return 0;
