@@ -10,7 +10,11 @@ import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipeCategory;
+import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
+import dev.emi.emi.api.stack.EmiStackInteraction;
+import dev.emi.emi.api.widget.Bounds;
+import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.RetainedUIGuiContainer;
 import dev.emi.emi.registry.EmiPluginContainer;
 import java.util.List;
 import net.minecraft.client.Minecraft;
@@ -44,7 +48,25 @@ public final class ECOEmiPlugin implements EmiPlugin {
             registry.addWorkstation(multiblock, EmiStack.of(definition.getOwner().value()));
             registry.addRecipe(new MultiblockEmiRecipe(multiblock, definition));
         }
+        registerRetainedScreen(registry);
         LoggerFactory.getLogger("neoecoae").info("GTO ECO EMI multiblocks: {}", NEMultiBlocks.DEFINITIONS.size());
+    }
+
+    /**
+     * EMI matches stack providers and exclusion areas by exact screen class, so LDLib's
+     * {@code ModularUIGuiContainer} handlers never apply to this subclass. Mouse coordinates are
+     * also converted into the scaled logical space used by the retained element tree.
+     */
+    private static void registerRetainedScreen(EmiRegistry registry) {
+        registry.addStackProvider(RetainedUIGuiContainer.class, (screen, x, y) -> {
+            var main = screen.modularUI.mainGroup;
+            Object ingredient = main.getXEIIngredientOverMouse(screen.toLogical(x), screen.toLogical(y));
+            if (ingredient instanceof EmiStackInteraction interaction) return interaction;
+            if (ingredient instanceof EmiIngredient emi) return new EmiStackInteraction(emi, null, false);
+            return EmiStackInteraction.EMPTY;
+        });
+        registry.addExclusionArea(RetainedUIGuiContainer.class, (screen, consumer) -> screen.getGuiExtraAreas()
+            .forEach(area -> consumer.accept(new Bounds(area.getX(), area.getY(), area.getWidth(), area.getHeight()))));
     }
 
     static void registerRecipes(EmiRegistry registry, EmiRecipeCategory regular, EmiRecipeCategory large) {
