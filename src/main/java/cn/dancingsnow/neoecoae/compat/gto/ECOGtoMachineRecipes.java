@@ -2,7 +2,6 @@ package cn.dancingsnow.neoecoae.compat.gto;
 
 import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.platform.recipe.RecipeJson;
-import com.gregtechceu.gtceu.api.machine.multiblock.CleanroomType;
 import com.gregtechceu.gtceu.api.recipe.GTRecipeDefinition;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gtolib.api.recipe.RecipeBuilder;
@@ -24,7 +23,7 @@ public final class ECOGtoMachineRecipes {
         "compat/gt/bootstrap/b06_energized_fluix_crystal",
         "compat/gt/bootstrap/b07_crystal_ingot",
         "compat/gt/bootstrap/b08_energized_superconductive_ingot",
-        "compat/gt/bootstrap/b09_superconducting_processor",
+        "compat/gt/bootstrap/b09_superconducting_processor_print",
         "compat/gt/bootstrap/b10_integrated_working_station",
         "compat/gt/bootstrap/b11_aluminum_alloy_casing",
         "compat/gt/bootstrap/b12_black_tungsten_alloy_casing",
@@ -53,7 +52,7 @@ public final class ECOGtoMachineRecipes {
             case 2 -> GTRecipeTypes.ALLOY_SMELTER_RECIPES;
             case 3 -> GTRecipeTypes.BLAST_RECIPES;
             case 4, 5 -> GTRecipeTypes.AUTOCLAVE_RECIPES;
-            case 8 -> GTRecipeTypes.CIRCUIT_ASSEMBLER_RECIPES;
+            case 8 -> GTRecipeTypes.LASER_ENGRAVER_RECIPES;
             case 9, 10, 11, 12, 13, 14, 15 -> GTRecipeTypes.ASSEMBLER_RECIPES;
             case 16, 17, 19, 20, 21, 22 -> GTRecipeTypes.MACERATOR_RECIPES;
             case 18 -> GTRecipeTypes.FORMING_PRESS_RECIPES;
@@ -122,17 +121,12 @@ public final class ECOGtoMachineRecipes {
                 .outputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 4)
                 .duration(400)
                 .EUt(1920);
-            case 8 -> builder // b09_superconducting_processor
-                .inputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor_print"), 4)
-                .inputItems(RegistriesUtils.getItem("neoecoae:crystal_matrix"), 4)
-                .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/silicon_plates")), 4)
-                .inputItems(ItemTags.create(new ResourceLocation("gtceu:circuits/hv")), 1)
-                .inputItems(RegistriesUtils.getItem("gtceu:fine_gold_wire"), 8)
-                .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 144))
-                .outputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor"), 4)
-                .cleanroom(CleanroomType.CLEANROOM)
+            case 8 -> builder // b09_superconducting_processor_print
+                .inputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 1)
+                .notConsumable(RegistriesUtils.getItem("neoecoae:superconducting_processor_press"))
+                .outputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor_print"), 1)
                 .duration(200)
-                .EUt(1920);
+                .EUt(30);
             case 9 -> builder // b10_integrated_working_station
                 .inputItems(RegistriesUtils.getItem("gtceu:ev_machine_hull"), 1)
                 .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_casing"), 4)
@@ -215,14 +209,16 @@ public final class ECOGtoMachineRecipes {
                 .duration(100)
                 .EUt(30);
             case 18 -> builder // c03_superconducting_processor
+                .notConsumable(RegistriesUtils.getItem("gtceu:hv_field_generator"))
                 .notConsumable(RegistriesUtils.getItem("neoecoae:superconducting_processor_press"))
                 .notConsumable(RegistriesUtils.getItem("ae2:silicon_press"))
-                .inputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 1)
-                .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/silicon_plates")), 1)
-                .inputItems(RegistriesUtils.getItem("neoecoae:crystal_matrix"), 1)
-                .outputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor"), 1)
-                .duration(40)
-                .EUt(1920);
+                .inputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 32)
+                .inputItems(RegistriesUtils.getItem("gtocore:electronic_grade_silicon_dust"), 32)
+                .inputItems(RegistriesUtils.getItem("botania:rune_mana"), 1)
+                .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 144))
+                .outputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor"), 32)
+                .duration(400)
+                .EUt(480);
             case 19 -> builder // o01_raw_aluminum_ore
                 .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_ore"), 1)
                 .outputItems(RegistriesUtils.getItem("neoecoae:raw_aluminum_ore"), 2)

@@ -755,12 +755,6 @@ public class NEItems {
 
     public static final ItemEntry<MaterialItem> SUPERCONDUCTING_PROCESSOR_PRINT = REGISTRATE
         .item("superconducting_processor_print", MaterialItem::new)
-        .recipe((ctx, prov) -> {
-            InscriberRecipeBuilder.inscribe(NEItems.ENERGIZED_SUPERCONDUCTIVE_INGOT, ctx.get(), 1)
-                .setMode(InscriberProcessType.INSCRIBE)
-                .setTop(Ingredient.of(NEItems.SUPERCONDUCTING_PROCESSOR_PRESS))
-                .save(prov, NeoECOAE.id("inscriber/superconducting_processor_print"));
-        })
         .register();
 
     public static final ItemEntry<MaterialItem> SUPERCONDUCTING_PROCESSOR = REGISTRATE
