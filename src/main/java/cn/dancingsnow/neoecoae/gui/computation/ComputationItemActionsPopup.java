@@ -24,7 +24,7 @@ import net.minecraft.resources.ResourceLocation;
  * One contextual menu (locate, open machine, open provider, in 1.7.10's order, plus step feeding control) and
  * separate choosers for several machines or providers; locating a provider also highlights it in the world.
  */
-final class ComputationItemActionsPopup extends UIElement {
+public final class ComputationItemActionsPopup extends UIElement {
     private static final SpriteTexture BACKGROUND = SpriteTexture.of(new ResourceLocation("neoecoae", "textures/gui/vendor/ae2/context_background.png"))
         .setSprite(0, 0, 256, 256).setBorder(2);
     private static final int PAGE_SIZE = 4;
@@ -33,7 +33,7 @@ final class ComputationItemActionsPopup extends UIElement {
     private final Consumer<Component> chat;
     private final List<CompoundTag> sources = new ArrayList<>();
     private final List<CompoundTag> machines = new ArrayList<>();
-    private ComputationCpuItemEntry item;
+    private AEKey key;
     private CompoundTag context = new CompoundTag();
     private long sequence;
     private boolean loaded, stopped, canStop;
@@ -41,7 +41,7 @@ final class ComputationItemActionsPopup extends UIElement {
     private int page, hovered = -1, pressed = -1;
     private Component message = Component.empty();
 
-    ComputationItemActionsPopup(Consumer<CompoundTag> request) {
+    public ComputationItemActionsPopup(Consumer<CompoundTag> request) {
         this(request, message -> Minecraft.getInstance().gui.getChat().addMessage(message));
     }
 
@@ -79,12 +79,17 @@ final class ComputationItemActionsPopup extends UIElement {
     }
 
     void open(ComputationCpuItemEntry item, float x, float y) {
-        this.item = item;
+        open(item.key(), x, y);
+        stopped = item.stepStopped();
+    }
+
+    public void open(AEKey key, float x, float y) {
+        this.key = key;
         sequence++;
         context = new CompoundTag();
         mode = Mode.MENU;
         loaded = canStop = false;
-        stopped = item.stepStopped();
+        stopped = false;
         page = 0;
         sources.clear();
         machines.clear();
@@ -93,14 +98,14 @@ final class ComputationItemActionsPopup extends UIElement {
         var request = new CompoundTag();
         request.putString("action", "inspect");
         request.putLong("sequence", sequence);
-        request.put("key", item.key().toTagGeneric());
+        request.put("key", key.toTagGeneric());
         this.request.accept(request);
     }
 
-    void accept(CompoundTag response) {
-        if (!isDisplayed() || item == null || response.getLong("sequence") != sequence) return;
-        AEKey key = AEKey.fromTagGeneric(response.getCompound("key"));
-        if (!item.key().equals(key)) return;
+    public void accept(CompoundTag response) {
+        if (key == null || response.getLong("sequence") != sequence) return;
+        AEKey receivedKey = AEKey.fromTagGeneric(response.getCompound("key"));
+        if (!key.equals(receivedKey)) return;
         context = response.copy();
         loaded = true;
         stopped = response.getBoolean("stopped");
@@ -116,7 +121,17 @@ final class ComputationItemActionsPopup extends UIElement {
         } else if (response.getBoolean("close")) close();
     }
 
-    void close() { setDisplay(false); pressed = hovered = -1; }
+    public boolean isOpen() { return key != null; }
+
+    public void close() { key = null; setDisplay(false); pressed = hovered = -1; }
+
+    private int availableWidth() {
+        return getParentElement() == null ? ComputationCpuStatusPanel.WIDTH : Math.max(1, Math.round(getParentElement().getSizeWidth()));
+    }
+
+    private int availableHeight() {
+        return getParentElement() == null ? ComputationCpuStatusPanel.HEIGHT : Math.max(1, Math.round(getParentElement().getSizeHeight()));
+    }
 
     @Override public boolean keyPressed(int key, int scanCode, int modifiers) {
         if (isDisplayed() && key == 256) { close(); return true; }
@@ -124,14 +139,14 @@ final class ComputationItemActionsPopup extends UIElement {
     }
 
     private void place(float x, float y, int width, int height) {
-        int left = Math.max(0, Math.min(ComputationCpuStatusPanel.WIDTH - width, Math.round(x)));
-        int top = Math.max(0, Math.min(ComputationCpuStatusPanel.HEIGHT - height, Math.round(y)));
+        int left = Math.max(0, Math.min(availableWidth() - width, Math.round(x)));
+        int top = Math.max(0, Math.min(availableHeight() - height, Math.round(y)));
         layout(layout -> layout.positionType(TaffyPosition.ABSOLUTE).left(left).top(top).width(width).height(height));
     }
 
     private void dialog() {
         int rows = mode == Mode.MESSAGE ? 1 : Math.min(PAGE_SIZE, Math.max(1, choices().size()));
-        place((ComputationCpuStatusPanel.WIDTH - 230) / 2F, 36, 230, 24 + rows * 30 + 22);
+        place((availableWidth() - 230) / 2F, 36, 230, 24 + rows * 30 + 22);
     }
 
     private int row(float x, float y) {
@@ -185,7 +200,7 @@ final class ComputationItemActionsPopup extends UIElement {
                 .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND,
                     "/tp " + position.getX() + " " + position.getY() + " " + position.getZ())));
             var location = Component.translatable("gui.neoecoae.processing.pattern_location",
-                item.key().getDisplayName(), name == null ? Component.empty() : name,
+                key.getDisplayName(), name == null ? Component.empty() : name,
                 source.getString("dimension"), coordinates);
             if (source.contains("side")) location.append(" · " + source.getString("side"));
             chat.accept(location);
@@ -197,7 +212,7 @@ final class ComputationItemActionsPopup extends UIElement {
         var tag = new CompoundTag();
         tag.putString("action", action);
         tag.putLong("sequence", sequence);
-        tag.put("key", item.key().toTagGeneric());
+        tag.put("key", key.toTagGeneric());
         if (context.hasUUID("job")) tag.putUUID("job", context.getUUID("job"));
         var targets = action.equals("open_machine") ? machines : sources;
         if (source >= 0 && source < targets.size()) {
@@ -210,7 +225,7 @@ final class ComputationItemActionsPopup extends UIElement {
         float x = getPositionX(), y = getPositionY(), width = getSizeWidth();
         context.graphics.flush();
         context.drawTexture(BACKGROUND, x, y, width, getSizeHeight());
-        Component title = item == null ? Component.empty() : item.key().getDisplayName();
+        Component title = key == null ? Component.empty() : key.getDisplayName();
         if (mode == Mode.CHOOSE || mode == Mode.CHOOSE_MACHINE) title = title.copy().append(" · " + (page + 1) + "/" + Math.max(1, (choices().size() + PAGE_SIZE - 1) / PAGE_SIZE));
         text(context, title, 7, 6, 0x413F54);
         divider(context, 18);
