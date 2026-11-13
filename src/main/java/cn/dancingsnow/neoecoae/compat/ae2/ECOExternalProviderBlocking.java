@@ -13,6 +13,16 @@ import java.lang.reflect.Method;
 public final class ECOExternalProviderBlocking {
     private ECOExternalProviderBlocking() {}
 
+    /**
+     * GTO replaces the provider's blocking button with its own multi-valued setting and leaves
+     * AE2's BLOCKING_MODE at its default, so the native getter alone never reports blocking.
+     */
+    public static boolean isBlocking(PatternProviderLogic logic) {
+        if ((Object) logic instanceof com.gtolib.api.ae2.IPatternProviderLogic gto
+                && gto.gtolib$getBlocking() != com.gtolib.api.ae2.BlockingType.NONE) return true;
+        return logic.isBlocking();
+    }
+
     public static boolean isEnabled(ICraftingProvider provider) {
         if (provider instanceof LargeWorkstationPatternProvider) return false;
         Object logic = provider;
@@ -28,7 +38,7 @@ public final class ECOExternalProviderBlocking {
         if (logic == null) return false;
         if (logic instanceof LargeWorkstationPatternProvider) return false;
         try {
-            if (logic instanceof PatternProviderLogic ae2) return ae2.isBlocking();
+            if (logic instanceof PatternProviderLogic ae2) return isBlocking(ae2);
             Method isBlocking = logic.getClass().getMethod("isBlocking");
             if (isBlocking.getReturnType() == boolean.class || isBlocking.getReturnType() == Boolean.class) {
                 return Boolean.TRUE.equals(isBlocking.invoke(logic));

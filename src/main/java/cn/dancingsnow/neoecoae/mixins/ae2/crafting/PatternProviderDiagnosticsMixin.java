@@ -113,13 +113,12 @@ public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushD
         }
     }
 
-    // Observe GTO's merged helpers instead of calls removed from the vanilla pushPattern body.
-    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$findTarget", at = @At("RETURN"))
-    private void neoecoae$observeGtoTarget(Direction side, CallbackInfoReturnable<PatternProviderTarget> result) {
-        if (result.getReturnValue() != null) {
-            if (neoecoae$observingPush) neoecoae$foundTarget = true;
-            if (neoecoae$capturingTarget) neoecoae$targetSide = side;
-        }
+    // Custom GT inputs bypass findTarget but use the same inventory-dispatch helper.
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushTarget", at = @At("HEAD"))
+    private void neoecoae$observeGtoTarget(CallbackInfoReturnable<Object> result,
+            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Direction side) {
+        if (neoecoae$observingPush) neoecoae$foundTarget = true;
+        if (neoecoae$capturingTarget) neoecoae$targetSide = side;
     }
 
     @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushCraftingMachine", at = @At("HEAD"))

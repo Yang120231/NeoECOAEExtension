@@ -213,8 +213,19 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
             )
     )
     private void tickClusters1(CallbackInfo ci, @Local(name = "latestChange") long latestChange) {
-        long latestChangeLocal = 0L;
+        neoecoae$ecoCpusTicked = true;
+        if (neoecoae$tickEcoCpus() > latestChange) {
+            this.lastProcessedCraftingLogicChangeTick = -1L;
+        }
 
+    }
+
+    @Unique
+    private boolean neoecoae$ecoCpusTicked;
+
+    @Unique
+    private long neoecoae$tickEcoCpus() {
+        long latestChangeLocal = 0L;
         for (NEComputationCluster cluster : this.neoecoae$computationClusters) {
             if (cluster != null) {
                 for (ECOCraftingCPU cpu : cluster.getActiveCPUs()) {
@@ -224,11 +235,22 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
                 cluster.pruneInactiveCPUs();
             }
         }
+        return latestChangeLocal;
+    }
 
-        if (latestChangeLocal > latestChange) {
-            this.lastProcessedCraftingLogicChangeTick = -1L;
+    /**
+     * GTO cancels this service tick on every other server tick, before the hook above is reached.
+     * ECO CPUs keep their own per-tick budget, so tick them here whenever the native body was skipped.
+     * Their modification ticks persist, so the next native pass still publishes the changes.
+     */
+    @WrapMethod(method = "onServerEndTick")
+    private void neoecoae$tickEcoCpusEveryTick(net.minecraft.server.MinecraftServer server,
+            Operation<Void> original) {
+        neoecoae$ecoCpusTicked = false;
+        original.call(server);
+        if (!neoecoae$ecoCpusTicked && appeng.hooks.ticking.TickHandler.instance().playerJoined) {
+            neoecoae$tickEcoCpus();
         }
-
     }
 
     @Inject(
@@ -677,15 +699,19 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
                     neoecoae$describeSubmissionPlan(job), neoecoae$describeSubmissionTarget(target),
                     unsuitableCpusResult.getValue());
         }
-        if (job.simulation()) {
+        // Native-safe ECO plans may use supported external CPUs unchanged. Plans requiring
+        // ECO's phased/cycle or exact-order runtime must stay on an ECO CPU.
+        boolean ecoOwnedPlan = ECOPlanningResultRegistry.isECOOwnedPlan(job);
+        // GTO lets a player start a native plan with missing ingredients (allowMissingCraftingJobs);
+        // the shortage then waits to be received. Only ECO's own previews, machine requests and a
+        // disabled option remain incomplete here. ECO previews are forced through the confirmation menu.
+        if (job.simulation() && (ecoOwnedPlan || src.player().isEmpty()
+                || !appeng.core.AEConfig.instance().isAllowMissingCraftingJobs())) {
             neoecoae$traceSubmissionRoute("eco-hook-simulation-rejection", job,
                     CraftingSubmitResult.INCOMPLETE_PLAN);
             cir.setReturnValue(CraftingSubmitResult.INCOMPLETE_PLAN);
             return;
         }
-        // Native-safe ECO plans may use supported external CPUs unchanged. Plans requiring
-        // ECO's phased/cycle or exact-order runtime must stay on an ECO CPU.
-        boolean ecoOwnedPlan = ECOPlanningResultRegistry.isECOOwnedPlan(job);
         if (ecoOwnedPlan && target != null && !(target instanceof ECOCraftingCPU)
                 && !cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuSupport.accepts(target, job)) {
             neoecoae$traceSubmissionRoute("eco-owned-plan-rejected-non-eco-cpu", job,
@@ -696,7 +722,8 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
         // CPU selection is independent of which planner produced the standard ICraftingPlan.
         // Execution metadata is validated separately by the CPU when it accepts the job.
         if (target instanceof ECOCraftingCPU ecoCpu) {
-            ICraftingSubmitResult result = ecoCpu.getCluster().submitJob(this.grid, job, src, requestingMachine);
+            ICraftingSubmitResult result = neoecoae$submitToEcoCluster(ecoCpu.getCluster(), job, src,
+                    requestingMachine);
             neoecoae$traceSubmissionRoute("explicit-eco-cpu", job, result);
             cir.setReturnValue(result);
             return;
@@ -707,7 +734,8 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
             // through to the native AE2 CPU path.
             for (var cluster : this.neoecoae$computationClusters) {
                 if (cluster.isNetworkRepresentative() && cluster.getFakeCPU() == target && cluster.isActive()) {
-                    ICraftingSubmitResult result = cluster.submitJob(this.grid, job, src, requestingMachine);
+                    ICraftingSubmitResult result = neoecoae$submitToEcoCluster(cluster, job, src,
+                            requestingMachine);
                     neoecoae$traceSubmissionRoute("explicit-eco-placeholder", job, result);
                     cir.setReturnValue(result);
                     return;
@@ -725,7 +753,7 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
         var cluster = neoecoae$findSuitableAdvCraftingCPU(job, src, unsuitableCpusResult);
         if (cluster != null) {
             updateList = true;
-            ICraftingSubmitResult result = cluster.submitJob(this.grid, job, src, requestingMachine);
+            ICraftingSubmitResult result = neoecoae$submitToEcoCluster(cluster, job, src, requestingMachine);
             neoecoae$traceSubmissionRoute("automatic-eco-cluster", job, result);
             cir.setReturnValue(result);
         } else if (ecoOwnedPlan && !cn.dancingsnow.neoecoae.crafting.execution.ECOExternalCpuSupport.supportsPlan(job)) {
@@ -739,6 +767,26 @@ public abstract class CraftingServiceMixin implements ECOCraftingNetworkSettings
                     neoecoae$describeSubmissionPlan(job), unsuitableCpusResult.getValue());
         }
         // Fall through to other providers and AE2's normal result when ECO has no candidate.
+    }
+
+    /**
+     * An ECO CPU extracts strictly and only waits for emitted items, so an accepted partial plan must first
+     * move its shortage into the waiting inventory. Native CPUs receive the plan unchanged.
+     */
+    @Unique
+    private ICraftingSubmitResult neoecoae$submitToEcoCluster(NEComputationCluster cluster, ICraftingPlan job,
+            IActionSource src, ICraftingRequester requestingMachine) {
+        ICraftingPlan executable = job;
+        if (job.simulation()) {
+            try {
+                executable = new cn.dancingsnow.neoecoae.crafting.adapter.ae2.ECOForcedCraftingPlan(job);
+            } catch (RuntimeException failure) {
+                NEOECOAE_SUBMISSION_LOGGER.warn("[craft-submit] Partial plan could not be prepared: output={}",
+                        job.finalOutput(), failure);
+                return CraftingSubmitResult.INCOMPLETE_PLAN;
+            }
+        }
+        return cluster.submitJob(this.grid, executable, src, requestingMachine);
     }
 
     @Unique

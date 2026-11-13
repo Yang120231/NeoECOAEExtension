@@ -370,7 +370,7 @@ public final class LargeWorkstationPatternProvider extends PatternProviderLogic
                 || isCraftingLocked()) {
             return false;
         }
-        if (!isBlocking()) {
+        if (!cn.dancingsnow.neoecoae.compat.ae2.ECOExternalProviderBlocking.isBlocking(this)) {
             return true;
         }
         return !controller.containsPendingPatternInput(patternInputKeys(pattern));
