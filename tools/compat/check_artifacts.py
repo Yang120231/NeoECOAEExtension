@@ -28,9 +28,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--release-only", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--build-directory", type=Path, default=ROOT / "build")
+    parser.add_argument("--source-root", type=Path, default=ROOT, help="Source tree used to build a frozen artifact")
     parser.add_argument("--with-sources", action="store_true", help="Also verify the matching ECO sources archive")
     args = parser.parse_args()
-    version = next(line.split("=", 1)[1] for line in (ROOT / "gradle.properties").read_text().splitlines()
+    source_root = args.source_root.resolve()
+    version = next(line.split("=", 1)[1] for line in (source_root / "gradle.properties").read_text().splitlines()
                    if line.startswith("mod_version="))
     path = args.build_directory / "libs" / f"neoecoae-{version}.jar"
     with zipfile.ZipFile(path) as archive:
@@ -50,7 +52,7 @@ def main():
             if "/compatprobe/" in entry:
                 raise ValueError(f"Test probe bundled in release: {entry}")
             if not entry.endswith("/") and entry.startswith(("assets/", "data/", "recipe_profiles/", "classic_pack/")):
-                if not any((ROOT / source / entry).is_file() for source in ("src/main/resources", "src/generated/resources")):
+                if not any((source_root / source / entry).is_file() for source in ("src/main/resources", "src/generated/resources")):
                     raise ValueError(f"Stale resource bundled in release: {entry}")
     result = {"file": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "entries": len(entries)}
     results = [result]
@@ -61,8 +63,8 @@ def main():
             if archive.testzip() is not None:
                 raise ValueError("Corrupt sources archive")
             source_entries = archive.namelist()
-            expected_sources = {file.relative_to(ROOT / "src/main/java").as_posix(): file
-                                for file in (ROOT / "src/main/java").rglob("*.java")}
+            expected_sources = {file.relative_to(source_root / "src/main/java").as_posix(): file
+                                for file in (source_root / "src/main/java").rglob("*.java")}
             actual_sources = {entry for entry in source_entries if entry.endswith(".java")}
             if actual_sources != expected_sources.keys():
                 raise ValueError("Sources archive Java files do not match the release source tree")
