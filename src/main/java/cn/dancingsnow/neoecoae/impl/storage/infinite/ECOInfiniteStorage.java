@@ -133,8 +133,13 @@ public final class ECOInfiniteStorage implements MEStorage, CombinedExactAmountS
     }
 
     @Override
-    public boolean isPreferredStorageFor(AEKey what, IActionSource source) {
-        return what != null && allowInsert.getAsBoolean() && engine.contains(what);
+    public boolean supportsKeyType(appeng.api.stacks.AEKeyType<?> type) {
+        return type != null;
+    }
+
+    @Override
+    public int operationTime() {
+        return 1;
     }
 
     @Override

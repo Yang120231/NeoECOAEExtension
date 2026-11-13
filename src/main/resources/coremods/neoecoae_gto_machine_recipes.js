@@ -21,11 +21,16 @@ function initializeCoreMod() {
             'transformer': function(method) {
                 var nodes = method.instructions.toArray();
                 var anchors = 0;
+                var materialInfo = false;
                 for (var i = 0; i < nodes.length; i++) {
                     var node = nodes[i];
+                    if (node.getOpcode() === Opcodes.GETSTATIC &&
+                        node.owner === 'com/gregtechceu/gtceu/api/data/chemical/material/ItemMaterialData' &&
+                        node.name === 'ITEM_MATERIAL_INFO') materialInfo = true;
                     if (node.getOpcode() !== Opcodes.INVOKESTATIC ||
-                        node.owner !== 'com/gtolib/api/recipe/RecipeBuilder' ||
-                        node.name !== 'finish' || node.desc !== '()V') continue;
+                        !materialInfo || node.owner.indexOf('com/gtolib/') !== 0 ||
+                        node.desc !== '()V') continue;
+                    materialInfo = false;
 
                     var index = method.maxLocals++;
                     var loop = new LabelNode();
@@ -39,20 +44,24 @@ function initializeCoreMod() {
                     registration.add(new JumpInsnNode(Opcodes.IF_ICMPGE, end));
                     registration.add(new VarInsnNode(Opcodes.ILOAD, index));
                     registration.add(ASMAPI.buildMethodCall(ECO, 'type',
-                        '(I)Lcom/gtolib/api/recipe/RecipeType;', ASMAPI.MethodType.STATIC));
+                        '(I)Lcom/gregtechceu/gtceu/api/recipe/GTRecipeType;', ASMAPI.MethodType.STATIC));
+                    registration.add(new InsnNode(Opcodes.DUP));
+                    registration.add(ASMAPI.buildMethodCall(ECO, 'builderHandle',
+                        '(Lcom/gregtechceu/gtceu/api/recipe/GTRecipeType;)Ljava/lang/invoke/MethodHandle;', ASMAPI.MethodType.STATIC));
+                    registration.add(new InsnNode(Opcodes.SWAP));
                     registration.add(new VarInsnNode(Opcodes.ILOAD, index));
                     registration.add(ASMAPI.buildMethodCall(ECO, 'id',
                         '(I)Lnet/minecraft/resources/ResourceLocation;', ASMAPI.MethodType.STATIC));
                     // Native GTO checks the caller of recipeBuilder and save. Keep both calls in Data.
                     registration.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                        'com/gtolib/api/recipe/RecipeType', 'recipeBuilder',
-                        '(Lnet/minecraft/resources/ResourceLocation;)Lcom/gtolib/api/recipe/RecipeBuilder;', false));
+                        'java/lang/invoke/MethodHandle', 'invokeExact',
+                        '(Lcom/gregtechceu/gtceu/api/recipe/GTRecipeType;Lnet/minecraft/resources/ResourceLocation;)Lcom/gregtechceu/gtceu/api/recipe/GTRecipeBuilder;', false));
                     registration.add(new InsnNode(Opcodes.DUP));
                     registration.add(new VarInsnNode(Opcodes.ILOAD, index));
                     registration.add(ASMAPI.buildMethodCall(ECO, 'configure',
-                        '(Lcom/gtolib/api/recipe/RecipeBuilder;I)V', ASMAPI.MethodType.STATIC));
+                        '(Lcom/gregtechceu/gtceu/api/recipe/GTRecipeBuilder;I)V', ASMAPI.MethodType.STATIC));
                     registration.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL,
-                        'com/gtolib/api/recipe/RecipeBuilder', 'save',
+                        'com/gregtechceu/gtceu/api/recipe/GTRecipeBuilder', 'save',
                         '()Lcom/gregtechceu/gtceu/api/recipe/GTRecipeDefinition;', false));
                     registration.add(new VarInsnNode(Opcodes.ILOAD, index));
                     registration.add(ASMAPI.buildMethodCall(ECO, 'verifySaved',
@@ -65,7 +74,7 @@ function initializeCoreMod() {
                         '()V', ASMAPI.MethodType.STATIC));
                     anchors++;
                 }
-                if (anchors !== 1) throw new Error('NeoECOAE expected one RecipeBuilder.finish() call, found ' + anchors);
+                if (anchors !== 1) throw new Error('NeoECOAE expected one GTO recipe finalization after material info, found ' + anchors);
                 method.maxStack = Math.max(method.maxStack, 4);
                 ASMAPI.log('INFO', 'NeoECOAE installed GTO machine recipe registration and finalization checks');
                 return method;

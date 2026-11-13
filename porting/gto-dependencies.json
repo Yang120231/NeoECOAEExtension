@@ -1,8 +1,26 @@
 {
   "ae2": {
     "mod_id": "ae2",
-    "filename": "GTO-AE2-15.2610.47.jar",
-    "url": "https://gtodyssey.com/maven/releases/appeng/appliedenergistics2-forge-1.20.1/15.2610.47/appliedenergistics2-forge-1.20.1-15.2610.47.jar",
-    "sha256": "fa925b3be095dedcd3cdb2f528cbefe206edef2982690cf1dc6207df968c6640"
+    "filename": "GTO-AE2-15.2611.8.jar",
+    "url": "https://gtodyssey.com/maven/releases/appeng/appliedenergistics2-forge-1.20.1/15.2611.8/appliedenergistics2-forge-1.20.1-15.2611.8.jar",
+    "sha256": "75b4d566da1da1d18a6808be383c6d5934ed661db2e8d586841cea91eaa34f8c"
+  },
+  "gtocore": {
+    "mod_id": "gtocore",
+    "filename": "GTO-Core-26.11.6.jar",
+    "url": "https://gtodyssey.com/maven/releases/com/gto/gtocore-forge-1.20.1/26.11.6/gtocore-forge-1.20.1-26.11.6.jar",
+    "sha256": "70e95c6ec8135959345c9576142fea8ae3e365f69dd74eea0c09a59b3fec0e82"
+  },
+  "gtceu": {
+    "mod_id": "gtceu",
+    "filename": "GTO-GTCEu-26.11.20.jar",
+    "url": "https://gtodyssey.com/maven/releases/com/gregtechceu/gtceu/gtceu-1.20.1-forge-1.20.1/26.11.20/gtceu-1.20.1-forge-1.20.1-26.11.20.jar",
+    "sha256": "04f536e69a59ff83840610732476f36ddeace6c52ee2d65b5ad2a0476683f97a"
+  },
+  "datasynclib": {
+    "mod_id": "datasynclib",
+    "filename": "GTO-DataSyncLib-26.11.2.jar",
+    "url": "https://gtodyssey.com/maven/releases/com/gto/datasynclib-forge-1.20.1/26.11.2/datasynclib-forge-1.20.1-26.11.2.jar",
+    "sha256": "23af2b0ee05bda337313d5350d6c175b99589b85ddf316aaba329fd8bad395a6"
   }
 }

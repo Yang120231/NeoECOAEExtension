@@ -32,15 +32,14 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /** Observes existing calls only: no extra target probes, insertion, or changes to AE2's return value. */
 @Mixin(value = PatternProviderLogic.class, remap = false, priority = 500)
 public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushDiagnostics, ECOProcessingTargetProvider {
-    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "@providerCallback",
+    @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "@providerBatch",
         at = @At("HEAD"), cancellable = true)
-    private void neoecoae$routeSpecializedProvider(IPatternDetails pattern,
-            @org.spongepowered.asm.mixin.injection.Coerce Object holder, java.util.function.Supplier<?> accepted,
+    private void neoecoae$routeSpecializedProvider(@org.spongepowered.asm.mixin.injection.Coerce Object batch,
             CallbackInfoReturnable<Object> ci) {
         Object self = this;
         if (self instanceof cn.dancingsnow.neoecoae.blocks.entity.LargeWorkstationPatternProvider provider) {
             ci.setReturnValue(cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush
-                .dispatchSpecialized(provider, pattern, holder, accepted));
+                .dispatchSpecialized(provider, batch));
         }
     }
 
@@ -115,17 +114,24 @@ public abstract class PatternProviderDiagnosticsMixin implements ECOPatternPushD
 
     // Custom GT inputs bypass findTarget but use the same inventory-dispatch helper.
     @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushTarget", at = @At("HEAD"))
-    private void neoecoae$observeGtoTarget(CallbackInfoReturnable<Object> result,
+    private void neoecoae$observeGtoTarget(CallbackInfoReturnable<Boolean> result,
             @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Direction side) {
         if (neoecoae$observingPush) neoecoae$foundTarget = true;
         if (neoecoae$capturingTarget) neoecoae$targetSide = side;
     }
 
     @cn.dancingsnow.neoecoae.platform.mixin.ObserveGtoPattern(helper = "gtolib$pushCraftingMachine", at = @At("HEAD"))
-    private void neoecoae$observeGtoMachine(CallbackInfoReturnable<Object> result,
+    private void neoecoae$observeGtoMachine(CallbackInfoReturnable<Boolean> result,
             @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Direction side) {
         if (neoecoae$observingPush) neoecoae$foundTarget = true;
         if (neoecoae$capturingTarget) neoecoae$targetSide = side.getOpposite();
+    }
+
+    @Inject(method = "onPushPatternSuccess", at = @At("HEAD"))
+    private void neoecoae$recordGtoCommit(IPatternDetails pattern,
+            org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+        cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternPush.accepted(
+            (PatternProviderLogic) (Object) this, pattern);
     }
 
     @Inject(method = "adapterAcceptsAll", at = @At("RETURN"))

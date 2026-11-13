@@ -49,7 +49,7 @@ public final class ECOCreativeExtractionFilter {
         while (storage != null) {
             if (storage instanceof CreativeStorage) return true;
             if (storage instanceof DelegatingMEInventory wrapper) storage = wrapper.getDelegate();
-            else if (storage instanceof SupplierStorageAccessor supplier) storage = supplier.neoecoae$getDelegate();
+            else if (storage instanceof SupplierStorageAccessor supplier) storage = supplier.neoecoae$getSupplier().get();
             else return false;
         }
         return false;

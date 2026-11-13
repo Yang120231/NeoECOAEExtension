@@ -4,9 +4,13 @@ import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.platform.recipe.RecipeJson;
 import com.gregtechceu.gtceu.api.recipe.GTRecipeDefinition;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
-import com.gtolib.api.recipe.RecipeBuilder;
-import com.gtolib.api.recipe.RecipeType;
-import com.gtolib.utils.RegistriesUtils;
+import com.gregtechceu.gtceu.api.recipe.GTRecipeBuilder;
+import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraftforge.fluids.FluidStack;
@@ -40,14 +44,41 @@ public final class ECOGtoMachineRecipes {
         "compat/gt/ore_processing/o04_tungsten_dust",
     };
 
+    private static final ClassValue<MethodHandle> BUILDERS = new ClassValue<>() {
+        @Override protected MethodHandle computeValue(Class<?> type) {
+            Method factory = null;
+            for (Method method : type.getMethods()) {
+                if (Modifier.isStatic(method.getModifiers()) || method.isBridge() || method.isSynthetic()
+                        || method.getParameterCount() != 1
+                        || method.getParameterTypes()[0] != ResourceLocation.class
+                        || !GTRecipeBuilder.class.isAssignableFrom(method.getReturnType())) continue;
+                if (factory != null) throw new IllegalStateException("Ambiguous GTO recipe-builder factory");
+                factory = method;
+            }
+            try {
+                if (factory == null || !factory.trySetAccessible())
+                    throw new IllegalAccessException("GTO recipe-builder factory");
+                return MethodHandles.lookup().unreflect(factory).asType(
+                    MethodType.methodType(GTRecipeBuilder.class, GTRecipeType.class, ResourceLocation.class));
+            } catch (IllegalAccessException failure) {
+                throw new IllegalStateException("Cannot bind GTO recipe-builder factory", failure);
+            }
+        }
+    };
+
     private ECOGtoMachineRecipes() {}
+
+    /** Data.commonInit invokes this handle itself, preserving GTO's native caller check. */
+    public static MethodHandle builderHandle(GTRecipeType type) {
+        return BUILDERS.get(type.getClass());
+    }
 
     public static int count() { return IDS.length; }
 
     public static ResourceLocation id(int index) { return NeoECOAE.id(IDS[index]); }
 
-    public static RecipeType type(int index) {
-        return (RecipeType) switch (index) {
+    public static GTRecipeType type(int index) {
+        return switch (index) {
             case 0, 1, 6, 7 -> GTRecipeTypes.MIXER_RECIPES;
             case 2 -> GTRecipeTypes.ALLOY_SMELTER_RECIPES;
             case 3 -> GTRecipeTypes.BLAST_RECIPES;
@@ -60,46 +91,46 @@ public final class ECOGtoMachineRecipes {
         };
     }
 
-    public static void configure(RecipeBuilder builder, int index) {
+    public static void configure(GTRecipeBuilder builder, int index) {
         switch (index) {
             case 0 -> builder // b01_aluminum_alloy_dust
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/iron")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/aluminium_dusts")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/certus_quartz")), 2)
-                .outputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_dust"), 1)
+                .outputItems(RecipeJson.item("neoecoae:aluminum_alloy_dust"), 1)
                 .duration(200)
                 .EUt(120);
             case 1 -> builder // b02_black_tungsten_alloy_dust
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/tungsten")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/aluminum_alloy")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/fluix")), 2)
-                .outputItems(RegistriesUtils.getItem("neoecoae:black_tungsten_alloy_dust"), 1)
+                .outputItems(RecipeJson.item("neoecoae:black_tungsten_alloy_dust"), 1)
                 .duration(200)
                 .EUt(480);
             case 2 -> builder // b03_aluminum_alloy_ingot
-                .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_dust"), 1)
-                .outputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_ingot"), 1)
+                .inputItems(RecipeJson.item("neoecoae:aluminum_alloy_dust"), 1)
+                .outputItems(RecipeJson.item("neoecoae:aluminum_alloy_ingot"), 1)
                 .duration(200)
                 .EUt(120);
             case 3 -> builder // b04_black_tungsten_alloy_ingot
-                .inputItems(RegistriesUtils.getItem("neoecoae:black_tungsten_alloy_dust"), 1)
+                .inputItems(RecipeJson.item("neoecoae:black_tungsten_alloy_dust"), 1)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:argon"), 100))
-                .outputItems(RegistriesUtils.getItem("neoecoae:black_tungsten_alloy_ingot"), 1)
+                .outputItems(RecipeJson.item("neoecoae:black_tungsten_alloy_ingot"), 1)
                 .blastFurnaceTemp(3600)
                 .duration(400)
                 .EUt(1920);
             case 4 -> builder // b05_energized_crystal
-                .inputItems(RegistriesUtils.getItem("ae2:charged_certus_quartz_crystal"), 4)
+                .inputItems(RecipeJson.item("ae2:charged_certus_quartz_crystal"), 4)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/energized_crystal")), 4)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:distilled_water"), 250))
-                .outputItems(RegistriesUtils.getItem("neoecoae:energized_crystal"), 8)
+                .outputItems(RecipeJson.item("neoecoae:energized_crystal"), 8)
                 .duration(100)
                 .EUt(480);
             case 5 -> builder // b06_energized_fluix_crystal
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/energized_crystal")), 8)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:gems/fluix")), 8)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:distilled_water"), 250))
-                .outputItems(RegistriesUtils.getItem("neoecoae:energized_fluix_crystal"), 8)
+                .outputItems(RecipeJson.item("neoecoae:energized_fluix_crystal"), 8)
                 .duration(100)
                 .EUt(480);
             case 6 -> builder // b07_crystal_ingot
@@ -107,9 +138,9 @@ public final class ECOGtoMachineRecipes {
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/fluix")), 4)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/energized_crystal")), 4)
                 .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/crystal_bases")), 4)
-                .inputItems(RegistriesUtils.getItem("gtceu:quartzite_dust"), 4)
+                .inputItems(RecipeJson.item("gtceu:quartzite_dust"), 4)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:argon"), 2000))
-                .outputItems(RegistriesUtils.getItem("neoecoae:crystal_ingot"), 4)
+                .outputItems(RecipeJson.item("neoecoae:crystal_ingot"), 4)
                 .duration(400)
                 .EUt(480);
             case 7 -> builder // b08_energized_superconductive_ingot
@@ -118,125 +149,125 @@ public final class ECOGtoMachineRecipes {
                 .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/silicon")), 4)
                 .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/superconductor_ingots")), 4)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:argon"), 2000))
-                .outputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 4)
+                .outputItems(RecipeJson.item("neoecoae:energized_superconductive_ingot"), 4)
                 .duration(400)
                 .EUt(1920);
             case 8 -> builder // b09_superconducting_processor_print
-                .inputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 1)
-                .notConsumable(RegistriesUtils.getItem("neoecoae:superconducting_processor_press"))
-                .outputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor_print"), 1)
+                .inputItems(RecipeJson.item("neoecoae:energized_superconductive_ingot"), 1)
+                .notConsumable(RecipeJson.item("neoecoae:superconducting_processor_press"))
+                .outputItems(RecipeJson.item("neoecoae:superconducting_processor_print"), 1)
                 .duration(200)
                 .EUt(30);
             case 9 -> builder // b10_integrated_working_station
-                .inputItems(RegistriesUtils.getItem("gtceu:ev_machine_hull"), 1)
-                .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_casing"), 4)
+                .inputItems(RecipeJson.item("gtceu:ev_machine_hull"), 1)
+                .inputItems(RecipeJson.item("neoecoae:aluminum_alloy_casing"), 4)
                 .inputItems(ItemTags.create(new ResourceLocation("gtceu:circuits/ev")), 4)
-                .inputItems(RegistriesUtils.getItem("ae2:molecular_assembler"), 1)
-                .inputItems(RegistriesUtils.getItem("ae2:256k_crafting_storage"), 1)
-                .inputItems(RegistriesUtils.getItem("ae2:cell_workbench"), 1)
-                .inputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor"), 2)
-                .inputItems(RegistriesUtils.getItem("ae2:interface"), 1)
-                .inputItems(RegistriesUtils.getItem("gtceu:ev_electric_motor"), 2)
+                .inputItems(RecipeJson.item("ae2:molecular_assembler"), 1)
+                .inputItems(RecipeJson.item("ae2:256k_crafting_storage"), 1)
+                .inputItems(RecipeJson.item("ae2:cell_workbench"), 1)
+                .inputItems(RecipeJson.item("neoecoae:superconducting_processor"), 2)
+                .inputItems(RecipeJson.item("ae2:interface"), 1)
+                .inputItems(RecipeJson.item("gtceu:ev_electric_motor"), 2)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 576))
-                .outputItems(RegistriesUtils.getItem("neoecoae:integrated_working_station"), 1)
+                .outputItems(RecipeJson.item("neoecoae:integrated_working_station"), 1)
                 .duration(600)
                 .EUt(1920);
             case 10 -> builder // b11_aluminum_alloy_casing
-                .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_ingot"), 4)
-                .inputItems(RegistriesUtils.getItem("gtceu:aluminium_plate"), 4)
-                .inputItems(RegistriesUtils.getItem("ae2:quartz_vibrant_glass"), 4)
-                .inputItems(RegistriesUtils.getItem("neoecoae:crystal_ingot"), 1)
+                .inputItems(RecipeJson.item("neoecoae:aluminum_alloy_ingot"), 4)
+                .inputItems(RecipeJson.item("gtceu:aluminium_plate"), 4)
+                .inputItems(RecipeJson.item("ae2:quartz_vibrant_glass"), 4)
+                .inputItems(RecipeJson.item("neoecoae:crystal_ingot"), 1)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 144))
-                .outputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_casing"), 2)
+                .outputItems(RecipeJson.item("neoecoae:aluminum_alloy_casing"), 2)
                 .duration(100)
                 .EUt(480);
             case 11 -> builder // b12_black_tungsten_alloy_casing
-                .inputItems(RegistriesUtils.getItem("neoecoae:black_tungsten_alloy_ingot"), 4)
-                .inputItems(RegistriesUtils.getItem("gtceu:titanium_plate"), 4)
-                .inputItems(RegistriesUtils.getItem("ae2:quartz_vibrant_glass"), 4)
-                .inputItems(RegistriesUtils.getItem("neoecoae:crystal_ingot"), 1)
+                .inputItems(RecipeJson.item("neoecoae:black_tungsten_alloy_ingot"), 4)
+                .inputItems(RecipeJson.item("gtceu:titanium_plate"), 4)
+                .inputItems(RecipeJson.item("ae2:quartz_vibrant_glass"), 4)
+                .inputItems(RecipeJson.item("neoecoae:crystal_ingot"), 1)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 144))
-                .outputItems(RegistriesUtils.getItem("neoecoae:black_tungsten_alloy_casing"), 2)
+                .outputItems(RecipeJson.item("neoecoae:black_tungsten_alloy_casing"), 2)
                 .duration(200)
                 .EUt(1920);
             case 12 -> builder // b13_crafting_casing
-                .inputItems(RegistriesUtils.getItem("neoecoae:black_tungsten_alloy_casing"), 4)
-                .inputItems(RegistriesUtils.getItem("ae2:engineering_processor"), 2)
+                .inputItems(RecipeJson.item("neoecoae:black_tungsten_alloy_casing"), 4)
+                .inputItems(RecipeJson.item("ae2:engineering_processor"), 2)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:storage_blocks/energized_fluix_crystal")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("gtceu:circuits/ev")), 2)
-                .inputItems(RegistriesUtils.getItem("gtceu:stainless_steel_plate"), 4)
+                .inputItems(RecipeJson.item("gtceu:stainless_steel_plate"), 4)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 288))
-                .outputItems(RegistriesUtils.getItem("neoecoae:crafting_casing"), 1)
+                .outputItems(RecipeJson.item("neoecoae:crafting_casing"), 1)
                 .duration(200)
                 .EUt(1920);
             case 13 -> builder // b14_storage_casing
-                .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_casing"), 4)
-                .inputItems(RegistriesUtils.getItem("ae2:logic_processor"), 2)
+                .inputItems(RecipeJson.item("neoecoae:aluminum_alloy_casing"), 4)
+                .inputItems(RecipeJson.item("ae2:logic_processor"), 2)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:storage_blocks/energized_fluix_crystal")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("gtceu:circuits/ev")), 2)
-                .inputItems(RegistriesUtils.getItem("gtceu:titanium_plate"), 4)
+                .inputItems(RecipeJson.item("gtceu:titanium_plate"), 4)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 288))
-                .outputItems(RegistriesUtils.getItem("neoecoae:storage_casing"), 1)
+                .outputItems(RecipeJson.item("neoecoae:storage_casing"), 1)
                 .duration(200)
                 .EUt(1920);
             case 14 -> builder // b15_computation_casing
-                .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_alloy_casing"), 4)
-                .inputItems(RegistriesUtils.getItem("ae2:calculation_processor"), 2)
+                .inputItems(RecipeJson.item("neoecoae:aluminum_alloy_casing"), 4)
+                .inputItems(RecipeJson.item("ae2:calculation_processor"), 2)
                 .inputItems(ItemTags.create(new ResourceLocation("forge:storage_blocks/energized_fluix_crystal")), 1)
                 .inputItems(ItemTags.create(new ResourceLocation("gtceu:circuits/ev")), 2)
-                .inputItems(RegistriesUtils.getItem("gtceu:titanium_plate"), 4)
+                .inputItems(RecipeJson.item("gtceu:titanium_plate"), 4)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 288))
-                .outputItems(RegistriesUtils.getItem("neoecoae:computation_casing"), 1)
+                .outputItems(RecipeJson.item("neoecoae:computation_casing"), 1)
                 .duration(200)
                 .EUt(1920);
             case 15 -> builder // b16_integrated_working_station_module_empty
-                .inputItems(RegistriesUtils.getItem("ae2:advanced_card"), 1)
-                .inputItems(RegistriesUtils.getItem("gtceu:polyethylene_plate"), 4)
-                .inputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor"), 2)
+                .inputItems(RecipeJson.item("ae2:advanced_card"), 1)
+                .inputItems(RecipeJson.item("gtceu:polyethylene_plate"), 4)
+                .inputItems(RecipeJson.item("neoecoae:superconducting_processor"), 2)
                 .inputItems(ItemTags.create(new ResourceLocation("gtceu:circuits/hv")), 2)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 144))
-                .outputItems(RegistriesUtils.getItem("neoecoae:integrated_working_station_module_empty"), 4)
+                .outputItems(RecipeJson.item("neoecoae:integrated_working_station_module_empty"), 4)
                 .duration(100)
                 .EUt(480);
             case 16 -> builder // c01_energized_crystal_dust
                 .inputItems(ItemTags.create(new ResourceLocation("forge:gems/energized_crystal")), 1)
-                .outputItems(RegistriesUtils.getItem("neoecoae:energized_crystal_dust"), 1)
+                .outputItems(RecipeJson.item("neoecoae:energized_crystal_dust"), 1)
                 .duration(100)
                 .EUt(30);
             case 17 -> builder // c02_energized_fluix_crystal_dust
                 .inputItems(ItemTags.create(new ResourceLocation("forge:gems/energized_fluix_crystal")), 1)
-                .outputItems(RegistriesUtils.getItem("neoecoae:energized_fluix_crystal_dust"), 1)
+                .outputItems(RecipeJson.item("neoecoae:energized_fluix_crystal_dust"), 1)
                 .duration(100)
                 .EUt(30);
             case 18 -> builder // c03_superconducting_processor
-                .notConsumable(RegistriesUtils.getItem("gtceu:hv_field_generator"))
-                .notConsumable(RegistriesUtils.getItem("neoecoae:superconducting_processor_press"))
-                .notConsumable(RegistriesUtils.getItem("ae2:silicon_press"))
-                .inputItems(RegistriesUtils.getItem("neoecoae:energized_superconductive_ingot"), 32)
-                .inputItems(RegistriesUtils.getItem("gtocore:electronic_grade_silicon_dust"), 32)
-                .inputItems(RegistriesUtils.getItem("botania:rune_mana"), 1)
+                .notConsumable(RecipeJson.item("gtceu:hv_field_generator"))
+                .notConsumable(RecipeJson.item("neoecoae:superconducting_processor_press"))
+                .notConsumable(RecipeJson.item("ae2:silicon_press"))
+                .inputItems(RecipeJson.item("neoecoae:energized_superconductive_ingot"), 32)
+                .inputItems(RecipeJson.item("gtocore:electronic_grade_silicon_dust"), 32)
+                .inputItems(RecipeJson.item("botania:rune_mana"), 1)
                 .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:soldering_alloy"), 144))
-                .outputItems(RegistriesUtils.getItem("neoecoae:superconducting_processor"), 32)
+                .outputItems(RecipeJson.item("neoecoae:superconducting_processor"), 32)
                 .duration(400)
                 .EUt(480);
             case 19 -> builder // o01_raw_aluminum_ore
-                .inputItems(RegistriesUtils.getItem("neoecoae:aluminum_ore"), 1)
-                .outputItems(RegistriesUtils.getItem("neoecoae:raw_aluminum_ore"), 2)
+                .inputItems(RecipeJson.item("neoecoae:aluminum_ore"), 1)
+                .outputItems(RecipeJson.item("neoecoae:raw_aluminum_ore"), 2)
                 .duration(200)
                 .EUt(120);
             case 20 -> builder // o02_aluminium_dust
-                .inputItems(RegistriesUtils.getItem("neoecoae:raw_aluminum_ore"), 1)
-                .outputItems(RegistriesUtils.getItem("gtceu:aluminium_dust"), 1)
+                .inputItems(RecipeJson.item("neoecoae:raw_aluminum_ore"), 1)
+                .outputItems(RecipeJson.item("gtceu:aluminium_dust"), 1)
                 .duration(200)
                 .EUt(120);
             case 21 -> builder // o03_raw_tungsten_ore
-                .inputItems(RegistriesUtils.getItem("neoecoae:tungsten_ore"), 1)
-                .outputItems(RegistriesUtils.getItem("neoecoae:raw_tungsten_ore"), 2)
+                .inputItems(RecipeJson.item("neoecoae:tungsten_ore"), 1)
+                .outputItems(RecipeJson.item("neoecoae:raw_tungsten_ore"), 2)
                 .duration(200)
                 .EUt(480);
             case 22 -> builder // o04_tungsten_dust
-                .inputItems(RegistriesUtils.getItem("neoecoae:raw_tungsten_ore"), 1)
-                .outputItems(RegistriesUtils.getItem("gtceu:tungsten_dust"), 1)
+                .inputItems(RecipeJson.item("neoecoae:raw_tungsten_ore"), 1)
+                .outputItems(RecipeJson.item("gtceu:tungsten_dust"), 1)
                 .duration(400)
                 .EUt(1920);
             default -> throw new IndexOutOfBoundsException(index);
@@ -258,7 +289,7 @@ public final class ECOGtoMachineRecipes {
     /** Run after GTO finishes populating the maps used by machine searches and EMI. */
     public static void verifyFinalized() {
         for (int index = 0; index < count(); index++) {
-            var recipe = RecipeBuilder.get(registeredId(index));
+            var recipe = type(index).recipes.get(registeredId(index));
             verifySaved(recipe, index);
             if (type(index).recipes.get(recipe.id) != recipe) {
                 throw new IllegalStateException("GTO lost ECO machine recipe " + recipe.id);

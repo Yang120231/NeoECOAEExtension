@@ -202,6 +202,8 @@ public final class StorageInterfaceTransferCheck {
         }
         @Override public void getAvailableStacks(KeyCounter out) { out.addAll(listing); }
         @Override public Component getDescription() { return Component.literal("finite cell"); }
+        @Override public boolean supportsKeyType(AEKeyType<?> type) { return type == KEY.getType(); }
+        @Override public int operationTime() { return 1; }
     }
 
     private static final class TestType extends AEKeyType {

@@ -68,8 +68,13 @@ public final class ECOCreativeCell implements IECOStorageCell, cn.dancingsnow.ne
     }
 
     @Override
-    public boolean isPreferredStorageFor(AEKey what, IActionSource source) {
-        return delegate.isPreferredStorageFor(what, source);
+    public boolean supportsKeyType(appeng.api.stacks.AEKeyType<?> type) {
+        return delegate.supportsKeyType(type);
+    }
+
+    @Override
+    public int operationTime() {
+        return delegate.operationTime();
     }
 
     @Override

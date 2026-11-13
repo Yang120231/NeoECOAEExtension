@@ -49,7 +49,9 @@ final class WorkstationSyncClientProbe {
                 onServer(client, player -> {
                     var wrapped = new appeng.api.storage.SupplierStorage(() -> null);
                     require((Object) wrapped instanceof cn.dancingsnow.neoecoae.mixins.ae2.accessor.SupplierStorageAccessor accessor
-                        && accessor.neoecoae$getDelegate() != null, "AE2 SupplierStorage invoker was not applied");
+                        && accessor.neoecoae$getSupplier() != null
+                        && cn.dancingsnow.neoecoae.crafting.display.terminal.TerminalInventorySnapshot.resolve(wrapped) == wrapped,
+                        "AE2 empty supplier-storage contract was not preserved");
                     WorkstationModelClientProbe.build(player.serverLevel(), controller, Direction.NORTH);
                     seedSavedTasks((ECOLargeIntegratedWorkingStationBlockEntity) player.serverLevel().getBlockEntity(controller));
                     player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);

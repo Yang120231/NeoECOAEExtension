@@ -30,7 +30,6 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
 
     @Shadow private boolean mountsInUse;
     @Shadow @Final private it.unimi.dsi.fastutil.objects.ObjectArrayList<Object> priorityInventory;
-    @Unique private final java.util.ArrayList<MEStorage> neoecoae$secondPassInventories = new java.util.ArrayList<>();
 
     @Shadow private boolean isQueuedForRemoval(MEStorage inventory) { throw new AssertionError(); }
     @Shadow private void flushQueuedOperations() { throw new AssertionError(); }
@@ -50,35 +49,27 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
         }
         if (mountsInUse) return BigInteger.ZERO;
 
-        // Let ordinary ME storage handle one standard-sized window, using AE2's original priority routing.
-        BigInteger accepted = checked(MAX_LONG, BigInteger.valueOf(((MEStorage) (Object) this)
-                .insert(what, Long.MAX_VALUE, mode, source)));
-        BigInteger remaining = amount.subtract(accepted);
-        if (remaining.signum() == 0) return accepted;
-
-        // Only storage that explicitly implements the exact side-channel receives the amount beyond that window.
+        // Follow GTO AE2's single priority-ordered traversal, with its key-type and exclusion checks.
+        // Each finite sink receives one long-sized offer; an exact sink receives the full remainder.
+        BigInteger remaining = amount;
         mountsInUse = true;
         try {
-            for (int first = 0; first < priorityInventory.size() && remaining.signum() > 0;) {
-                int priority = ((NetworkStorageMountAccessor) priorityInventory.get(first)).neoecoae$priority();
-                neoecoae$secondPassInventories.clear();
-                do {
-                    var mount = (NetworkStorageMountAccessor) priorityInventory.get(first++);
-                    MEStorage inventory = mount.neoecoae$storage();
-                    if (isQueuedForRemoval(inventory) || !(inventory instanceof ECOBigIntegerStorage exact)) continue;
-                    if (inventory.isPreferredStorageFor(what, source)) {
-                        remaining = remaining.subtract(insertExact(exact, what, remaining, mode, source));
-                    } else {
-                        neoecoae$secondPassInventories.add(inventory);
-                    }
-                } while (first < priorityInventory.size() && remaining.signum() > 0
-                        && ((NetworkStorageMountAccessor) priorityInventory.get(first)).neoecoae$priority() == priority);
-                for (MEStorage inventory : neoecoae$secondPassInventories) {
-                    if (remaining.signum() <= 0) break;
-                    if (!isQueuedForRemoval(inventory) && inventory instanceof ECOBigIntegerStorage exact) {
-                        remaining = remaining.subtract(insertExact(exact, what, remaining, mode, source));
-                    }
+            for (Object entry : priorityInventory) {
+                if (remaining.signum() <= 0) break;
+                MEStorage inventory = ((NetworkStorageMountAccessor) entry).neoecoae$storage();
+                if (isQueuedForRemoval(inventory) || !inventory.supportsKeyType(what.getType())
+                        || StorageBusTransferFilter.excludes(inventory)
+                        || cn.dancingsnow.neoecoae.impl.storage.transfer.ECOCreativeExtractionFilter.excludesInsert(inventory))
+                    continue;
+                BigInteger inserted;
+                if (inventory instanceof ECOBigIntegerStorage exact) {
+                    inserted = insertExact(exact, what, remaining, mode, source);
+                } else {
+                    BigInteger offered = remaining.min(MAX_LONG);
+                    inserted = checked(offered, BigInteger.valueOf(
+                        inventory.insert(what, offered.longValueExact(), mode, source)));
                 }
+                remaining = remaining.subtract(inserted);
             }
         } finally {
             mountsInUse = false;
@@ -144,7 +135,7 @@ public abstract class NetworkStorageMixin implements ECOBigIntegerStorage {
         neoecoae$listing.append(storage, output, counter -> original.call(storage, counter));
     }
 
-    @WrapOperation(method = {"lambda$getAvailableStacks$1", "lambda$getAvailableStacksTracked$2"},
+    @WrapOperation(method = {"lambda$getAvailableStacks$2", "lambda$getAvailableStacksTracked$3"},
         at = @At(value = "INVOKE", target = "Lappeng/api/storage/MEStorage;getAvailableStacks(Lappeng/api/stacks/KeyCounter;)V"))
     private static void neoecoae$listGtoMount(MEStorage storage, KeyCounter output, Operation<Void> original) {
         if (StorageBusTransferFilter.excludes(storage)) return;

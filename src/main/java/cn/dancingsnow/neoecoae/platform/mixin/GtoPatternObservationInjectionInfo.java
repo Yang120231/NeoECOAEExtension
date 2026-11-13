@@ -18,8 +18,8 @@ public final class GtoPatternObservationInjectionInfo extends CallbackInjectionI
         String helper = Annotations.getValue(annotation, "helper");
         String descriptor = Annotations.getValue(annotation, "descriptor", "");
         for (var method : classNode.methods) {
-            boolean matches = helper.equals("@providerCallback")
-                ? method.desc.startsWith("(Lappeng/api/crafting/IPatternDetails;Lcom/gto/datasynclib/util/holder/ObjHolder;Ljava/util/function/Supplier;)L")
+            boolean matches = helper.equals("@providerBatch")
+                ? method.desc.matches("\\(Lcom/gtolib/[^;]+;\\)Lcom/gtolib/[^;]+;")
                 : !method.name.startsWith("lambda$") && method.name.contains(helper);
             if (matches && (descriptor.isEmpty() || method.desc.equals(descriptor))) {
                 selectors.add(new MemberInfo(method.name, null, method.desc));

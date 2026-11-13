@@ -8,6 +8,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.common.crafting.CraftingHelper;
 import net.minecraftforge.fluids.FluidStack;
@@ -22,8 +23,7 @@ public final class RecipeJson {
         if (json.size() == 0) return ItemStack.EMPTY;
         if (json.has("components")) throw new JsonSyntaxException("1.21 item components need an explicit NBT conversion");
         String id = GsonHelper.getAsString(json, json.has("item") ? "item" : "id");
-        var item = BuiltInRegistries.ITEM.getOptional(new ResourceLocation(id))
-            .orElseThrow(() -> new JsonSyntaxException("Unknown recipe item " + id));
+        var item = item(id);
         int count = GsonHelper.getAsInt(json, "count", 1);
         if (count <= 0) throw new JsonSyntaxException("Item output count must be positive");
         ItemStack stack = new ItemStack(item, count);
@@ -40,6 +40,11 @@ public final class RecipeJson {
             if (stack.hasTag()) json.addProperty("nbt", stack.getTag().toString());
         }
         return json;
+    }
+
+    public static Item item(String id) {
+        return BuiltInRegistries.ITEM.getOptional(new ResourceLocation(id))
+            .orElseThrow(() -> new JsonSyntaxException("Unknown recipe item " + id));
     }
 
     public static Fluid fluid(String id) {

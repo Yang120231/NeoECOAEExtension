@@ -18,8 +18,11 @@ public final class ECOExternalProviderBlocking {
      * AE2's BLOCKING_MODE at its default, so the native getter alone never reports blocking.
      */
     public static boolean isBlocking(PatternProviderLogic logic) {
-        if ((Object) logic instanceof com.gtolib.api.ae2.IPatternProviderLogic gto
-                && gto.gtolib$getBlocking() != com.gtolib.api.ae2.BlockingType.NONE) return true;
+        var manager = logic.getConfigManager();
+        for (var setting : manager.getSettings()) {
+            if (setting.getName().equals("blocking_type")
+                    && !setting.getValue(manager).name().equals("NONE")) return true;
+        }
         return logic.isBlocking();
     }
 

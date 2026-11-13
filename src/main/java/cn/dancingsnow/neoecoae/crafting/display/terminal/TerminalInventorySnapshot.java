@@ -58,7 +58,7 @@ public record TerminalInventorySnapshot(KeyCounter inventory, Map<AEKey, ExactAm
         MEStorage current = storage;
         for (int depth = 0; depth < 16; depth++) {
             if (!(current instanceof SupplierStorageAccessor supplier)) return current;
-            MEStorage delegate = supplier.neoecoae$getDelegate();
+            MEStorage delegate = supplier.neoecoae$getSupplier().get();
             if (delegate == null || delegate == current) return current;
             current = delegate;
         }

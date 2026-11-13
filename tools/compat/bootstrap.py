@@ -46,11 +46,12 @@ def restore(root=ROOT):
         if "embedded" in row:
             obtain(row)
     gto_lock = json.loads((root / "porting/gto-dependencies.json").read_text())
-    obtain(gto_lock["ae2"])
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(obtain, gto_lock.values()))
     porting = root / "porting"
     porting.mkdir(exist_ok=True)
     generated.write_text(json.dumps(lock, indent=2) + "\n")
-    print(f"Verified {len(lock['artifacts'])} infrastructure dependencies and GTO AE2")
+    print(f"Verified {len(lock['artifacts'])} infrastructure dependencies and {len(gto_lock)} GTO dependencies")
 
 
 if __name__ == "__main__":

@@ -160,6 +160,19 @@ final class ECOStorageInterfaceTransfer {
         }
 
         @Override
+        public boolean supportsKeyType(appeng.api.stacks.AEKeyType<?> type) {
+            for (MEStorage inventory : inventories) if (inventory.supportsKeyType(type)) return true;
+            return false;
+        }
+
+        @Override
+        public int operationTime() {
+            int cost = 0;
+            for (MEStorage inventory : inventories) cost += inventory.operationTime();
+            return cost;
+        }
+
+        @Override
         public long insert(AEKey key, long amount, appeng.api.config.Actionable mode, IActionSource source) {
             if (!allowAccess.getAsBoolean()) return 0L;
             List<MEStorage> candidates = inventories;
@@ -167,6 +180,7 @@ final class ECOStorageInterfaceTransfer {
             for (int pass = 0; pass < 2 && inserted < amount; pass++) {
                 for (MEStorage inventory : candidates) {
                     if (inserted >= amount) break;
+                    if (!inventory.supportsKeyType(key.getType())) continue;
                     if (cn.dancingsnow.neoecoae.impl.storage.transfer.ECOCreativeExtractionFilter.excludesInsert(inventory)) continue;
                     boolean bulk = inventory instanceof IECOStorageCell cell && cell.prioritizesMarkedInserts();
                     if (bulk != (pass == 0)) continue;
@@ -182,6 +196,7 @@ final class ECOStorageInterfaceTransfer {
             long extracted = 0L;
             for (MEStorage inventory : inventories) {
                 if (extracted >= amount) break;
+                if (!inventory.supportsKeyType(key.getType())) continue;
                 extracted += inventory.extract(key, amount - extracted, mode, source);
             }
             return extracted;

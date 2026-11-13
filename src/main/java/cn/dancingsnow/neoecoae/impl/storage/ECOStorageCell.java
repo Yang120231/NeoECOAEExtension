@@ -534,10 +534,13 @@ public class ECOStorageCell implements IECOStorageMigrationCell,
     }
 
     @Override
-    public boolean isPreferredStorageFor(AEKey what, IActionSource source) {
-        boolean used = !this.getCellItems().isEmpty() && this.insert(what, 1, Actionable.SIMULATE, source) == 1;
-        boolean sameItem = this.extract(what, 1, Actionable.SIMULATE, source) > 0;
-        return used || sameItem;
+    public boolean supportsKeyType(AEKeyType<?> type) {
+        return cellType.getKeyTypes().contains(type);
+    }
+
+    @Override
+    public int operationTime() {
+        return 1;
     }
 
     @Override
