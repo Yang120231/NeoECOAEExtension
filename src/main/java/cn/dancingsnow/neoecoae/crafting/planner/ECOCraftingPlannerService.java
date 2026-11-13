@@ -116,7 +116,7 @@ public final class ECOCraftingPlannerService {
                     long componentStarted = ECOPlanningStageLogger.start();
                     try {
                         if (liteCraftingMode) {
-                            solved = componentPlanner.planLite(compiled, condensation, inventorySnapshot, amount, cancellation);
+                            solved = componentPlanner.planLite(compiled, condensation, inventory, inventorySnapshot, amount, cyclePlanningEnabled, cancellation);
                         } else {
                             if (activeSelection == null) synchronized (initializationLock) {
                                 if (activeSelection == null) {
