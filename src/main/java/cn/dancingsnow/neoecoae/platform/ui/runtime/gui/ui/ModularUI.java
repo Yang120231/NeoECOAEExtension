@@ -19,7 +19,11 @@ public final class ModularUI {
     public com.lowdragmc.lowdraglib.gui.modular.ModularUI nativeUI(IUIHolder holder){
         if(nativeUI==null){for(var sheet:ui.stylesheets())sheet.apply(ui.root());ui.root().arrange();
             nativeUI=new com.lowdragmc.lowdraglib.gui.modular.ModularUI(ui.root(),holder,player);
-            nativeUI.registerCloseListener(()->ui.root().attachUI(null));}
+            // A client screen swap (EMI's recipe view) runs the vanilla removed() hook while the menu
+            // stays open, and the same screen comes back afterwards. A real close resets containerMenu first.
+            nativeUI.registerCloseListener(()->{
+                if(player.level().isClientSide&&player.containerMenu==nativeUI.getModularUIContainer())return;
+                ui.root().attachUI(null);});}
         return nativeUI;
     }
     public AbstractContainerMenu getMenu(){return nativeUI==null?null:nativeUI.getModularUIContainer();}
