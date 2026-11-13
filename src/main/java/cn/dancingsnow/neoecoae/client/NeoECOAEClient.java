@@ -98,6 +98,7 @@ public class NeoECOAEClient {
     @SubscribeEvent
     public static void onScreenInitPost(ScreenEvent.Init.Post event) {
         ECOCraftConfirmScreenIntegration.onScreenInitPost(event);
+        cn.dancingsnow.neoecoae.client.gui.widget.GtoPatternUploadButton.onScreenInitPost(event);
     }
 
     @SubscribeEvent

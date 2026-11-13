@@ -4,22 +4,41 @@ import appeng.client.Point;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.ICompositeWidget;
 import cn.dancingsnow.neoecoae.api.PatternEncodingTermMenuExtension;
+import cn.dancingsnow.neoecoae.compat.gto.ECOGtoPatternTerminal;
 import cn.dancingsnow.neoecoae.gui.widget.UploadButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraftforge.client.event.ScreenEvent;
 
+import java.util.Map;
 import java.util.function.Consumer;
 
 public final class GtoPatternUploadButton extends UploadButton implements ICompositeWidget {
     private final AEBaseScreen<?> screen;
     private final ICompositeWidget encodingPanel;
-    private final AbstractWidget modeTab;
 
-    public GtoPatternUploadButton(AEBaseScreen<?> screen, ICompositeWidget encodingPanel, AbstractWidget modeTab) {
+    public GtoPatternUploadButton(AEBaseScreen<?> screen, ICompositeWidget encodingPanel) {
         super(0, 0, button -> ((PatternEncodingTermMenuExtension) screen.getMenu()).neoecoae$uploadPattern());
         this.screen = screen;
         this.encodingPanel = encodingPanel;
-        this.modeTab = modeTab;
+    }
+
+    /** The native screen rebuilds its widget container during init, after its constructor. */
+    public static void onScreenInitPost(ScreenEvent.Init.Post event) {
+        if (!(event.getScreen() instanceof AEBaseScreen<?> screen)
+                || !ECOGtoPatternTerminal.isMenu(screen.getMenu())) return;
+        var widgets = screen.getWidgets();
+        ICompositeWidget encodingPanel = widgets.getCompositeWidgets().entrySet().stream()
+            .filter(entry -> entry.getKey().endsWith("_encodePanel")).map(Map.Entry::getValue)
+            .reduce((first, second) -> { throw new IllegalStateException("Ambiguous GTO encoding panel"); })
+            .orElseThrow(() -> new IllegalStateException("Missing GTO encoding panel"));
+        var existing = widgets.getCompositeWidgets().get("neoecoaeUploadPattern");
+        var upload = existing instanceof GtoPatternUploadButton old && old.encodingPanel == encodingPanel
+            ? old : new GtoPatternUploadButton(screen, encodingPanel);
+        widgets.add("neoecoaeUploadPattern", (ICompositeWidget) upload);
+        event.removeListener(upload);
+        event.addListener(upload);
+        upload.updateBeforeRender();
     }
 
     @Override
@@ -42,8 +61,8 @@ public final class GtoPatternUploadButton extends UploadButton implements ICompo
         var bounds = encodingPanel.getBounds();
         setX(screen.getGuiLeft() + bounds.getX() - getWidth());
         setY(screen.getGuiTop() + bounds.getY());
-        visible = modeTab.visible;
-        active = modeTab.active;
+        visible = encodingPanel.isVisible() && ECOGtoPatternTerminal.canUpload(screen.getMenu());
+        active = visible;
     }
 
     @Override
