@@ -30,7 +30,8 @@ public final class TerminalExactAmountSync {
         // old menu and discard it. Do not advance either the baseline or throttle until
         // this menu is active, so its first ordinary tick still sends a full snapshot.
         if (player.containerMenu != menu) return listing.get();
-        long tick = player.level().getGameTime();
+        // Planning samples the same storage cache with the server tick; one clock keeps both from resetting it.
+        long tick = player.server.getTickCount();
         Object currentSource = storage == null ? this : TerminalInventorySnapshot.resolve(storage);
         if (source != currentSource || tick < lastTick) {
             if (source != null) MenuDataTransport.cancel(player, MenuDataTransport.Channel.TERMINAL);

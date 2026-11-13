@@ -17,21 +17,24 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = MEStorageMenu.class, remap = false)
 public abstract class GtoStorageMenuSnapshotMixin {
     @Shadow @Final protected MEStorage storage;
+    @org.spongepowered.asm.mixin.Unique
+    private final cn.dancingsnow.neoecoae.crafting.display.terminal.TerminalExactAmountSync neoecoae$exactAmountSync =
+        new cn.dancingsnow.neoecoae.crafting.display.terminal.TerminalExactAmountSync();
 
     @WrapOperation(method = "sendInventoryUpdate", at = @At(value = "INVOKE", target =
         "Lappeng/api/storage/MEStorage;getAvailableStacks(Lappeng/api/stacks/KeyCounter;)V"))
     private void neoecoae$sampleInventory(MEStorage source, KeyCounter output, Operation<Void> original) {
-        var server = ((MEStorageMenu) (Object) this).getPlayer().getServer();
-        if (server == null || !output.isEmpty()) { original.call(source, output); return; }
+        var menu = (MEStorageMenu) (Object) this;
+        if (menu.getPlayer().getServer() == null || !output.isEmpty()) { original.call(source, output); return; }
         boolean[] sampled = {false};
-        var snapshot = TerminalInventorySnapshot.sample(TerminalInventorySnapshot.resolve(source),
-            server.getTickCount(), false, () -> {
-                sampled[0] = true;
-                original.call(source, output);
-                return output;
-            });
+        // The same listing also feeds the exact-amount side channel for stock beyond AE2's long range.
+        KeyCounter inventory = neoecoae$exactAmountSync.collect(menu, source, () -> {
+            sampled[0] = true;
+            original.call(source, output);
+            return output;
+        });
         // A cache miss already filled this menu's own counter. On a hit the native bulk copy keeps it independent.
-        if (!sampled[0]) output.addAll(snapshot.inventory());
+        if (!sampled[0]) output.addAll(inventory);
     }
 
     @Inject(method = {"notifyStorageChanged", "setViewFrozen"}, at = @At("HEAD"))
