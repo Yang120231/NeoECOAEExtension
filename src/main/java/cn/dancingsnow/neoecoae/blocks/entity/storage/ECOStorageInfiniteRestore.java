@@ -26,6 +26,7 @@ import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.HashMap;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell;
+import cn.dancingsnow.neoecoae.impl.storage.persistence.StorageAmounts;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -108,7 +109,7 @@ final class ECOStorageInfiniteRestore {
                 for (RestoreTarget target : targets) {
                     var goal = savedPlan.get(target.identity);
                     if (goal == null) continue;
-                    PlannerAmount current = target.exactContents.getOrDefault(key, PlannerAmount.ZERO);
+                    PlannerAmount current = target.exactContents.get(key).quantity();
                     if (current.compareTo(PlannerAmount.of(goal.beforeExact())) < 0
                             || current.compareTo(PlannerAmount.of(goal.afterExact())) > 0) {
                         return RestorePlan.blocked("restore target contents differ from the saved transfer plan");
@@ -171,7 +172,8 @@ final class ECOStorageInfiniteRestore {
     private PlannerAmount simulateInsertForRestore(RestoreTarget target, AEKey key, PlannerAmount amount, IActionSource source) {
         if (target.simulatedCell() instanceof ECOStorageCell ordinary) {
             return ordinary.simulateInsertForMigrationQuantity(key, amount,
-                target.exactContents.getOrDefault(key, PlannerAmount.ZERO), target.simulatedTypes, target.exactSimulatedAmount);
+                target.exactContents.get(key).quantity(), target.simulatedTypes,
+                target.exactContents.usedBytes(ordinary.getBytesPerType()), target.exactContents.channelAmount(key.getType()).quantity());
         }
         return PlannerAmount.of(simulateInsertForRestore(target, key, amount.longValueSaturated(), source));
     }
@@ -238,7 +240,7 @@ final class ECOStorageInfiniteRestore {
                 for (RestoreTarget target : plan.targets()) {
                     var cell = (IECOStorageMigrationCell) target.drive().getCellInventory();
                     PlannerAmount before = PlannerAmount.of(cell.getMigrationAmountBigInteger(key));
-                    PlannerAmount after = target.exactContents.getOrDefault(key, PlannerAmount.ZERO);
+                    PlannerAmount after = target.exactContents.get(key).quantity();
                     UUID oldReceipt = host.migrationTransactionId(host.infiniteDomainId(), target.drive(), key,
                             entry.getLongValue(), "from-domain");
                     PlannerAmount transferred = PlannerAmount.of(target.drive().getRestoreReceiptExact(oldReceipt)).add(after.subtract(before));
@@ -337,7 +339,7 @@ final class ECOStorageInfiniteRestore {
         private long simulatedTypes;
         private long simulatedAmount;
         private PlannerAmount exactSimulatedAmount = PlannerAmount.ZERO;
-        private final Map<AEKey, PlannerAmount> exactContents = new HashMap<>();
+        private final StorageAmounts exactContents = new StorageAmounts();
 
         private RestoreTarget(ECODriveBlockEntity drive, IECOStorageCell cell, KeyCounter contents) {
             this.drive = drive;
@@ -349,13 +351,13 @@ final class ECOStorageInfiniteRestore {
                 if (entry.getLongValue() > 0L) {
                     simulatedTypes++;
                     simulatedAmount = NEMath.saturatingAdd(simulatedAmount, entry.getLongValue());
-                    exactContents.put(entry.getKey(), PlannerAmount.of(entry.getLongValue()));
+                    exactContents.setLong(entry.getKey(), entry.getLongValue());
                 }
             }
             if (cell instanceof ECOStorageCell ordinary) {
-                exactContents.clear(); ordinary.storageData().amounts().forEach((key, amount) -> exactContents.put(key, amount.quantity()));
+                exactContents.clear(); ordinary.storageData().amounts().forEach(exactContents::set);
             }
-            exactSimulatedAmount = exactContents.values().stream().reduce(PlannerAmount.ZERO, PlannerAmount::add);
+            exactSimulatedAmount = exactContents.totalAmount().quantity();
         }
 
         private ECODriveBlockEntity drive() {
@@ -372,10 +374,10 @@ final class ECOStorageInfiniteRestore {
 
         private void addSimulated(AEKey key, PlannerAmount amount) {
             if (amount.signum() <= 0) return;
-            PlannerAmount before = exactContents.getOrDefault(key, PlannerAmount.ZERO);
+            PlannerAmount before = exactContents.get(key).quantity();
             if (before.signum() == 0) simulatedTypes++;
             PlannerAmount after = before.add(amount);
-            exactContents.put(key, after);
+            exactContents.set(key, HugeAmount.of(after.toBigInteger()));
             exactSimulatedAmount = exactSimulatedAmount.add(amount);
             simulatedAmount = exactSimulatedAmount.longValueSaturated();
             simulatedContents.set(key, after.longValueSaturated());

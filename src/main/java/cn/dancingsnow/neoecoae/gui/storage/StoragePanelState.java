@@ -185,6 +185,7 @@ record StoragePanelState(Component title, int tier, boolean formed, boolean infi
             entry.putString("exactBytes", cell.exactUsedBytes().toString());
             entry.putInt("priority", cell.priority());
             entry.putBoolean("infinite", cell.infinite());
+            if (cell.decorative()) entry.putBoolean("decorative", true);
             if (cell.position() != null) entry.putLong("position", cell.position().asLong());
             if (cell.interactionId() != null) entry.putUUID("interactionId", cell.interactionId());
             if (!cell.stack().isEmpty()) entry.put("stack", cn.dancingsnow.neoecoae.platform.nbt.NEStacks.save(cell.stack(), registries));
@@ -223,7 +224,8 @@ record StoragePanelState(Component title, int tier, boolean formed, boolean infi
                 cell.hasUUID("interactionId") ? cell.getUUID("interactionId") : null,
                 cell.contains("tierName") ? component(cell, "tierName") : null,
                 cell.contains("exactBytes") ? new BigInteger(cell.getString("exactBytes"))
-                    : BigInteger.valueOf(Math.max(0L, cell.getLong("ub"))), cell.getInt("priority")));
+                    : BigInteger.valueOf(Math.max(0L, cell.getLong("ub"))), cell.getInt("priority"),
+                cell.getBoolean("decorative")));
         }
         List<TypeLine> types = new ArrayList<>();
         for (Tag valueType : tag.getList("types", Tag.TAG_COMPOUND)) {

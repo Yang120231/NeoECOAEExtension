@@ -12,6 +12,12 @@ final class StorageCellUiExtraction {
 
     static boolean extract(ECOStorageSystemBlockEntity host, Player player, BlockPos position,
         UUID expected, boolean toInventory) {
+        return extract(host, player, position, expected, toInventory, false);
+    }
+
+    /** {@code viaMenu} is the context-menu removal, the only one accepted while the host is in infinite mode. */
+    static boolean extract(ECOStorageSystemBlockEntity host, Player player, BlockPos position,
+        UUID expected, boolean toInventory, boolean viaMenu) {
         if (player.level().isClientSide || !host.isFormed() || host.getCluster() == null
             || expected == null) return false;
         ECODriveBlockEntity drive = host.getCluster().getDrives().stream()
@@ -20,12 +26,11 @@ final class StorageCellUiExtraction {
         if (drive == null || !expected.equals(drive.getCellInteractionId())
             || drive.getCellStack() == null || drive.getCellStack().isEmpty()
             || drive.getCellStack().getCount() != 1) return false;
-        var reason = drive.getCellExtractionBlockReasonText();
-        if (reason != null) {
-            player.displayClientMessage(reason, true);
+        var reason = viaMenu ? drive.getMenuEjectBlockReason() : drive.getCellExtractionBlockReason();
+        if (reason != ECODriveBlockEntity.CellExtractionBlockReason.NONE) {
+            player.displayClientMessage(net.minecraft.network.chat.Component.translatable(reason.translationKey()), true);
             return false;
         }
-        if (!drive.canExtractCell()) return false;
 
         var inventory = player.getInventory();
         var menu = player.containerMenu;
@@ -45,7 +50,8 @@ final class StorageCellUiExtraction {
 
         // Retain the actual stack: unmounting may persist its latest cell components in place.
         ItemStack cell = drive.getCellStack();
-        drive.setCellStack(null);
+        if (viaMenu) drive.ejectCellFromMenu();
+        else drive.setCellStack(null);
         if (drive.getCellStack() != null) return false;
         if (toInventory) {
             inventory.setItem(destination, cell);

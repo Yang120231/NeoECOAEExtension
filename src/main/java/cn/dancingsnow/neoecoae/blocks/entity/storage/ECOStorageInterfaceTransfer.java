@@ -90,7 +90,8 @@ final class ECOStorageInterfaceTransfer {
             IECOStorageCell cell = drive.getCellInventory();
             if (cell != null
                 && host.getTier().compareTo(cell.getTier()) >= 0
-                && !host.isInfiniteMemberCell(drive.getCellStack())) {
+                && !host.isInfiniteMemberCell(drive.getCellStack())
+                && !drive.isDecorativeCell()) {
                 cells.add(cell);
             }
         }
@@ -108,8 +109,6 @@ final class ECOStorageInterfaceTransfer {
     static final class CombinedStorage implements MEStorage, CombinedExactAmountSource,
             cn.dancingsnow.neoecoae.impl.storage.StorageListingVersion {
         private final List<MEStorage> inventories;
-        private final List<MEStorage> itemInserts;
-        private final List<MEStorage> fluidInserts;
         private final net.minecraft.network.chat.Component description;
         private final BooleanSupplier allowAccess;
         private final Map<Object, Object> readers = new java.util.WeakHashMap<>();
@@ -123,27 +122,12 @@ final class ECOStorageInterfaceTransfer {
             this.description = description;
             this.allowAccess = allowAccess;
             versions = new long[inventories.size()];
-            itemInserts = insertCandidates(appeng.api.stacks.AEKeyType.items());
-            fluidInserts = insertCandidates(appeng.api.stacks.AEKeyType.fluids());
         }
 
         boolean hasInventories(List<MEStorage> current) {
             if (inventories.size() != current.size()) return false;
             for (int i = 0; i < inventories.size(); i++) if (inventories.get(i) != current.get(i)) return false;
             return true;
-        }
-
-        private List<MEStorage> insertCandidates(appeng.api.stacks.AEKeyType requested) {
-            List<MEStorage> result = new ArrayList<>();
-            for (MEStorage inventory : inventories) {
-                if (inventory.getClass() == cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell.class) {
-                    var type = ((cn.dancingsnow.neoecoae.impl.storage.ECOStorageCell) inventory).getKeyType();
-                    if ((type == appeng.api.stacks.AEKeyType.items() || type == appeng.api.stacks.AEKeyType.fluids())
-                            && type != requested) continue;
-                }
-                result.add(inventory);
-            }
-            return result.size() == inventories.size() ? inventories : List.copyOf(result);
         }
 
         @Override public long neoecoae$listingVersion() { return getChangeVersion(); }
@@ -178,8 +162,7 @@ final class ECOStorageInterfaceTransfer {
         @Override
         public long insert(AEKey key, long amount, appeng.api.config.Actionable mode, IActionSource source) {
             if (!allowAccess.getAsBoolean()) return 0L;
-            List<MEStorage> candidates = key instanceof appeng.api.stacks.AEItemKey ? itemInserts
-                : key instanceof appeng.api.stacks.AEFluidKey ? fluidInserts : inventories;
+            List<MEStorage> candidates = inventories;
             long inserted = 0L;
             for (int pass = 0; pass < 2 && inserted < amount; pass++) {
                 for (MEStorage inventory : candidates) {

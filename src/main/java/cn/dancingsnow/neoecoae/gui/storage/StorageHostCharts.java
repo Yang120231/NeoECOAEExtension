@@ -423,21 +423,26 @@ final class StorageHostCharts {
                 // Mod-provided name styles can disagree with the resource icon's palette.
                 text(context, Component.literal(type.name().getString()), 10, row * 29 + 2,
                     nameWidth, nameFontScale, type.color());
-                text(context, usage(HostText.ae2Amount(type.usedTypes()), type.usedTypes(), type.totalTypes(),
-                    StorageCellGrid.capacity(type.totalTypes())), 3, row * 29 + 13, 29, valueFontScale, TEXT);
+                if (type.totalTypes() >= 0) {
+                    text(context, usage(HostText.ae2Amount(type.usedTypes()), type.usedTypes(), type.totalTypes(),
+                        StorageCellGrid.capacity(type.totalTypes())), 3, row * 29 + 13, 29, valueFontScale, TEXT);
+                    bar(context, StoragePanelTextures.BLUE_BAR, type.usedTypes(), type.totalTypes(), 3, y + 21, 29);
+                }
+                int x = type.totalTypes() < 0 ? 3 : 35;
                 text(context, usage(type.bytesText(), type.usedBytes(), type.totalBytes(),
-                    StorageCellGrid.capacity(type.totalBytes())), 35, row * 29 + 13, 30, valueFontScale, TEXT);
-                bar(context, StoragePanelTextures.BLUE_BAR, type.usedTypes(), type.totalTypes(), 3, y + 21);
-                bar(context, StoragePanelTextures.PINK_BAR, type.usedBytes(), type.totalBytes(), 36, y + 21);
+                    StorageCellGrid.capacity(type.totalBytes())), x, row * 29 + 13,
+                    type.totalTypes() < 0 ? 62 : 30, valueFontScale, TEXT);
+                bar(context, StoragePanelTextures.PINK_BAR, type.usedBytes(), type.totalBytes(), x + 1, y + 21, type.totalTypes() < 0 ? 61 : 29);
             }
         }
 
-        private void bar(GUIContext context, SpriteTexture texture, long used, long total, int x, float y) {
+        private void bar(GUIContext context, SpriteTexture texture, long used, long total, int x, float y, int maximumWidth) {
             texture = panelTexture(texture);
             float ratio = state().unbounded() || total < 0 ? 1 : HostText.usageRatio(used, total);
-            int width = Math.round(29 * ratio);
-            if (width > 0) context.drawTexture(texture.copy().setSprite(texture.spritePosition.x,
-                texture.spritePosition.y, width, 4), getPositionX() + x, y, width, 4);
+            int sourceWidth = Math.round(29 * ratio);
+            int width = Math.round(maximumWidth * ratio);
+            if (sourceWidth > 0) context.drawTexture(texture.copy().setSprite(texture.spritePosition.x,
+                texture.spritePosition.y, sourceWidth, 4), getPositionX() + x, y, width, 4);
         }
 
         /** Panel figure: coloured used part over a bounded total, or the plain used figure when unbounded. */
@@ -451,14 +456,19 @@ final class StorageHostCharts {
             int index = currentOffset() + row;
             if (index >= state().types().size()) return List.of();
             StoragePanelState.TypeLine type = state().types().get(index);
-            return List.of(type.name(),
-                Component.translatable("gui.neoecoae.storage.legacy.cell_types",
+            List<Component> lines = new java.util.ArrayList<>();
+            lines.add(type.name());
+            if (type.totalTypes() >= 0) {
+                lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_types",
                     HostText.usedPart(HostText.ae2Amount(type.usedTypes()), type.usedTypes(), type.totalTypes()),
-                    HostText.totalPart(state().unbounded() ? "∞" : StorageCellGrid.capacity(type.totalTypes()))),
-                Component.translatable("gui.neoecoae.storage.legacy.cell_bytes",
-                    HostText.usedPart(HostText.fullBytes(type.exactUsedBytes()), type.usedBytes(), type.totalBytes()),
-                    HostText.totalPart(state().unbounded() ? "∞" : HostText.fullBytes(type.totalBytes()))),
-                Component.translatable("gui.neoecoae.storage.ui.scroll_types").withStyle(neColor -> neColor.withColor(HostText.MUTED)));
+                    HostText.totalPart(state().unbounded() ? "∞" : StorageCellGrid.capacity(type.totalTypes()))));
+            }
+            lines.add(Component.translatable("gui.neoecoae.storage.legacy.cell_bytes",
+                HostText.usedPart(HostText.fullBytes(type.exactUsedBytes()), type.usedBytes(), type.totalBytes()),
+                HostText.totalPart(state().unbounded() ? "∞" : HostText.fullBytes(type.totalBytes()))));
+            lines.add(Component.translatable("gui.neoecoae.storage.ui.scroll_types")
+                .withStyle(neColor -> neColor.withColor(HostText.MUTED)));
+            return lines;
         }
     }
 

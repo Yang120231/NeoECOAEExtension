@@ -94,6 +94,10 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     @Persisted
     @DescSynced
     private int storagePriority;
+    private final cn.dancingsnow.neoecoae.api.storage.ECOStorageCellPriorities cellPriorities =
+        new cn.dancingsnow.neoecoae.api.storage.ECOStorageCellPriorities(
+            this::getStorageDrivesForIntegration,
+            player -> level != null && player.level() == level && isFormed() && canPlayerInteract(player));
     @Persisted
     @DescSynced
     private ECOStorageHostMode hostMode = ECOStorageHostMode.UNFORMED;
@@ -278,6 +282,7 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
 
     public ModularUI createUI(BlockUIMenuType.BlockUIHolder holder) {
         StorageHostActionUI.Elements actionUI = createActionUI(holder);
+        var cellPriorityWindow = new cn.dancingsnow.neoecoae.gui.storage.StorageCellPriorityUI(holder.player, cellPriorities);
 
         UIElement root = StorageHostUI.create(new StorageHostUI.Config(
                 () -> getItemFromBlockEntity().getDescription(),
@@ -300,9 +305,14 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
                 (position, expected) -> StorageCellUiInsertion.insert(this, holder.player, position, expected),
                 () -> new ItemStack(getBlockState().getBlock()),
                 this::getInfiniteMigrationProgressPercent,
-                this::getInfiniteMigrationBlockedReason
+                this::getInfiniteMigrationBlockedReason,
+                new StorageHostUI.CellActions(
+                    cellPriorityWindow::openPriority,
+                    (position, expected, shift) ->
+                        StorageCellUiExtraction.extract(this, holder.player, position, expected, shift, true))
         ), this::getTier, this::getBlockState);
         actionUI.addTo(root, MultiblockBuildUI.create(this, holder.player));
+        root.addChild(cellPriorityWindow.window());
         return ECOModularUI.create(root, holder.player);
     }
 
@@ -484,7 +494,10 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
 
         }
         IECOStorageCell cell = cn.dancingsnow.neoecoae.api.storage.ECOStorageCells.getCellInventory(stack, null);
-        return cell != null && !cell.isInfiniteStorageEligible();
+        if (cell == null) return false;
+        // Once the mode is formed an ordinary matrix is accepted as a decorative cell: the drive neither
+        // mounts nor migrates it. Transitions still reject it so the sealed roster cannot change under them.
+        return hostMode == ECOStorageHostMode.FORMED_INFINITE || !cell.isInfiniteStorageEligible();
     }
 
     /**
@@ -512,15 +525,14 @@ public class ECOStorageSystemBlockEntity extends NEBlockEntity<NEStorageCluster,
     public int getMissingInfiniteMembers() {
         if (!isInfiniteMode()) return 0;
         rememberInfiniteMembers();
-        java.util.Set<UUID> missing = new java.util.HashSet<>(infiniteMemberIds);
+        // Only the number of this domain's members matters; which drive holds which member does not.
+        int present = 0;
         if (cluster != null && infiniteDomainId != null) {
             for (ECODriveBlockEntity drive : cluster.getDrives()) {
-                if (ECOInfiniteStorageMember.isMemberOf(drive.getCellStack(), infiniteDomainId)) {
-                    ECOInfiniteStorageMember.getIdentity(drive.getCellStack()).ifPresent(missing::remove);
-                }
+                if (ECOInfiniteStorageMember.isMemberOf(drive.getCellStack(), infiniteDomainId)) present++;
             }
         }
-        return missing.size();
+        return Math.max(0, infiniteMemberIds.size() - present);
     }
 
     private void saveInfiniteMembers(CompoundTag tag) {

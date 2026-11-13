@@ -64,8 +64,10 @@ final class ECOStorageHostStatistics {
                 return new StorageHostUI.StorageTypeLine(
                     cellType,
                     id,
-                    cellType::desc,
-                    () -> !host.isFormedInfiniteMode() && cellType.visible(),
+                    () -> cellType == cn.dancingsnow.neoecoae.all.NECellTypes.ITEM.get()
+                        ? net.minecraft.network.chat.Component.translatable("gui.neoecoae.storage.universal") : cellType.desc(),
+                    () -> !host.isFormedInfiniteMode() && cellType.visible()
+                        && cellType != cn.dancingsnow.neoecoae.all.NECellTypes.FLUID.get(),
                     () -> getStorageValue(id, StorageValue.USED_TYPES),
                     () -> getStorageValue(id, StorageValue.TOTAL_TYPES),
                     () -> getStorageValue(id, StorageValue.USED_BYTES),
@@ -208,10 +210,12 @@ final class ECOStorageHostStatistics {
                     supported && drive.isOnline()
             ).withPanelTier(view.inventory().getTier())
                 .withStorageInfo(!supported || view.member() || view.infiniteResource() ? BigInteger.ZERO : view.exactUsedBytes(),
-                    cn.dancingsnow.neoecoae.gui.storage.StoragePriority.mountPriority(0, view.inventory().prioritizesMarkedInserts()))
+                    cn.dancingsnow.neoecoae.gui.storage.StoragePriority.mountPriority(0,
+                        view.inventory().prioritizesMarkedInserts(), drive.getConfiguredCellPriority()))
+                .withDecorative(drive.isDecorativeCell())
                 .atDrive(drive.getBlockPos(), stack, drive.getCellExtractionBlockReasonText(), drive.getCellInteractionId()));
             if (view.infiniteResource()) continue;
-            if (view.member()) {
+            if (view.member() || drive.isDecorativeCell()) {
                 continue;
             }
 
@@ -241,6 +245,7 @@ final class ECOStorageHostStatistics {
     }
 
     private static int legacyCellKind(List<AEKeyType> keyTypes) {
+        if (keyTypes.size() > 1) return StorageHostUI.CellEntry.KIND_OTHER;
         if (keyTypes.contains(AEKeyType.items())) {
             return StorageHostUI.CellEntry.KIND_ITEM;
         }
@@ -263,7 +268,8 @@ final class ECOStorageHostStatistics {
             if (previous != null && previous.inventory() == inventory && previous.revision() == revision
                 && previous.member() == member && previous.infiniteResource() == infiniteResource
                 && tick - previous.tick() < 20L) return previous;
-            int type = cellTypes.getId(inventory.getCellType());
+            int type = cellTypes.getId(inventory.hasInfiniteTypeCapacity()
+                ? cn.dancingsnow.neoecoae.all.NECellTypes.ITEM.get() : inventory.getCellType());
             List<AEKeyType> keyTypes = new ArrayList<>();
             if (type >= 0 && drive.getCellStack().getItem() instanceof IECOStorageCellItem item) {
                 for (AEKeyType keyType : item.getKeyTypes()) keyTypes.add(keyType);
@@ -274,8 +280,7 @@ final class ECOStorageHostStatistics {
                 member || infiniteResource ? 0L : inventory.getUsedBytes(),
                 member || infiniteResource ? 0L : inventory.getTotalBytes(), infiniteResource,
                 member || infiniteResource ? BigInteger.ZERO : inventory instanceof ECOStorageCell cell
-                    ? StorageByteAccounting.usedBytes(inventory.getStoredItemTypes(), cell.getStoredItemCountExact(),
-                        cell.getKeyType().getAmountPerByte(), cell.getBytesPerType())
+                    ? cell.getUsedBytesExact()
                     : BigInteger.valueOf(Math.max(0L, inventory.getUsedBytes())));
             driveUiSnapshots.put(drive, next);
             host.storageFaults().recovered(component);

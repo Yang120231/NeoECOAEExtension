@@ -9,6 +9,11 @@ public final class StoragePriority {
         return markedBulk ? adjust(hostPriority, 1) : Math.min(hostPriority, Integer.MAX_VALUE - 1);
     }
 
+    /** Adds a cell-local offset to an already resolved mount priority, with integer saturation. */
+    public static int mountPriority(int hostPriority, boolean markedBulk, int cellPriority) {
+        return adjust(mountPriority(hostPriority, markedBulk), cellPriority);
+    }
+
     public static int adjust(int current, int delta) {
         long adjusted = (long) current + delta;
         if (adjusted > Integer.MAX_VALUE) {
