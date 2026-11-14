@@ -1,8 +1,8 @@
 package cn.dancingsnow.neoecoae.mixins.client.ae2;
 
-import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.IconButton;
 import cn.dancingsnow.neoecoae.client.gui.workstation.WorkstationInterfaceArtwork;
+import com.gto.ae.hooks.gui.IIcon;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
@@ -19,7 +19,8 @@ public abstract class WorkstationInterfaceIconButtonMixin extends Button {
         super(0, 0, 16, 16, Component.empty(), ignored -> {}, DEFAULT_NARRATION);
     }
 
-    @Shadow protected abstract Icon getIcon();
+    // GTO setting buttons provide their artwork through getIIcon(), while getIcon() stays null.
+    @Shadow protected abstract IIcon getIIcon();
     @Shadow protected abstract Item getItemOverlay();
 
     @Inject(method = "renderWidget", at = @At("HEAD"), cancellable = true, remap = true)
@@ -28,7 +29,7 @@ public abstract class WorkstationInterfaceIconButtonMixin extends Button {
         if (!WorkstationInterfaceArtwork.active()) return;
         var button = (IconButton) (Object) this;
         if (button.isHalfSize()) { width = 8; height = 8; }
-        WorkstationInterfaceArtwork.renderButton(button, getIcon(), getItemOverlay(), graphics, mouseX, mouseY);
+        WorkstationInterfaceArtwork.renderButton(button, getIIcon(), getItemOverlay(), graphics, mouseX, mouseY);
         callback.cancel();
     }
 }

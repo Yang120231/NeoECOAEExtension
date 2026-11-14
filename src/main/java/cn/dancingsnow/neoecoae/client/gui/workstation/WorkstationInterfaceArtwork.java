@@ -5,6 +5,7 @@ import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.IconButton;
 import cn.dancingsnow.neoecoae.NeoECOAE;
 import cn.dancingsnow.neoecoae.gui.theme.ECOIcon;
+import com.gto.ae.hooks.gui.IIcon;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.world.item.Item;
@@ -52,7 +53,7 @@ public final class WorkstationInterfaceArtwork {
         return Blitter.texture(ECOIcon.ATLAS, 256, 256).src(x, y, width, height).blending(true);
     }
 
-    public static void renderButton(IconButton button, Icon icon, Item item, GuiGraphics graphics, int mouseX, int mouseY) {
+    public static void renderButton(IconButton button, IIcon icon, Item item, GuiGraphics graphics, int mouseX, int mouseY) {
         if (!button.visible) return;
         boolean hovered = mouseX >= button.getX() && mouseY >= button.getY()
             && mouseX < button.getX() + button.getWidth() && mouseY < button.getY() + button.getHeight();
@@ -69,7 +70,7 @@ public final class WorkstationInterfaceArtwork {
             graphics.renderItem(new ItemStack(item), button.getX(), button.getY() + 1 + offset);
             graphics.pose().popPose();
         } else if (icon != null) {
-            var foreground = icon(icon);
+            var foreground = icon.getBlitter().blending(true);
             if (!button.active) foreground.opacity(0.5F);
             foreground.dest(button.getX(), button.getY() + (button.isHalfSize() ? 0 : 1 + offset));
             drawAtDepth(graphics, foreground, 3);
