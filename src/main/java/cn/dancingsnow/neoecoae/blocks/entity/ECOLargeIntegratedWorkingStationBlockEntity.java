@@ -106,6 +106,10 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     private final LargeWorkstationCoolingOutput coolingOutput = new LargeWorkstationCoolingOutput();
     /** Accepted ordinary-path batches, bounded by MAX_PENDING_BATCHES backpressure. */
     private final Deque<PendingBatch> pendingBatches = new ArrayDeque<>();
+    private boolean pendingOutputCountValid;
+    private long pendingOutputStackCount;
+    private int communicationUpdateDepth;
+    private boolean communicationUpdatePending;
     @Nullable
     private NEIntegratedWorkingStationCluster cluster;
     @DescSynced
@@ -117,8 +121,9 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     @DescSynced
     private boolean activeCooling;
     private int preheatTargetTier = 2;
-    /** Paid work awaiting the next server thermal tick; never persisted or replayed after loading. */
-    private double pendingThermalLoad;
+    /** A paid overclocked work tick awaiting thermal settlement; never persisted or replayed. */
+    private boolean pendingProcessingHeat;
+    private long lastProcessingHeatTick = Long.MIN_VALUE;
     @Persisted
     @DescSynced
     private boolean preheating;
@@ -155,19 +160,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     @Override
     public Set<Direction> getGridConnectableSides(BlockOrientation orientation) {
         if (!formed) return EnumSet.allOf(Direction.class);
-        // Keep physical links to this structure's members, so the communication interface
-        // can still supply the controller's grid services without exposing any cable ports.
-        EnumSet<Direction> sides = EnumSet.noneOf(Direction.class);
-        if (cluster != null && level != null) {
-            for (Direction side : Direction.values()) {
-                BlockPos adjacent = worldPosition.relative(side);
-                if (level.hasChunkAt(adjacent)
-                    && cluster.containsBlockEntity(level.getBlockEntity(adjacent))) {
-                    sides.add(side);
-                }
-            }
-        }
-        return sides;
+        return cluster == null ? EnumSet.noneOf(Direction.class) : cluster.getInternalConnections(this);
     }
 
     @Override
@@ -669,6 +662,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
             ECOCraftingJobLifecycle.finish(level, selected.craftingJobId, false);
         }
         notifyPatternAborted(selected.unlockStack);
+        pendingOutputCountValid = false;
         pendingBatches.remove(selected);
         PendingBatch first = pendingBatches.peekFirst();
         setProcessingTime(first == null ? 0 : first.progress);
@@ -869,12 +863,14 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         temperature = thermal.temperature();
         overheated = thermal.overheated();
         recoveryTicks = thermal.recoveryTicks();
-        pendingThermalLoad = 0;
+        pendingProcessingHeat = false;
+        lastProcessingHeatTick = Long.MIN_VALUE;
         preheatTargetTier = temperature < 20 ? 2 : temperature < 50 ? 6 : 9;
         if (overheated) preheating = false;
         double restoredRefund = data.getDouble("pendingPowerRefund");
         pendingPowerRefund = Double.isFinite(restoredRefund) && restoredRefund > 0.0D ? restoredRefund : 0.0D;
         coolingOutput.load(data);
+        pendingOutputCountValid = false;
         pendingBatches.clear();
         ListTag batches = data.getList("pendingBatches", Tag.TAG_COMPOUND);
         setPauseReason(PauseReason.NONE);
@@ -921,14 +917,19 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
         retryPendingPowerRefund();
         if (!formed) return super.tickingRequest(node, ticksSinceLastCall);
-        transferStoredFluid(inputTank, getInputTank());
-        transferStoredFluid(outputTank, getOutputTank());
-        flushOutputs();
-        if (!getMainNode().isActive()) {
-            setWorking(false);
-            return TickRateModulation.SLOWER;
+        communicationUpdateDepth++;
+        try {
+            transferStoredFluid(inputTank, getInputTank());
+            transferStoredFluid(outputTank, getOutputTank());
+            flushOutputs();
+            if (!getMainNode().isActive()) {
+                setWorking(false);
+                return TickRateModulation.SLOWER;
+            }
+            return tickPendingBatch();
+        } finally {
+            finishCommunicationUpdates();
         }
-        return tickPendingBatch();
     }
 
     public boolean canAcceptPattern() {
@@ -940,16 +941,27 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     }
 
     private long getPendingOutputStackCount() {
+        if (pendingOutputCountValid) return pendingOutputStackCount;
         long count = 0L;
+        counting:
         for (PendingBatch batch : pendingBatches) {
             for (var entry : batch.pendingOutput) {
-                if (entry.getLongValue() > 0L) {
-                    if (count >= MAX_PENDING_OUTPUT_STACKS) return MAX_PENDING_OUTPUT_STACKS;
-                    count++;
-                }
+                if (entry.getLongValue() > 0L && ++count >= MAX_PENDING_OUTPUT_STACKS) break counting;
             }
         }
+        pendingOutputStackCount = count;
+        pendingOutputCountValid = true;
         return count;
+    }
+
+    private void addBatchOutputs(PendingBatch batch, KeyCounter outputs) {
+        pendingOutputCountValid = false;
+        batch.pendingOutput.addAll(outputs);
+    }
+
+    private void removeBatchOutput(PendingBatch batch, AEKey key, long amount) {
+        pendingOutputCountValid = false;
+        batch.pendingOutput.remove(key, amount);
     }
 
     /** Applies AE2 pattern-provider blocking semantics to the controller's owned, pending input ledger. */
@@ -999,6 +1011,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
 
     private void enqueueBatch(PendingBatch batch, @Nullable KeyCounter[] consumedInputs) {
         boolean wasEmpty = pendingBatches.isEmpty();
+        pendingOutputCountValid = false;
         pendingBatches.addLast(batch);
         if (consumedInputs != null) {
             for (KeyCounter counter : consumedInputs) {
@@ -1088,7 +1101,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         if (advance <= 0) {
             batch.progress = batch.processingTicks;
             batch.inputTotal.clear();
-            batch.pendingOutput.addAll(batch.outputTotal);
+            addBatchOutputs(batch, batch.outputTotal);
             boolean delivered = deliverBatchOutputs(batch);
             if (delivered) removeFirstBatch(batch);
             if (delivered) setPauseReason(PauseReason.NONE);
@@ -1176,12 +1189,12 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         recordUiEnergy(required);
         preheating = false;
 
-        if (thermal && overclocked) {
-            var profile = batch.coolingTier > 0 && !batch.segmented ? LargeWorkstationOverclock.forCoolingTier(batch.coolingTier)
-                : LargeWorkstationOverclock.NORMAL;
-            double load = (double) work * batch.thermalWorkMultiplier / profile.maxParallelism();
-            if (batch.legacyTiming) load /= batch.processingTicks;
-            pendingThermalLoad += load;
+        if (thermal && overclocked && work > 0) {
+            long tick = level.getGameTime();
+            if (lastProcessingHeatTick != tick) {
+                lastProcessingHeatTick = tick;
+                pendingProcessingHeat = true;
+            }
         }
         if (batch.segmented) {
             completedWork += work;
@@ -1207,7 +1220,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
             // Inputs are already owned by this controller. Once the batch reaches completion, only the output
             // ledger remains recoverable and the original input total must never be replayed.
             batch.inputTotal.clear();
-            batch.pendingOutput.addAll(batch.outputTotal);
+            addBatchOutputs(batch, batch.outputTotal);
             if (deliverBatchOutputs(batch)) removeFirstBatch(batch);
         } else {
             setWorking(true);
@@ -1228,7 +1241,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         return source;
     }
 
-    /** Fill available parallelism from consecutive, equivalent owned work without replaying paid progress. */
+    /** Fill from ready, equivalent owned work within the same job without replaying paid progress. */
     private void refillPendingBatch(PendingBatch batch) {
         if (batch.segmented) return;
         LargeWorkstationOverclock profile = getCurrentBatchProfile();
@@ -1241,17 +1254,28 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         var iterator = pendingBatches.iterator();
         if (!iterator.hasNext() || iterator.next() != batch) return;
         boolean changed = false;
+        boolean consecutive = true;
         while (iterator.hasNext() && batch.craftCount < profile.maxParallelism()) {
             PendingBatch next = iterator.next();
-            if (next.segmented || next.progress != 0 || next.progressRemainder != 0 || !isCounterEmpty(next.pendingOutput)
-                || next.coolingTier > profile.coolingTier() || next.energyPerCraft != batch.energyPerCraft
+            if (next.segmented || next.progress != 0 || next.progressRemainder != 0 || next.feRemainder != 0
+                || !isCounterEmpty(next.pendingOutput)
+                || !Objects.equals(next.craftingJobId, batch.craftingJobId)) break;
+            // Only pass fully owned, unstarted tasks. Never borrow a later task's missing inputs
+            // ahead of another recipe, or cross a task that may still depend on earlier output.
+            if (!consecutive && !isCounterEmpty(next.missingExtras)) break;
+            if (next.coolingTier > profile.coolingTier() || next.energyPerCraft != batch.energyPerCraft
                 || next.energyMultiplier != batch.energyMultiplier || next.thermalWorkMultiplier != batch.thermalWorkMultiplier
                 || next.processingTicks != batch.processingTicks || next.fePerCraft != batch.fePerCraft
-                || next.legacyTiming != batch.legacyTiming || next.feRemainder != 0
-                || !Objects.equals(next.recipeId, batch.recipeId) || !Objects.equals(next.craftingJobId, batch.craftingJobId)
-                || !Objects.equals(next.unlockStack, batch.unlockStack)) break;
+                || next.legacyTiming != batch.legacyTiming
+                || !Objects.equals(next.recipeId, batch.recipeId)
+                || !Objects.equals(next.unlockStack, batch.unlockStack)) {
+                if (!isCounterEmpty(next.missingExtras)) break;
+                consecutive = false;
+                continue;
+            }
 
             long taken = Math.min(profile.maxParallelism() - batch.craftCount, next.craftCount);
+            if (!consecutive && !canPowerRefilledStep(batch, batch.craftCount + taken)) continue;
             KeyCounter ownedInputs;
             KeyCounter ownedOutputs;
             KeyCounter inputPortion;
@@ -1259,7 +1283,11 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
             try {
                 KeyCounter expectedInputs = addCountersExact(next.inputTotal, next.missingExtras);
                 if (!sameCounter(inputsPerCraft, divideCounter(expectedInputs, next.craftCount))
-                    || !sameCounter(outputsPerCraft, divideCounter(next.outputTotal, next.craftCount))) break;
+                    || !sameCounter(outputsPerCraft, divideCounter(next.outputTotal, next.craftCount))) {
+                    if (!isCounterEmpty(next.missingExtras)) break;
+                    consecutive = false;
+                    continue;
+                }
                 inputPortion = scaleCounter(inputsPerCraft, taken);
                 outputPortion = scaleCounter(outputsPerCraft, taken);
                 ownedInputs = addCountersExact(batch.inputTotal, inputPortion);
@@ -1297,20 +1325,40 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
         }
     }
 
+    /** Preserve a runnable head when an out-of-order refill would exceed the current power budget. */
+    private boolean canPowerRefilledStep(PendingBatch batch, long count) {
+        long paidWork = batch.progress * batch.craftCount + batch.progressRemainder;
+        int progress = (int) (paidWork / count);
+        int advance = Math.min(batch.legacyTiming ? getParallelism() : 1, batch.processingTicks - progress);
+        long work = (long) advance * count - paidWork % count;
+        double required = (double) batch.energyPerCraft * work / batch.processingTicks;
+        try {
+            long flux = LargeWorkstationProcessing.fluxPayment(batch.fePerCraft, work,
+                batch.processingTicks, batch.feRemainder).amount();
+            long substituteFe = flux - Math.min(flux, processingFeBuffer);
+            if (substituteFe > 0) required += WorkstationEnergy.aeEquivalent(substituteFe).doubleValue();
+            IEnergySource source = processingEnergySource(required);
+            return Double.isFinite(required) && source.extractAEPower(required,
+                Actionable.SIMULATE, PowerMultiplier.CONFIG) + 0.001D >= required;
+        } catch (ArithmeticException | IllegalArgumentException invalid) {
+            return false;
+        }
+    }
+
     /** Finish just one portion; remaining inputs, outputs and paid craft steps stay on the same task. */
     private void finishBatchPortion(PendingBatch batch, long count, long remainingPaidWork) {
         if (count == batch.craftCount) {
             batch.progress = batch.processingTicks;
             batch.progressRemainder = 0;
             batch.inputTotal.clear();
-            batch.pendingOutput.addAll(batch.outputTotal);
+            addBatchOutputs(batch, batch.outputTotal);
             return;
         }
         KeyCounter inputs = counterPortion(addCountersExact(batch.inputTotal, batch.missingExtras), count, batch.craftCount);
         KeyCounter outputs = counterPortion(batch.outputTotal, count, batch.craftCount);
         for (var entry : inputs) batch.inputTotal.remove(entry.getKey(), entry.getLongValue());
         for (var entry : outputs) batch.outputTotal.remove(entry.getKey(), entry.getLongValue());
-        batch.pendingOutput.addAll(outputs);
+        addBatchOutputs(batch, outputs);
         batch.craftCount -= count;
         batch.progress = (int) (remainingPaidWork / batch.craftCount);
         batch.progressRemainder = remainingPaidWork % batch.craftCount;
@@ -1349,6 +1397,8 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     }
 
     private void refundProcessingPower(IEnergySource source, double amount) {
+        // extractAEPower returns requested units; both refund destinations accept raw AE.
+        amount = PowerMultiplier.CONFIG.multiply(amount);
         double remaining = source instanceof IEnergyService network
             ? network.injectPower(amount, Actionable.MODULATE)
             : injectAEPower(amount, Actionable.MODULATE);
@@ -1399,8 +1449,8 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     /** Runs independently of AE2's adaptive processing scheduler, including paused and idle machines. */
     public void tickThermal(Level tickLevel, BlockPos pos, BlockState state) {
         if (tickLevel.isClientSide) return;
-        double processingLoad = pendingThermalLoad;
-        pendingThermalLoad = 0;
+        double processingLoad = pendingProcessingHeat ? 1 : 0;
+        pendingProcessingHeat = false;
         if (!isTemperatureEnabled()) {
             uiThermalUsage.clear();
             // Freeze saved thermal state while disabled; it applies again when temperature mode is enabled.
@@ -1547,6 +1597,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
 
     private void removeFirstBatch(PendingBatch batch) {
         if (pendingBatches.peekFirst() != batch) return;
+        pendingOutputCountValid = false;
         pendingBatches.removeFirst();
         PendingBatch next = pendingBatches.peekFirst();
         setProcessingTime(next == null ? 0 : next.progress);
@@ -1580,7 +1631,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
                     throw new IllegalStateException(
                         "Invalid large workstation output insertion amount: " + inserted + " for " + requested);
                 }
-                if (inserted > 0L) batch.pendingOutput.remove(stack.what(), inserted);
+                if (inserted > 0L) removeBatchOutput(batch, stack.what(), inserted);
                 requested -= inserted;
                 if (requested == 0L) continue;
                 // An external CPU can finish while accepting the final output. Its remaining
@@ -1595,7 +1646,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
                 throw new IllegalStateException(
                     "Invalid large workstation output insertion amount: " + inserted + " for " + requested);
             }
-            if (inserted > 0L) batch.pendingOutput.remove(stack.what(), inserted);
+            if (inserted > 0L) removeBatchOutput(batch, stack.what(), inserted);
             if (inserted < requested) {
                 setOutputBlockedReason(OutputBlockedReason.NETWORK_INSERT);
                 return false;
@@ -1621,8 +1672,19 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
     }
 
     private void requestCommunicationProviderUpdate() {
+        if (communicationUpdateDepth > 0) {
+            communicationUpdatePending = true;
+            return;
+        }
         if (cluster != null && cluster.getCommunication() instanceof ECOLargeIntegratedWorkingStationInterfaceBlockEntity communication) {
             ICraftingProvider.requestUpdate(communication.getMainNode());
+        }
+    }
+
+    private void finishCommunicationUpdates() {
+        if (--communicationUpdateDepth == 0 && communicationUpdatePending) {
+            communicationUpdatePending = false;
+            requestCommunicationProviderUpdate();
         }
     }
 
@@ -1704,7 +1766,8 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
             // all of its base recipe operations, including extras absent from the encoded inputs.
             energyPerCraft = Math.multiplyExact(adapted.energy(), match.multiplier());
             fePerCraft = Math.multiplyExact(adapted.feEnergy(), match.multiplier());
-            processingTicks = LargeWorkstationProcessing.duration(adapted.processingTicks(), match.multiplier());
+            // Match 1.21.1 execution timing without changing recipe-viewer durations or saved batches.
+            processingTicks = 1;
             if (adapted.feAlternative()) {
                 // Prefer AE; choose FE only at acceptance, then preserve this choice across shortages/reloads.
                 IGrid grid = getMainNode().getGrid();
@@ -1921,6 +1984,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
                 ECOCraftingJobLifecycle.finish(level, batch.craftingJobId, false);
             }
             notifyPatternAborted(batch.unlockStack);
+            pendingOutputCountValid = false;
             pendingBatches.remove(batch);
         }
         PendingBatch first = pendingBatches.peekFirst();
@@ -1965,6 +2029,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
                 }
             }
         }
+        pendingOutputCountValid = false;
         pendingBatches.clear();
     }
 
@@ -1975,6 +2040,7 @@ public class ECOLargeIntegratedWorkingStationBlockEntity
                 ECOCraftingJobLifecycle.finish(level, batch.craftingJobId, false);
             }
         }
+        pendingOutputCountValid = false;
         pendingBatches.clear();
         super.clearContent();
     }
