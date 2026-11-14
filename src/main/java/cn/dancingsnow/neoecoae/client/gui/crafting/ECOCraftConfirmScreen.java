@@ -3,6 +3,7 @@ package cn.dancingsnow.neoecoae.client.gui.crafting;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AmountFormat;
+import appeng.api.stacks.GenericStack;
 import appeng.client.gui.AEBaseScreen;
 import appeng.client.gui.Icon;
 import appeng.client.gui.StackWithBounds;
@@ -10,6 +11,7 @@ import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.IconButton;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.core.localization.GuiText;
+import appeng.integration.modules.emi.EmiStackHelper;
 import appeng.menu.me.crafting.CraftConfirmMenu;
 import appeng.menu.me.crafting.CraftingPlanSummary;
 import cn.dancingsnow.neoecoae.NeoECOAE;
@@ -24,6 +26,10 @@ import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import cn.dancingsnow.neoecoae.gui.theme.ECOIcon;
 import cn.dancingsnow.neoecoae.network.ECOForceCraftStartFlagC2SPacket;
 import cn.dancingsnow.neoecoae.platform.ui.runtime.gui.ui.utils.ModularUITooltipComponent;
+import com.gto.ae.core.localization.ExtendedLangs;
+import dev.emi.emi.config.SidebarType;
+import dev.emi.emi.runtime.EmiFavorites;
+import dev.emi.emi.screen.EmiScreenManager;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +71,7 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     private final ECOCycleItemListRenderer cycleItems;
     private final Button start;
     private final Button selectCPU;
+    private final Button bookmarkMissing;
     private final Button graph;
     private final Button exportImage;
     private final Scrollbar scrollbar;
@@ -108,6 +115,11 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
         selectCPU = addTextButton("selectCpu", getNextCpuButtonLabel(), this::selectNextCpu);
         selectCPU.active = false;
         addTextButton("cancel", GuiText.Cancel.text(), menu::goBack);
+        bookmarkMissing = addTextButton("bookmarkMissing", ExtendedLangs.CraftAddMissingToEmi.text(), this::bookmarkMissing);
+        bookmarkMissing.setTooltip(net.minecraft.client.gui.components.Tooltip.create(
+            ExtendedLangs.CraftAddMissingToEmiDesc.text()));
+        bookmarkMissing.active = false;
+        bookmarkMissing.visible = false;
         graph = addToLeftToolbar(new CraftingGraphButton(this::openGraph));
         exportImage = addToLeftToolbar(new ExportImageButton(this::exportImage));
         exportImage.active = false;
@@ -238,6 +250,11 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
             : plan != null ? plan.getEntries().size() : 0;
         scrollbar.setRange(0, table.getScrollableRows(size), 1);
         exportImage.active = size > 0 && (!((Object) menu instanceof ECOCraftConfirmMenuMode mode)
+            || mode.neoecoae$diagnosticsReady());
+        bookmarkMissing.visible = plan != null && (exactMaterialTable
+            ? !materialData.missing().isEmpty()
+            : plan.isSimulation() && plan.getEntries().stream().anyMatch(entry -> entry.getMissingAmount() > 0));
+        bookmarkMissing.active = bookmarkMissing.visible && (!((Object) menu instanceof ECOCraftConfirmMenuMode mode)
             || mode.neoecoae$diagnosticsReady());
         int cycleItemCount = (Object) menu instanceof ECOCraftConfirmMenuMode mode
             ? mode.neoecoae$getCycleItems().size() : 0;
@@ -518,6 +535,22 @@ public final class ECOCraftConfirmScreen extends AEBaseScreen<CraftConfirmMenu> 
     }
 
     private void selectNextCpu() { menu.cycleSelectedCPU(!isHandlingRightClick()); }
+
+    private void bookmarkMissing() {
+        if (!bookmarkMissing.active || !bookmarkMissing.visible) return;
+        CraftingPlanSummary plan = menu.getPlan();
+        if (plan == null) return;
+        updateMaterialData();
+        List<AEKey> missingKeys = shouldUseExactMaterialTable() ? materialData.missing()
+            : plan.getEntries().stream().filter(entry -> entry.getMissingAmount() > 0)
+                .map(entry -> entry.getWhat()).toList();
+        for (AEKey key : missingKeys) {
+            // Match GTO's bookmarks: one material unit, including a full fluid unit.
+            var stack = EmiStackHelper.toEmiStack(new GenericStack(key, key.getAmountPerUnit()));
+            if (stack != null) EmiFavorites.addFavorite(stack);
+        }
+        EmiScreenManager.repopulatePanels(SidebarType.FAVORITES);
+    }
 
     private void exportImage() {
         if (!exportImage.active) return;
