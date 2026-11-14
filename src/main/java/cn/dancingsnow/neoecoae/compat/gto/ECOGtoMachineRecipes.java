@@ -42,6 +42,7 @@ public final class ECOGtoMachineRecipes {
         "compat/gt/ore_processing/o02_aluminium_dust",
         "compat/gt/ore_processing/o03_raw_tungsten_ore",
         "compat/gt/ore_processing/o04_tungsten_dust",
+        "compat/gt/material_processing/c04_aluminum_dust",
     };
 
     private static final ClassValue<MethodHandle> BUILDERS = new ClassValue<>() {
@@ -85,7 +86,7 @@ public final class ECOGtoMachineRecipes {
             case 4, 5 -> GTRecipeTypes.AUTOCLAVE_RECIPES;
             case 8 -> GTRecipeTypes.LASER_ENGRAVER_RECIPES;
             case 9, 10, 11, 12, 13, 14, 15 -> GTRecipeTypes.ASSEMBLER_RECIPES;
-            case 16, 17, 19, 20, 21, 22 -> GTRecipeTypes.MACERATOR_RECIPES;
+            case 16, 17, 19, 20, 21, 22, 23 -> GTRecipeTypes.MACERATOR_RECIPES;
             case 18 -> GTRecipeTypes.FORMING_PRESS_RECIPES;
             default -> throw new IndexOutOfBoundsException(index);
         };
@@ -146,9 +147,9 @@ public final class ECOGtoMachineRecipes {
             case 7 -> builder // b08_energized_superconductive_ingot
                 .inputItems(ItemTags.create(new ResourceLocation("forge:dusts/energized_fluix_crystal")), 4)
                 .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/aluminium_dusts")), 4)
-                .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/silicon")), 4)
-                .inputItems(ItemTags.create(new ResourceLocation("neoecoae:compat/gt/superconductor_ingots")), 4)
-                .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:argon"), 2000))
+                .inputItems(RecipeJson.item("gtceu:silicon_dust"), 4)
+                .inputItems(RecipeJson.item("gtceu:niobium_titanium_ingot"), 4)
+                .inputFluids(new FluidStack(RecipeJson.fluid("gtceu:helium"), 2000))
                 .outputItems(RecipeJson.item("neoecoae:energized_superconductive_ingot"), 4)
                 .duration(400)
                 .EUt(1920);
@@ -270,6 +271,11 @@ public final class ECOGtoMachineRecipes {
                 .outputItems(RecipeJson.item("gtceu:tungsten_dust"), 1)
                 .duration(400)
                 .EUt(1920);
+            case 23 -> builder // c04_aluminum_dust
+                .inputItems(RecipeJson.item("neoecoae:aluminum_ingot"), 1)
+                .outputItems(RecipeJson.item("neoecoae:aluminum_dust"), 1)
+                .duration(100)
+                .EUt(30);
             default -> throw new IndexOutOfBoundsException(index);
         }
     }

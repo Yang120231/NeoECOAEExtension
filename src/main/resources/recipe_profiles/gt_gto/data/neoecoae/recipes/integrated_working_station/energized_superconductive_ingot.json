@@ -16,11 +16,11 @@
       "count": 4
     },
     {
-      "tag": "neoecoae:compat/gt/silicon",
+      "item": "gtceu:silicon_dust",
       "count": 4
     },
     {
-      "item": "gtceu:mercury_barium_calcium_cuprate_ingot",
+      "item": "gtceu:niobium_titanium_ingot",
       "count": 4
     }
   ],
@@ -31,7 +31,7 @@
     "item": "neoecoae:energized_superconductive_ingot"
   },
   "inputFluid": {
-    "fluid": "gtceu:argon",
+    "fluid": "gtceu:helium",
     "amount": 2000
   }
 }
