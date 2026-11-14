@@ -4,7 +4,7 @@ English | [简体中文](README_ZH_CN.md) | [繁體中文](README_ZH_HK.md) | [�
 
 Neo ECO AE Extension is an Applied Energistics 2 addon that provides expandable crafting, storage and computation systems for ME networks, alongside integrated workstations for processing advanced components.
 
-The `1.20.1-GTO` branch is based on `1.20.1` and targets **GregTech Odyssey (GTO)** only. The current source version is **`20.5.6-GTO`**, with **GTO `0.6.26`** as the reference instance. For ordinary AE2 modpacks, use the `1.20.1` branch.
+The `1.20.1-GTO` branch is based on `1.20.1` and targets **GregTech Odyssey (GTO)** only. The current source version is **`20.5.8-GTO`**, and only **GregTech-Odyssey `0.6.0 dev30` and newer** are supported. For ordinary AE2 modpacks, use the `1.20.1` branch.
 
 ## Features
 
@@ -22,17 +22,17 @@ The Large Integrated Workstation uses native ECO and GTO recipes without addon u
 
 ## Target environment
 
-The following versions are from the current GTO reference instance; they describe the inspected JARs, not completed in-game acceptance:
+The following table lists the supported environment and pinned build dependencies:
 
 | Component | Target version |
 | --- | --- |
 | Minecraft | `1.20.1` |
-| GregTech Odyssey | `0.6.26` |
-| Forge | `47.4.20` in the instance; `47.4.28` for source builds |
+| GregTech Odyssey | `0.6.0 dev30+` |
+| Forge | `47.4.20` |
 | Java | **Java 21** for the game |
-| GTOCore | `26.10.26` |
-| GTO GTM | `26.11.03` |
-| GTO AE2 | `15.2610.47` |
+| GTOCore | `26.11.6` |
+| GTO GTCEu | `26.11.20` |
+| GTO AE2 | `15.2611.8` |
 
 GuideME and LDLib are required infrastructure dependencies; see the [mod metadata](src/main/resources/META-INF/mods.toml). This edition retains only GTO integration.
 
@@ -40,7 +40,7 @@ This edition adapts GTO's native crafting CPU, pattern-buffer batch submission, 
 
 ## Installation and usage
 
-1. Download the matching release from GitHub Releases, or build `neoecoae-20.5.6-GTO.jar` from the current source as described below.
+1. Download the matching release from GitHub Releases, or build `neoecoae-20.5.8-GTO.jar` from the current source as described below.
 2. Put the JAR in the target GTO instance's `mods` directory and remove older NeoECOAE JARs. The `-sources.jar` archive contains source code and is not an installable mod.
 3. For multiplayer, install the same version on both client and server. The ECO network handshake requires an exact version match.
 4. Start the target instance with Java 21 and use the recipe viewer to look up materials and machine recipes.
@@ -81,10 +81,10 @@ Gradle must be able to discover JDK 21. If automatic detection fails, specify it
 
 Artifacts are written to `build/libs/`:
 
-- `neoecoae-20.5.6-GTO.jar`: the installable mod.
-- `neoecoae-20.5.6-GTO-sources.jar`: source code.
+- `neoecoae-20.5.8-GTO.jar`: the installable mod.
+- `neoecoae-20.5.8-GTO-sources.jar`: source code.
 
-Compilation and native-JAR checks use GTO AE2 **`15.2610.47`**; see the [GTO dependency lock](porting/gto-dependencies.json). `bootstrap.py --gto` restores build dependencies and does not install the complete modpack.
+Compilation and native-JAR checks use GTO AE2 **`15.2611.8`**; see the [GTO dependency lock](porting/gto-dependencies.json). `bootstrap.py --gto` restores build dependencies and does not install the complete modpack.
 
 ### Local builds and Release verification
 
