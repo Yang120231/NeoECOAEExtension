@@ -32,6 +32,7 @@ public class ECOIntegratedWorkingStation extends NEEntityBlock<ECOIntegratedWork
     public static final Property<Direction> FACING = BlockStateProperties.HORIZONTAL_FACING;
     public static final Property<Boolean> WORKING = BooleanProperty.create("working");
     public static final BooleanProperty FORMED = BooleanProperty.create("formed");
+    public static final BooleanProperty SMART_COOLING = BooleanProperty.create("smart_cooling");
 
     private static final VoxelShape NORTH = Stream.of(
         Block.box(4, 4, 1, 12, 15, 12),
@@ -81,7 +82,7 @@ public class ECOIntegratedWorkingStation extends NEEntityBlock<ECOIntegratedWork
         // The recessed screen and cutout models must not hide neighbouring block faces.
         super(props.noOcclusion());
         registerDefaultState(getStateDefinition().any().setValue(FACING, Direction.NORTH).setValue(WORKING, false)
-            .setValue(FORMED, false));
+            .setValue(FORMED, false).setValue(SMART_COOLING, false));
     }
 
     @Override
@@ -92,7 +93,7 @@ public class ECOIntegratedWorkingStation extends NEEntityBlock<ECOIntegratedWork
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         super.createBlockStateDefinition(builder);
-        builder.add(WORKING, FORMED);
+        builder.add(WORKING, FORMED, SMART_COOLING);
     }
 
     @Override

@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 public class NEIntegratedWorkingStationCluster extends NECluster<NEIntegratedWorkingStationCluster> {
     private ECOLargeIntegratedWorkingStationBlockEntity controller;
     private ECOLargeIntegratedWorkingStationInputHatchBlockEntity inputHatch;
+    private ECOLargeIntegratedWorkingStationInputHatchBlockEntity smartCoolingController;
     private ECOLargeIntegratedWorkingStationOutputHatchBlockEntity outputHatch;
     private ECOMachineInterfaceBlockEntity<?> communication;
 
@@ -26,6 +27,10 @@ public class NEIntegratedWorkingStationCluster extends NECluster<NEIntegratedWor
 
     public ECOLargeIntegratedWorkingStationInputHatchBlockEntity getInputHatch() {
         return inputHatch;
+    }
+
+    public ECOLargeIntegratedWorkingStationInputHatchBlockEntity getSmartCoolingController() {
+        return smartCoolingController;
     }
 
     /** Link the multiblock's own nodes without opening an external cable port. */
@@ -87,7 +92,8 @@ public class NEIntegratedWorkingStationCluster extends NECluster<NEIntegratedWor
         if (blockEntity instanceof ECOLargeIntegratedWorkingStationBlockEntity value) {
             controller = value;
         } else if (blockEntity instanceof ECOLargeIntegratedWorkingStationInputHatchBlockEntity value) {
-            inputHatch = value;
+            if (value.isSmartCoolingModule()) smartCoolingController = value;
+            else inputHatch = value;
         } else if (blockEntity instanceof ECOLargeIntegratedWorkingStationOutputHatchBlockEntity value) {
             outputHatch = value;
         } else if (blockEntity instanceof ECOMachineInterfaceBlockEntity<?> value) {

@@ -4,6 +4,7 @@ import cn.dancingsnow.neoecoae.blocks.BuddingEnergizedCrystalBlock;
 import cn.dancingsnow.neoecoae.blocks.CasingBlock;
 import cn.dancingsnow.neoecoae.blocks.ECOIntegratedWorkingStation;
 import cn.dancingsnow.neoecoae.blocks.ECOLargeIntegratedWorkingStationInputHatch;
+import cn.dancingsnow.neoecoae.blocks.ECOLargeIntegratedWorkingStationSmartCoolingModule;
 import cn.dancingsnow.neoecoae.blocks.ECOLargeIntegratedWorkingStationOutputHatch;
 import cn.dancingsnow.neoecoae.blocks.ECOMachineCasing;
 import cn.dancingsnow.neoecoae.blocks.ECOMachineInterface;
@@ -304,6 +305,21 @@ public class NEBlocks {
         .simpleItem()
         .register();
 
+    public static final BlockEntry<CasingBlock> CRYOGENIC_ALUMINUM_ALLOY_CASING = REGISTRATE
+        .block("cryogenic_aluminum_alloy_casing", CasingBlock::new)
+        .initialProperties(() -> Blocks.IRON_BLOCK)
+        .properties(p -> p.noOcclusion().requiresCorrectToolForDrops())
+        .tag(BlockTags.MINEABLE_WITH_PICKAXE, BlockTags.NEEDS_IRON_TOOL)
+        .blockstate((ctx, prov) -> {
+            BlockModelBuilder model = prov.models().withExistingParent(ctx.getName(), prov.modLoc("block/casing_base"))
+                .texture("base", prov.modLoc("block/" + ctx.getName()))
+                .texture("particle", prov.modLoc("block/" + ctx.getName()));
+            prov.simpleBlock(ctx.get(), model);
+        })
+        .lang("Cryogenic Aluminum Alloy Machine Casing")
+        .simpleItem()
+        .register();
+
     public static final BlockEntry<Block> BLACK_TUNGSTEN_ALLOY_BLOCK = REGISTRATE
         .block("black_tungsten_alloy_block", Block::new)
         .initialProperties(() -> Blocks.IRON_BLOCK)
@@ -562,7 +578,8 @@ public class NEBlocks {
                     boolean working = s.getValue(ECOIntegratedWorkingStation.WORKING);
                     boolean formed = s.getValue(ECOIntegratedWorkingStation.FORMED);
                     ModelFile formedModel = prov.models().getExistingFile(prov.modLoc(
-                        "block/large_integrated_working_station_" + (working ? "on" : "off")));
+                        "block/large_integrated_working_station_" + (working ? "on" : "off")
+                            + (s.getValue(ECOIntegratedWorkingStation.SMART_COOLING) ? "_smart" : "")));
                     return ConfiguredModel.builder()
                         .modelFile(formed ? formedModel : (working ? modelFileWorking : modelFile))
                         .rotationY(((int) s.getValue(ECOIntegratedWorkingStation.FACING).toYRot() + 180) % 360)
@@ -616,6 +633,20 @@ public class NEBlocks {
         .model((ctx, prov) -> {})
         .build()
         .lang("Large Integrated Working Station Casing")
+        .register();
+
+    public static final BlockEntry<ECOLargeIntegratedWorkingStationSmartCoolingModule> LARGE_INTEGRATED_WORKING_STATION_SMART_COOLING_MODULE = REGISTRATE
+        .block("large_integrated_working_station_smart_cooling_module", ECOLargeIntegratedWorkingStationSmartCoolingModule::new)
+        .initialProperties(() -> Blocks.IRON_BLOCK)
+        .properties(p -> p.strength(5.0F, 6.0F).requiresCorrectToolForDrops())
+        .tag(BlockTags.MINEABLE_WITH_PICKAXE, BlockTags.NEEDS_STONE_TOOL)
+        .blockstate((ctx, prov) -> {
+            BlockModelBuilder model = prov.models().withExistingParent(ctx.getName(),
+                prov.modLoc("block/large_integrated_working_station_cooling_controller"));
+            prov.horizontalBlock(ctx.get(), model);
+        })
+        .lang("Large Integrated Working Station Smart Cooling Controller")
+        .simpleItem()
         .register();
 
     public static final BlockEntry<ECOLargeIntegratedWorkingStationInputHatch> LARGE_INTEGRATED_WORKING_STATION_INPUT_HATCH = REGISTRATE

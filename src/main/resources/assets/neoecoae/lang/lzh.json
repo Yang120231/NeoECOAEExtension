@@ -1028,7 +1028,7 @@
   "gui.neoecoae.workstation.card.internal_storage": "內儲之能",
   "gui.neoecoae.workstation.card.ae_stored": "%s / %s AE",
   "gui.neoecoae.workstation.card.ae_amount": "%s AE",
-  "gui.neoecoae.workstation.card.energy_footer": "耗能含加工與預熱。",
+  "gui.neoecoae.workstation.card.energy_footer": "實耗含加工、預熱及智能溫控。",
   "gui.neoecoae.workstation.card.recipe_source": "任務配方之源",
   "gui.neoecoae.big_order.reason.capacity": "CPU 容量不足",
   "gui.neoecoae.cpu.status.suspended": "暫止",
@@ -1327,5 +1327,13 @@
   "gui.neoecoae.crafting_graph.recursion.module_target": "請求：%s",
   "gui.neoecoae.crafting_report.export_too_large": "物料之錄過巨，不可合為一圖。",
   "gui.neoecoae.storage.universal": "通用儲藏",
-  "tooltip.neoecoae.storage.universal": "可藏萬物，不限其類"
+  "tooltip.neoecoae.storage.universal": "可藏萬物，不限其類",
+  "gui.neoecoae.workstation.card.target_temperature": "所期之溫",
+  "gui.neoecoae.workstation.card.smart_constant": "智控恆溫",
+  "gui.neoecoae.workstation.card.energy": "耗能：%s AE/t",
+  "gui.neoecoae.workstation.card.coolant_usage": "耗液：%s mB/t",
+  "gui.neoecoae.workstation.card.smart_hint": "右擊冷卻模組以調之",
+  "gui.neoecoae.smart_cooling.title": "智能冷卻控制器",
+  "block.neoecoae.large_integrated_working_station_smart_cooling_module": "大型集成工作站智能冷卻控制器",
+  "neoecoae.configuration.smartCoolingRefillThresholdPercent": "智能冷卻補液閾值"
 }

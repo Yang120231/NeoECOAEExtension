@@ -177,7 +177,6 @@ public class GuiLangs {
         provider.add("gui.neoecoae.workstation.card.internal_storage", "Internal storage");
         provider.add("gui.neoecoae.workstation.card.ae_stored", "%s / %s AE");
         provider.add("gui.neoecoae.workstation.card.ae_amount", "%s AE");
-        provider.add("gui.neoecoae.workstation.card.energy_footer", "Actual usage includes processing and preheating.");
         provider.add("gui.neoecoae.workstation.card.recipe_source", "Task recipe source");
         provider.add("gui.neoecoae.workstation.preheat_right_click_hint", "Right-click Overclock to start or stop preheating to the next band.");
         provider.add("gui.neoecoae.workstation.temperature_ranges", "Temperature bands: 4 / 6 / 9");
