@@ -27,7 +27,7 @@ record ComputationCpuItemEntry(AEKey key, BigInteger stored, BigInteger active, 
     }
 
     boolean waitingForMachine() {
-        return pending.signum() > 0 && processing.state() == ECOProcessingProgress.State.WAITING;
+        return active.signum() > 0 && processing.state() == ECOProcessingProgress.State.WAITING;
     }
 
     String amount(BigInteger value, boolean full) {

@@ -593,12 +593,16 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
     }
 
     private ComputationCpuItemEntry withProcessing(ComputationCpuItemEntry item) {
-        if (item.active().signum() <= 0 && item.pending().signum() <= 0) return item;
+        if (item.active().signum() <= 0) return item;
         var progress = processingByKey.get(item.key());
         return progress == null ? item : item.withProcessing(progress);
     }
 
     private void requestProcessingDetails(ComputationCpuItemEntry item, int pageDelta) {
+        if (item.active().signum() <= 0) {
+            clearProcessingDetails();
+            return;
+        }
         if (!item.key().equals(hoveredProcessingKey)) {
             hoveredProcessingKey = item.key();
             hoveredProcessingPage = Math.max(0, item.processing().detailPage());
@@ -802,7 +806,8 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             : GuiText.Scheduled.text(entry.amount(entry.pending(), false));
         ComputationCpuSelector.fittedText(context, font, amount.getString(),
             x + 3, y + 9, ROW_WIDTH - 23, 0.5F, TEXT_LIGHT);
-        Component state = processing.hasProgress() && processing.state() != ECOProcessingProgress.State.WAITING
+        Component state = processing.state() == ECOProcessingProgress.State.QUEUED ? Component.empty()
+            : processing.hasProgress() && processing.state() != ECOProcessingProgress.State.WAITING
             ? Component.literal(Math.round(processing.progress() * 100) + "%")
             : Component.translatable("gui.neoecoae.processing.state." + processing.state().name().toLowerCase(Locale.ROOT));
         ComputationCpuSelector.fittedText(context, font, state.getString(), x + 3, y + 15, ROW_WIDTH - 23, 0.5F, TEXT_LIGHT);
@@ -1073,7 +1078,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             }
             AEKey key = AEKey.fromTagGeneric(request.getCompound("key"));
             if (key == null || !(selection.selected() instanceof ECOCraftingCPU eco)
-                || (eco.getLogic().getWaitingFor(key) <= 0 && eco.getLogic().getPendingOutputs(key) <= 0)) return;
+                || eco.getLogic().getWaitingFor(key) <= 0) return;
             viewing = true;
             processingDetailKey = key;
             processingDetailPage = Math.max(0, request.getInt("page"));
@@ -1117,8 +1122,10 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             var list = new ListTag();
             for (var source : sources) list.add(source.describe());
             response.put("sources", list);
-            // Machines come from the processing monitor's scan of this job's destinations; AE2 jobs have none.
-            if (eco != null) eco.getLogic().getProcessingProgress(key);
+            // Explicit machine controls may resolve a destination before dispatch, without background polling.
+            if (eco != null && eco.getLevel() != null) {
+                eco.getLogic().getProcessingMonitor().sample(eco.getLevel(), key, eco.getLevel().getGameTime());
+            }
             var targets = eco == null ? List.<cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider.Target>of()
                 : eco.getLogic().getProcessingMonitor().machineTargets(key);
             // GT machines open their own LDLib UI; every other machine (and FX cores, as their host) uses its block.
@@ -1184,7 +1191,7 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             Map<AEKey, ECOProcessingProgress> next = new LinkedHashMap<>();
             if (active) {
                 for (var item : processingItems) {
-                    if (item.active().signum() <= 0 && item.pending().signum() <= 0) continue;
+                    if (item.active().signum() <= 0) continue;
                     var progress = cpu.getLogic().getProcessingProgress(item.key());
                     if (progress == null || (progress.machineCount() == 0 && !progress.refreshing())) continue;
                     var status = progress.forStatusSync().page(item.key().equals(processingDetailKey) ? processingDetailPage : -1);
@@ -1307,12 +1314,9 @@ final class ComputationCpuStatusPanel extends BindableValue<CompoundTag> {
             Map<AEKey, Integer> priorities = new HashMap<>();
             List<AEKey> naturalOrder = new ArrayList<>();
             for (ComputationCpuItemEntry item : all) {
-                if (item.active().signum() <= 0 && item.pending().signum() <= 0) continue;
+                if (item.active().signum() <= 0) continue;
                 var progress = cpu instanceof ECOCraftingCPU eco ? eco.getLogic().getProcessingProgress(item.key())
                     : ECOProcessingProgress.EMPTY;
-                // Admission-blocked pending work (for example an overheated workstation) is listed as a task too.
-                if (item.active().signum() <= 0
-                    && (progress == null || progress.state() != ECOProcessingProgress.State.WAITING)) continue;
                 active.put(item.key(), item);
                 priorities.put(item.key(), taskPriority(item, progress));
                 naturalOrder.add(item.key());

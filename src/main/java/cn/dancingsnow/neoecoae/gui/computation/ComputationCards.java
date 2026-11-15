@@ -101,9 +101,6 @@ final class ComputationCards {
         if (item.active().signum() > 0 && machines.isEmpty()) {
             card.row(null, CraftingTooltipCard.MUTED, Component.translatable(CARD + "cycle_progress"),
                 Component.translatable(CARD + "unavailable"), CraftingTooltipCard.MUTED);
-        } else if (item.active().signum() <= 0 && machines.isEmpty() && item.pending().signum() > 0 && !item.stepStopped()) {
-            card.text(Component.translatable("gui.neoecoae.processing.awaiting_dispatch"), Component.empty(),
-                CraftingTooltipCard.MUTED);
         }
         for (var row : machines) {
             switch (row.kind()) {

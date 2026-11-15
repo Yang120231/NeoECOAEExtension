@@ -9,6 +9,7 @@ import cn.dancingsnow.neoecoae.api.me.diagnostics.ECOProcessingTargetProvider.Ta
 import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.Machine;
 import cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.State;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
+import com.gregtechceu.gtceu.api.recipe.handler.ActionResult;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
@@ -132,9 +133,11 @@ public final class ECOGtoMachineStatus {
         boolean paused = Boolean.TRUE.equals(value(logic, "isSuspend"));
         boolean waiting = Boolean.TRUE.equals(value(logic, "isWaiting"));
         boolean working = Boolean.TRUE.equals(value(logic, "isWorking"));
-        Component reason = paused || waiting || !working ? failureReason(logic) : Component.empty();
+        // A shared machine's running or blocked recipe does not describe other queued products.
+        boolean otherRecipe = !matches && (working || waiting);
+        Component reason = !working && !otherRecipe ? failureReason(logic) : Component.empty();
         State state = paused ? State.PAUSED
-            : waiting || (!working && !reason.getString().isEmpty()) ? State.WAITING
+            : !otherRecipe && (waiting || !reason.getString().isEmpty()) ? State.WAITING
             : matches && working ? State.RUNNING : State.QUEUED;
         if (state == State.QUEUED || (!working && !waiting && !paused)) { duration = 0; progress = 0; }
         long parallel = duration > 0 ? positiveLong(value(recipe, "parallels")) : 0;
@@ -146,7 +149,9 @@ public final class ECOGtoMachineStatus {
     /** Observe native failures even before a recipe has started; never retry recipes or infer energy from WAITING. */
     private static Component failureReason(Object logic) {
         var reasons = new LinkedHashMap<String, Component>();
-        addReason(reasons, component(value(logic, "getIdleReason")));
+        Component idleReason = component(value(logic, "getIdleReason"));
+        // GTO returns this default even when no input has arrived and no recipe has been attempted.
+        if (!idleReason.equals(ActionResult.FAIL_NO_RECIPE_FOUND.reason())) addReason(reasons, idleReason);
         Object machine = value(logic, "getMachine", "machine");
         if (Boolean.FALSE.equals(value(machine, "isFormed"))) {
             addReason(reasons, Component.translatable("gui.neoecoae.processing.unformed"));

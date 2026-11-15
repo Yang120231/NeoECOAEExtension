@@ -13,17 +13,13 @@ import net.minecraft.network.chat.MutableComponent;
 final class ComputationProcessingTooltips {
     private ComputationProcessingTooltips() {}
 
-    /** Include admission failures for pending items, even before their first successful dispatch. */
+    /** Machine details describe dispatched work only. */
     static List<Row> rows(ComputationCpuItemEntry item) {
-        return item.active().signum() > 0 || item.waitingForMachine() ? rows(item.processing()) : List.of();
+        return item.active().signum() > 0 ? rows(item.processing()) : List.of();
     }
 
     static List<Component> describe(ComputationCpuItemEntry item) {
-        if (item.waitingForMachine()) return describe(item.processing());
-        if (item.active().signum() <= 0) {
-            return item.pending().signum() > 0 && !item.stepStopped() ? List.of(Component.translatable(
-                "gui.neoecoae.processing.awaiting_dispatch").withStyle(ChatFormatting.GRAY)) : List.of();
-        }
+        if (item.active().signum() <= 0) return List.of();
         var lines = describe(item.processing());
         if (!lines.isEmpty()) return lines;
         return List.of(Component.translatable("gui.neoecoae.processing.progress_unavailable").withStyle(ChatFormatting.GRAY));
@@ -53,8 +49,9 @@ final class ComputationProcessingTooltips {
             rows.add(new Row(Component.empty(), Component.empty(), Kind.SEPARATOR, 0));
             ChatFormatting color = machine.state() == State.WAITING ? ChatFormatting.GOLD
                 : machine.state() == State.RUNNING ? ChatFormatting.GREEN : ChatFormatting.GRAY;
-            rows.add(text(machine.name(), Component.translatable("gui.neoecoae.processing.state."
-                + machine.state().name().toLowerCase(Locale.ROOT)).withStyle(color)));
+            rows.add(text(machine.name(), machine.state() == State.QUEUED ? Component.empty()
+                : Component.translatable("gui.neoecoae.processing.state."
+                    + machine.state().name().toLowerCase(Locale.ROOT)).withStyle(color)));
             if (!machine.reason().getString().isEmpty()) rows.add(text(Component.translatable(
                 "gui.neoecoae.processing.reason", machine.reason()).withStyle(ChatFormatting.GOLD)));
             Component parallel = machine.parallel() > 0

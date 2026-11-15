@@ -593,8 +593,12 @@ public class ECOCraftingCPULogic extends cn.dancingsnow.neoecoae.api.me.ECOCraft
     }
 
     public cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress getProcessingProgress(AEKey key) {
+        // Planned outputs have no dispatched work to observe. Do not scan their machines.
+        if (job == null || getWaitingFor(key) <= 0) {
+            return cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.EMPTY;
+        }
         Level level = cpu.getLevel();
-        return job == null || (getWaitingFor(key) <= 0 && getPendingOutputs(key) <= 0) || level == null
+        return level == null
             ? cn.dancingsnow.neoecoae.crafting.display.processing.ECOProcessingProgress.EMPTY
             : processingMonitor.sample(level, key, level.getGameTime());
     }
