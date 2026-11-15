@@ -2,6 +2,7 @@ package cn.dancingsnow.neoecoae.client.gui.graph;
 
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import cn.dancingsnow.neoecoae.crafting.graph.ClientCraftingGraph;
+import cn.dancingsnow.neoecoae.crafting.graph.CraftingGraphProgress;
 import cn.dancingsnow.neoecoae.crafting.graph.GraphLayoutSnapshot;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -32,6 +33,7 @@ final class GraphMaterialSummary {
     private @Nullable Item hovered;
     private @Nullable Item tooltipItem;
     private @Nullable ClientCraftingGraph tooltipGraph;
+    private @Nullable CraftingGraphProgress tooltipProgress;
     private @Nullable Language tooltipLanguage;
     private List<Component> tooltip = List.of();
 
@@ -105,8 +107,9 @@ final class GraphMaterialSummary {
 
     void render(GuiGraphics graphics, Font font, int mouseX, int mouseY) {
         hovered = itemAt(mouseX, mouseY);
-        graphics.fill(0, top, width, screenHeight, 0xff11171d);
-        graphics.fill(0, top, width, top + 1, 0xff39464f);
+        var theme = GraphTheme.current();
+        graphics.fill(0, top, width, screenHeight, theme.bar());
+        graphics.fill(0, top, width, top + 1, theme.line());
         if (collapsed) {
             drawHeaders(graphics, font);
             graphics.flush();
@@ -137,27 +140,28 @@ final class GraphMaterialSummary {
                 if (item == null) continue;
                 var box = box(panel, column, item);
                 GraphDraw.frame(graphics, box.x(), box.y(), box.x() + box.width(), box.y() + box.height(),
-                    item == hovered ? GraphRenderer.SELECTED : 0xff556675, 1);
+                    item == hovered ? theme.accent() : theme.line(), 1);
                 CompactTreeRenderer.drawAmount(graphics, font, item.compact(), box.x(), box.y() + 20,
-                    box.x() + box.width(), box.y() + box.height(), 0xffecf3f8);
+                    box.x() + box.width(), box.y() + box.height(), theme.text());
             }
-            if (section.items.isEmpty()) graphics.drawString(font, "-", panel.left() + 6, top + 26, 0xff809bab, false);
+            if (section.items.isEmpty()) graphics.drawString(font, "-", panel.left() + 6, top + 26, theme.faint(), false);
         }
         graphics.flush();
     }
 
     private void drawHeaders(GuiGraphics graphics, Font font) {
+        var theme = GraphTheme.current();
         for (var panel : panels) {
             var section = panel.section();
             boolean overflow = !collapsed && section.items.size() > panel.columns();
             String title = section.title().getString() + " (" + section.items.size() + ")";
             graphics.drawString(font, GraphDraw.fit(font, title, panel.right() - panel.left() - (overflow ? 25 : 4)),
-                panel.left() + 2, top + 5, 0xffa9c5d6, false);
+                panel.left() + 2, top + 5, theme.muted(), false);
             if (overflow) {
                 graphics.drawString(font, "\u2039", panel.right() - 19, top + 5,
-                    section.offset > 0 ? 0xffecf3f8 : 0xff52616b, false);
+                    section.offset > 0 ? theme.text() : theme.faint(), false);
                 graphics.drawString(font, "\u203a", panel.right() - 9, top + 5,
-                    section.offset + panel.columns() < section.items.size() ? 0xffecf3f8 : 0xff52616b, false);
+                    section.offset + panel.columns() < section.items.size() ? theme.text() : theme.faint(), false);
             }
         }
         // Rotate the same chevron used by the horizontal paging controls.
@@ -165,7 +169,7 @@ final class GraphMaterialSummary {
         pose.pushPose();
         pose.translate(width - 9, top + HEADER_HEIGHT / 2f, 0);
         pose.mulPose(Axis.ZP.rotationDegrees(collapsed ? -90 : 90));
-        graphics.drawString(font, "\u203a", -font.width("\u203a") / 2, -font.lineHeight / 2, 0xffecf3f8, false);
+        graphics.drawString(font, "\u203a", -font.width("\u203a") / 2, -font.lineHeight / 2, theme.text(), false);
         pose.popPose();
     }
 
@@ -233,13 +237,14 @@ final class GraphMaterialSummary {
         section.offset = Math.max(0, Math.min(Math.max(0, section.items.size() - panel.columns()), section.offset + delta));
     }
 
-    List<Component> tooltip(ClientCraftingGraph graph) {
+    List<Component> tooltip(ClientCraftingGraph graph, @Nullable CraftingGraphProgress progress) {
         if (hovered == null) return List.of();
-        if (tooltipItem != hovered || tooltipGraph != graph || tooltipLanguage != Language.getInstance()) {
+        if (tooltipItem != hovered || tooltipGraph != graph || tooltipProgress != progress || tooltipLanguage != Language.getInstance()) {
             tooltipItem = hovered;
             tooltipGraph = graph;
+            tooltipProgress = progress;
             tooltipLanguage = Language.getInstance();
-            var lines = new ArrayList<>(GraphMaterialCard.builder(graph, hovered.node(), false).texts());
+            var lines = new ArrayList<>(GraphMaterialCard.builder(graph, hovered.node(), false, progress).texts());
             for (var section : sections) if (section.items.stream().anyMatch(item -> item == hovered)) {
                 lines.add(1, Component.translatable("gui.neoecoae.crafting_graph.summary.amount", section.title(),
                     RecursiveCycleRenderer.exact(hovered.node().key(), hovered.amount())));

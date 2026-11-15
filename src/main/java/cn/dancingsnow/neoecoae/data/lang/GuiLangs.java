@@ -177,7 +177,6 @@ public class GuiLangs {
         provider.add("gui.neoecoae.workstation.card.internal_storage", "Internal storage");
         provider.add("gui.neoecoae.workstation.card.ae_stored", "%s / %s AE");
         provider.add("gui.neoecoae.workstation.card.ae_amount", "%s AE");
-        provider.add("gui.neoecoae.workstation.card.energy_footer", "Actual usage includes processing and preheating.");
         provider.add("gui.neoecoae.workstation.card.recipe_source", "Task recipe source");
         provider.add("gui.neoecoae.workstation.preheat_right_click_hint", "Right-click Overclock to start or stop preheating to the next band.");
         provider.add("gui.neoecoae.workstation.temperature_ranges", "Temperature bands: 4 / 6 / 9");
@@ -865,6 +864,8 @@ public class GuiLangs {
         provider.add("gui.neoecoae.crafting_graph.toolbar.fit_all", "Fit All");
         provider.add("gui.neoecoae.crafting_graph.toolbar.missing_on", "Missing only: On");
         provider.add("gui.neoecoae.crafting_graph.toolbar.missing_off", "Missing only: Off");
+        provider.add("gui.neoecoae.crafting_graph.toolbar.theme_dark", "Theme: Dark");
+        provider.add("gui.neoecoae.crafting_graph.toolbar.theme_light", "Theme: Light");
         provider.add("gui.neoecoae.crafting_graph.toolbar.root", "Root");
         provider.add("gui.neoecoae.crafting_graph.toolbar.expand", "Expand");
         provider.add("gui.neoecoae.crafting_graph.toolbar.collapse", "Collapse");

@@ -97,6 +97,13 @@ public class NEConfig {
         .translation("neoecoae.configuration.postCraftingEvent")
         .define("postCraftingEvent", false);
 
+    private static final ForgeConfigSpec.IntValue SMART_COOLING_REFILL_THRESHOLD_PERCENT = BUILDER
+        .comment(
+            "智能冷却控制器每 200 tick 检查一次库存，低于此百分比时从 ME 网络补满冷却液；100 表示每次检查都补满。",
+            "Refill smart cooling below this stock percentage; 100 tops up on every poll.")
+        .translation("neoecoae.configuration.smartCoolingRefillThresholdPercent")
+        .defineInRange("smartCoolingRefillThresholdPercent", 100, 1, 100);
+
     private static final ForgeConfigSpec.BooleanValue LARGE_WORKSTATION_TEMPERATURE_ENABLED = BUILDER
         .comment(
             "启用大型集成工作站的温度、预热和过热恢复机制，默认开启。",
@@ -256,6 +263,7 @@ public class NEConfig {
     public static int infiniteMigrationKeysPerTick = 512;
     public static boolean postCraftingEvent;
     public static boolean largeWorkstationTemperatureEnabled = true;
+    public static int smartCoolingRefillThresholdPercent = 100;
     public static int craftingPatternBusPages = 1;
     public static int ecoCpuPushTickLimit = MAX_ECO_CPU_PUSH_TICK_LIMIT;
     public static int ecoFastPathCacheSize = 512;
@@ -285,6 +293,7 @@ public class NEConfig {
         infiniteMigrationKeysPerTick = INFINITE_MIGRATION_KEYS_PER_TICK.get();
         postCraftingEvent = POST_CRAFTING_EVENT.get();
         largeWorkstationTemperatureEnabled = LARGE_WORKSTATION_TEMPERATURE_ENABLED.get();
+        smartCoolingRefillThresholdPercent = SMART_COOLING_REFILL_THRESHOLD_PERCENT.get();
         craftingPatternBusPages = CRAFTING_PATTERN_BUS_PAGES.get();
         ecoCpuPushTickLimit = JdkCompat.clamp(ECO_CPU_PUSH_TICK_LIMIT.get(), 1, MAX_ECO_CPU_PUSH_TICK_LIMIT);
         ecoFastPathCacheSize = ECO_FAST_PATH_CACHE_SIZE.get();

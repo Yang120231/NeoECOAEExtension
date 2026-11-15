@@ -9,14 +9,17 @@
   ],
   "textures": {
     "body": "neoecoae:block/working_station/controller_formed/controller_formed",
-    "light": "neoecoae:block/working_station/controller_formed/controller_formed_light_on",
-    "screen": "neoecoae:block/working_station/controller_formed/controller_formed_screen_on",
+    "light": "neoecoae:block/working_station/controller_formed/controller_formed_light_normal",
+    "light_light": "neoecoae:block/working_station/controller_formed/colored/normal/controller_formed_light/dark_working",
+    "light_dark": "neoecoae:block/working_station/controller_formed/colored/normal/controller_formed_light/light_working",
+    "screen_dark": "neoecoae:block/working_station/controller_formed/colored/normal/controller_formed_screen_on/dark",
+    "screen_light": "neoecoae:block/working_station/controller_formed/colored/normal/controller_formed_screen_on/light",
+    "screen_middle": "neoecoae:block/working_station/controller_formed/colored/normal/controller_formed_screen_on/middle",
     "particle": "neoecoae:block/working_station/casing"
   },
   "elements": [
     {
-      "name": "light",
-      "shade": false,
+      "name": "light_normal",
       "from": [
         -16,
         -16,
@@ -27,6 +30,7 @@
         16,
         32
       ],
+      "shade": false,
       "rotation": {
         "angle": 0,
         "axis": "y",
@@ -110,6 +114,196 @@
       }
     },
     {
+      "name": "light_light",
+      "from": [
+        -16,
+        -16,
+        0
+      ],
+      "to": [
+        32,
+        16,
+        32
+      ],
+      "shade": false,
+      "rotation": {
+        "angle": 0,
+        "axis": "y",
+        "origin": [
+          -16,
+          -16,
+          0
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            6,
+            4
+          ],
+          "texture": "#light_light",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "east": {
+          "uv": [
+            6,
+            4,
+            10,
+            8
+          ],
+          "texture": "#light_light",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "south": {
+          "uv": [
+            10,
+            0,
+            16,
+            4
+          ],
+          "texture": "#light_light",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "west": {
+          "uv": [
+            6,
+            0,
+            10,
+            4
+          ],
+          "texture": "#light_light",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "up": {
+          "uv": [
+            6,
+            8,
+            0,
+            4
+          ],
+          "texture": "#light_light",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        }
+      }
+    },
+    {
+      "name": "light_dark",
+      "from": [
+        -16,
+        -16,
+        0
+      ],
+      "to": [
+        32,
+        16,
+        32
+      ],
+      "shade": false,
+      "rotation": {
+        "angle": 0,
+        "axis": "y",
+        "origin": [
+          -16,
+          -16,
+          0
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            6,
+            4
+          ],
+          "texture": "#light_dark",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "east": {
+          "uv": [
+            6,
+            4,
+            10,
+            8
+          ],
+          "texture": "#light_dark",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "south": {
+          "uv": [
+            10,
+            0,
+            16,
+            4
+          ],
+          "texture": "#light_dark",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "west": {
+          "uv": [
+            6,
+            0,
+            10,
+            4
+          ],
+          "texture": "#light_dark",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "up": {
+          "uv": [
+            6,
+            8,
+            0,
+            4
+          ],
+          "texture": "#light_dark",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        }
+      }
+    },
+    {
       "name": "screen",
       "shade": false,
       "from": [
@@ -139,7 +333,7 @@
             16,
             16
           ],
-          "texture": "#screen",
+          "texture": "#screen_dark",
           "forge_data": {
             "block_light": 15,
             "sky_light": 15,
@@ -153,7 +347,113 @@
             16,
             16
           ],
-          "texture": "#screen",
+          "texture": "#screen_dark",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        }
+      }
+    },
+    {
+      "name": "screen",
+      "shade": false,
+      "from": [
+        0,
+        0,
+        1
+      ],
+      "to": [
+        16,
+        15,
+        16
+      ],
+      "rotation": {
+        "angle": 0,
+        "axis": "y",
+        "origin": [
+          0,
+          0,
+          1
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#screen_middle",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#screen_middle",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        }
+      }
+    },
+    {
+      "name": "screen",
+      "shade": false,
+      "from": [
+        0,
+        0,
+        1
+      ],
+      "to": [
+        16,
+        15,
+        16
+      ],
+      "rotation": {
+        "angle": 0,
+        "axis": "y",
+        "origin": [
+          0,
+          0,
+          1
+        ]
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#screen_light",
+          "forge_data": {
+            "block_light": 15,
+            "sky_light": 15,
+            "ambient_occlusion": false
+          }
+        },
+        "up": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#screen_light",
           "forge_data": {
             "block_light": 15,
             "sky_light": 15,
@@ -165,14 +465,14 @@
     {
       "name": "body_a",
       "from": [
-        -15.99,
         -16,
-        0.01
+        -16,
+        0
       ],
       "to": [
-        31.99,
+        32,
         0,
-        31.99
+        32
       ],
       "rotation": {
         "angle": 0,
@@ -236,12 +536,12 @@
       "from": [
         16,
         0,
-        0.01
+        0
       ],
       "to": [
-        31.99,
-        15.99,
-        31.99
+        32,
+        16,
+        32
       ],
       "rotation": {
         "angle": 0,
@@ -294,14 +594,14 @@
     {
       "name": "body_b",
       "from": [
-        -15.99,
+        -16,
         0,
-        0.01
+        0
       ],
       "to": [
         0,
-        15.99,
-        31.99
+        16,
+        32
       ],
       "rotation": {
         "angle": 0,
@@ -360,8 +660,8 @@
       ],
       "to": [
         16,
-        15.99,
-        31.99
+        16,
+        32
       ],
       "rotation": {
         "angle": 0,
@@ -398,7 +698,7 @@
       "from": [
         0,
         0,
-        0.01
+        0
       ],
       "to": [
         16,
@@ -435,7 +735,7 @@
       ],
       "to": [
         16,
-        15.99,
+        16,
         16
       ],
       "rotation": {
@@ -473,7 +773,7 @@
       "from": [
         0,
         1,
-        0.01
+        0
       ],
       "to": [
         1,
@@ -515,7 +815,7 @@
       "from": [
         15,
         1,
-        0.01
+        0
       ],
       "to": [
         16,
@@ -557,11 +857,11 @@
       "from": [
         0,
         15,
-        0.01
+        0
       ],
       "to": [
         1,
-        15.99,
+        16,
         15
       ],
       "rotation": {
@@ -609,11 +909,11 @@
       "from": [
         15,
         15,
-        0.01
+        0
       ],
       "to": [
         16,
-        15.99,
+        16,
         15
       ],
       "rotation": {

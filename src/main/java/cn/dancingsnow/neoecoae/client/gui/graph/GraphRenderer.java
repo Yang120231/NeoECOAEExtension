@@ -6,6 +6,7 @@ import cn.dancingsnow.neoecoae.crafting.display.format.BigNumberFormatter;
 import cn.dancingsnow.neoecoae.crafting.display.format.DisplayNumbers;
 import cn.dancingsnow.neoecoae.crafting.amount.PlannerAmount;
 import cn.dancingsnow.neoecoae.crafting.graph.ClientCraftingGraph;
+import cn.dancingsnow.neoecoae.crafting.graph.CraftingGraphProgress;
 import cn.dancingsnow.neoecoae.crafting.graph.GraphLayoutSnapshot;
 import cn.dancingsnow.neoecoae.crafting.graph.GraphLayoutSnapshot.Bounds;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot;
@@ -18,6 +19,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.Util;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 
@@ -26,12 +29,8 @@ import org.lwjgl.opengl.GL11;
  * scene into raster tiles, so both paths show an identical picture at every zoom level.
  */
 public final class GraphRenderer implements AutoCloseable {
-    static final int SELECTED = 0xfff6c453;
-    static final int ADJACENT = 0xff83c5be;
-    private static final int LINK = 0xff8293a4;
-    private static final int LINK_REJECTED = 0xff66505a;
-    private static final int MISSING = 0xffcf5e5e;
-
+    private static final ResourceLocation COMPLETED = new ResourceLocation("neoecoae",
+        "textures/gui/graph/completed.png");
     public record Frame(@Nullable ClientCraftingGraph.Node hovered, List<Component> tooltip) {}
     record VisiblePlan(List<GraphLayoutSnapshot.Box> nodes, List<ClientCraftingGraph.Link> edges, int nodeCount) {}
     /** Screen rectangle reserved for the graph canvas. */
@@ -41,6 +40,15 @@ public final class GraphRenderer implements AutoCloseable {
 
     private final GraphVisibilityCache visibility = new GraphVisibilityCache();
     private final GraphViewportCache canvas = new GraphViewportCache();
+    private VisiblePlan livePlan;
+    private ScenePainter liveScene;
+    private ClientCraftingGraph hitGraph;
+    private GraphLayoutSnapshot hitLayout;
+    private float hitX, hitY;
+    private ClientCraftingGraph.Node hitNode;
+    private GraphLayoutSnapshot progressLayout;
+    private Bounds progressArea;
+    private VisiblePlan progressVisible;
     private boolean cachedView;
     private ClientCraftingGraph tooltipGraph;
     private ClientCraftingGraph.Node tooltipNode;
@@ -59,9 +67,24 @@ public final class GraphRenderer implements AutoCloseable {
         return visibleNodes > (previous ? 192 : GraphVisibilityCache.LIVE_LIMIT);
     }
 
+    /** Rendering, clicks and EMI share the same pick result at the displayed camera position. */
+    @Nullable ClientCraftingGraph.Node hit(ClientCraftingGraph graph, GraphLayoutSnapshot layout,
+            float worldX, float worldY) {
+        if (hitGraph == graph && hitLayout == layout && hitX == worldX && hitY == worldY) return hitNode;
+        hitGraph = graph;
+        hitLayout = layout;
+        hitX = worldX;
+        hitY = worldY;
+        hitNode = null;
+        for (var box : layout.query(new Bounds(worldX, worldY, worldX, worldY), 1)) {
+            if (box.contains(worldX, worldY)) hitNode = graph.nodes().get(box.nodeId());
+        }
+        return hitNode;
+    }
+
     Frame render(GuiGraphics graphics, ClientCraftingGraph graph, GraphLayoutSnapshot layout,
             float cameraX, float cameraY, float zoom, Viewport viewport, int mouseX, int mouseY,
-            @Nullable Integer selectedId) {
+            @Nullable Integer selectedId, CraftingGraphProgress progress) {
         // Discard the previous frame's overlay depth, then paint the screen before enabling the graph scissor.
         RenderSystem.clear(GL11.GL_DEPTH_BUFFER_BIT, Minecraft.ON_OSX);
         graphics.flush();
@@ -78,9 +101,7 @@ public final class GraphRenderer implements AutoCloseable {
         if (viewport.contains(mouseX, mouseY)) {
             float worldX = (mouseX - cameraX) / zoom;
             float worldY = (mouseY - cameraY) / zoom;
-            hovered = layout.query(new Bounds(worldX, worldY, worldX, worldY), Integer.MAX_VALUE).stream()
-                .filter(box -> box.contains(worldX, worldY)).findFirst()
-                .map(box -> graph.nodes().get(box.nodeId())).orElse(null);
+            hovered = hit(graph, layout, worldX, worldY);
         }
         graphics.enableScissor(viewport.left(), viewport.top(), viewport.right(), viewport.bottom());
         var pose = graphics.pose();
@@ -109,10 +130,30 @@ public final class GraphRenderer implements AutoCloseable {
                         graphics.disableScissor();
                     }
                 }
-            } else new ScenePainter(graph, layout, area.padded(180), pixelsPerUnit, visible.nodes(), visible.edges())
-                .advance(graphics, Long.MAX_VALUE);
+            } else {
+                if (livePlan != visible || liveScene == null || liveScene.graph != graph) {
+                    livePlan = visible;
+                    liveScene = new ScenePainter(graph, layout, area.padded(180), pixelsPerUnit,
+                        visible.nodes(), visible.edges());
+                }
+                liveScene.restart(pixelsPerUnit);
+                liveScene.advance(graphics, Long.MAX_VALUE);
+            }
             graphics.flush();
             drawHighlights(graphics, graph, layout, area, selectedId, hovered, pixelsPerUnit);
+            if (!progress.running().isEmpty() || !progress.completed().isEmpty()) {
+                var overlay = visible;
+                if (visible.nodeCount() > GraphVisibilityCache.LIVE_LIMIT) {
+                    if (progressLayout != layout || !area.equals(progressArea)) {
+                        progressLayout = layout;
+                        progressArea = area;
+                        progressVisible = new VisiblePlan(layout.query(area.padded(24 / zoom), Integer.MAX_VALUE),
+                            layout.queryLinks(area), visible.nodeCount());
+                    }
+                    overlay = progressVisible;
+                }
+                drawProgress(graphics, graph, layout, overlay, progress, pixelsPerUnit);
+            }
             graphics.flush();
         } finally {
             pose.popPose();
@@ -133,7 +174,15 @@ public final class GraphRenderer implements AutoCloseable {
     @Override
     public void close() {
         canvas.close();
+        progressLayout = null;
+        progressArea = null;
+        progressVisible = null;
         visibility.clear();
+        livePlan = null;
+        liveScene = null;
+        hitGraph = null;
+        hitLayout = null;
+        hitNode = null;
         tooltipGraph = null;
         tooltipNode = null;
         tooltipLanguage = null;
@@ -150,17 +199,18 @@ public final class GraphRenderer implements AutoCloseable {
             Bounds area, @Nullable Integer selectedId, @Nullable ClientCraftingGraph.Node hovered,
             double pixelsPerUnit) {
         float thin = halfWidth(pixelsPerUnit, 0.5f) * 2;
+        var theme = GraphTheme.current();
         if (selectedId != null) {
             for (var link : layout.linksAt(selectedId)) {
                 if (!layout.linkBounds(link).intersects(area)) continue;
-                drawLink(graphics, graph, layout, link, SELECTED, pixelsPerUnit);
+                drawLink(graphics, graph, layout, link, theme.accent(), pixelsPerUnit);
                 int neighbor = link.fromId() == selectedId ? link.toId() : link.fromId();
-                outline(graphics, layout.box(neighbor), area, ADJACENT, thin);
+                outline(graphics, layout.box(neighbor), area, theme.muted(), thin);
             }
-            outline(graphics, layout.box(selectedId), area, SELECTED, thin * 2);
+            outline(graphics, layout.box(selectedId), area, theme.accent(), thin * 2);
         }
         if (hovered != null && (selectedId == null || selectedId != hovered.id())) {
-            outline(graphics, layout.box(hovered.id()), area, ADJACENT, thin);
+            outline(graphics, layout.box(hovered.id()), area, theme.muted(), thin);
         }
     }
 
@@ -170,11 +220,85 @@ public final class GraphRenderer implements AutoCloseable {
         GraphDraw.frame(graphics, box.x(), box.y(), box.x() + box.width(), box.y() + box.height(), color, thickness);
     }
 
+    /** Execution changes never invalidate raster tiles; animate and mark completion above the cached scene. */
+    private static void drawProgress(GuiGraphics graphics, ClientCraftingGraph graph, GraphLayoutSnapshot layout,
+            VisiblePlan visible, CraftingGraphProgress progress, double pixelsPerUnit) {
+        if (progress.running().isEmpty() && progress.completed().isEmpty()) return;
+        var pose = graphics.pose();
+        pose.pushPose();
+        pose.translate(0, 0, 400);
+        try {
+            double phase = (Util.getMillis() % 1_200L) / 1_200.0;
+            float half = halfWidth(pixelsPerUnit, 1.35f);
+            for (var link : visible.edges()) {
+                var source = graph.nodes().get(link.fromId());
+                if (!link.selected()) continue;
+                if (graph.isRecursiveCycle()) {
+                    // Recursive rows are checkpoints, not separate live executions of the whole cycle.
+                    var target = graph.nodes().get(link.toId());
+                    if (source == null || source.recursion() == null
+                            || source.recursion().role() != cn.dancingsnow.neoecoae.crafting.graph.RecursiveCycleNode.Role.STEP
+                            || !running(graph, target, progress)) continue;
+                } else if (!running(graph, source, progress)) continue;
+                var points = route(graph, layout, link);
+                if (points.size() < 2) continue;
+                double length = 0;
+                for (int i = 1; i < points.size(); i++) length += distance(points.get(i - 1), points.get(i));
+                if (length <= 0) continue;
+                // One square per active connection follows the complete polyline, including its bends.
+                double remaining = length * (graph.isRecursiveCycle() ? phase : 1 - phase);
+                for (int i = 1; i < points.size(); i++) {
+                    var from = points.get(i - 1);
+                    var to = points.get(i);
+                    double segment = distance(from, to);
+                    if (remaining <= segment && segment > 0) {
+                        float x = (float) (from.x() + (to.x() - from.x()) * remaining / segment);
+                        float y = (float) (from.y() + (to.y() - from.y()) * remaining / segment);
+                        GraphDraw.fill(graphics, x - half, y - half, x + half, y + half,
+                            GraphTheme.current().accent());
+                        break;
+                    }
+                    remaining -= segment;
+                }
+            }
+            graphics.flush();
+            for (var box : visible.nodes()) {
+                var node = graph.nodes().get(box.nodeId());
+                if (node == null || node.material() == null || node.kind() == ClientCraftingGraph.Kind.FOLDER
+                        || !progress.completed().contains(node.material().nodeId())) continue;
+                pose.pushPose();
+                pose.translate(box.x() + box.width() - 6, box.y() - 2, 0);
+                graphics.blit(COMPLETED, 0, 0, 0, 0, 8, 8, 8, 8);
+                pose.popPose();
+            }
+        } finally {
+            graphics.flush();
+            pose.popPose();
+        }
+    }
+
+    private static boolean running(ClientCraftingGraph graph, @Nullable ClientCraftingGraph.Node node,
+            CraftingGraphProgress progress) {
+        if (node == null || node.kind() == ClientCraftingGraph.Kind.FOLDER) return false;
+        if (node.material() != null) return progress.running().contains(node.material().nodeId());
+        if (node.pattern() != null) return node.pattern().outputs().stream()
+            .anyMatch(output -> progress.running().contains(output.materialNodeId()));
+        if (node.cycle() != null) return node.cycle().memberNodeIds().stream().anyMatch(progress.running()::contains);
+        if (node.cluster() != null) return node.cluster().componentIds().stream().anyMatch(component ->
+            graph.source().cycleGroups().stream().filter(cycle -> cycle.componentId() == component)
+                .anyMatch(cycle -> cycle.memberNodeIds().stream().anyMatch(progress.running()::contains)));
+        return false;
+    }
+
+    private static double distance(GraphLayoutSnapshot.Point from, GraphLayoutSnapshot.Point to) {
+        return Math.hypot(to.x() - from.x(), to.y() - from.y());
+    }
+
     /** One scene, painted in phases so a raster tile can stop at any work unit and resume next frame. */
     private static final class ScenePainter implements GraphViewportCache.Painter {
         private final ClientCraftingGraph graph;
         private final GraphLayoutSnapshot layout;
-        private final double pixelsPerUnit;
+        private double pixelsPerUnit;
         private final List<GraphLayoutSnapshot.Box> nodes;
         private final List<ClientCraftingGraph.Link> links;
         private final List<Bounds> rows;
@@ -191,6 +315,11 @@ public final class GraphRenderer implements AutoCloseable {
             rows = graph.isCompactTree() ? layout.queryRowFrames(area) : List.of();
             regions = layout.recursionRegions().stream()
                 .filter(region -> region.bounds().padded(180).intersects(area)).toList();
+        }
+
+        void restart(double nextPixelsPerUnit) {
+            pixelsPerUnit = nextPixelsPerUnit;
+            phase = cursor = 0;
         }
 
         @Override
@@ -219,14 +348,15 @@ public final class GraphRenderer implements AutoCloseable {
                     case 0 -> RecursiveCycleRenderer.drawRegion(graphics, regions.get(index), pixelsPerUnit);
                     case 1 -> {
                         var link = links.get(index);
-                        drawLink(graphics, graph, layout, link, link.selected() ? LINK : LINK_REJECTED, pixelsPerUnit);
+                        drawLink(graphics, graph, layout, link, link.selected() ? GraphTheme.current().edge()
+                            : GraphTheme.current().edgeRejected(), pixelsPerUnit);
                     }
                     case 2 -> body(graphics, nodes.get(index));
                     case 3 -> icon(graphics, nodes.get(index));
                     case 4 -> text(graphics, nodes.get(index));
                     case 5 -> {
                         var row = rows.get(index);
-                        GraphDraw.frame(graphics, row.left(), row.top(), row.right(), row.bottom(), LINK,
+                        GraphDraw.frame(graphics, row.left(), row.top(), row.right(), row.bottom(), GraphTheme.current().line(),
                             halfWidth(pixelsPerUnit, 0.5f) * 2);
                     }
                     case 6 -> clusterLabel(graphics, graph.focusedCluster().componentIds().get(index));
@@ -250,7 +380,7 @@ public final class GraphRenderer implements AutoCloseable {
             }
             if (left == Float.MAX_VALUE) return;
             GraphDraw.text(graphics, Minecraft.getInstance().font, recursionText("module", componentId).getString(),
-                left, top - 12, 0xffe2b766, 1);
+                left, top - 12, GraphTheme.current().accent(), 1);
         }
 
         private void body(GuiGraphics graphics, GraphLayoutSnapshot.Box box) {
@@ -279,10 +409,10 @@ public final class GraphRenderer implements AutoCloseable {
             if (!graph.isCompactTree()) {
                 GraphDraw.frame(graphics, box.x(), box.y(), box.x() + box.width(), box.y() + box.height(),
                     CompactTreeRenderer.nodeBorder(graph, node), thin);
-            } else if (node.material() != null
-                    && node.material().status() == CraftingGraphSnapshot.MaterialStatus.MISSING) {
+            } else {
                 GraphDraw.frame(graphics, box.x(), box.y(), box.x() + box.width(), box.y() + box.height(),
-                    MISSING, Math.max(thin, 2));
+                    GraphTheme.current().line(), thin);
+                CompactTreeRenderer.drawStatusStrip(graphics, graph, node, box);
             }
             if (graph.view() == ClientCraftingGraph.View.CYCLE_CLUSTER) {
                 for (var link : layout.linksAt(node.id())) {
@@ -304,7 +434,7 @@ public final class GraphRenderer implements AutoCloseable {
     private static void drawLink(GuiGraphics graphics, ClientCraftingGraph graph, GraphLayoutSnapshot layout,
             ClientCraftingGraph.Link link, int color, double pixelsPerUnit) {
         if (graph.isRecursiveCycle()) {
-            RecursiveCycleRenderer.drawLink(graphics, graph, layout, link, color == SELECTED ? color : null,
+            RecursiveCycleRenderer.drawLink(graphics, graph, layout, link, color == GraphTheme.current().accent() ? color : null,
                 pixelsPerUnit);
             return;
         }
@@ -367,8 +497,9 @@ public final class GraphRenderer implements AutoCloseable {
         float width = font.width(text) * scale + 4;
         float x = (a.x() + b.x()) / 2;
         float y = (a.y() + b.y()) / 2;
-        GraphDraw.fill(graphics, x - width / 2, y - 4.5f, x + width / 2, y + 4.5f, 0xcc171b20);
-        GraphDraw.centeredText(graphics, font, text, x, y - 3.5f, CompactTreeRenderer.MUTED, scale);
+        GraphDraw.fill(graphics, x - width / 2, y - 4.5f, x + width / 2, y + 4.5f,
+            GraphTheme.alpha(GraphTheme.current().panel(), 0xcc));
+        GraphDraw.centeredText(graphics, font, text, x, y - 3.5f, GraphTheme.current().muted(), scale);
     }
 
     private static String edgeAmount(ClientCraftingGraph graph, ClientCraftingGraph.Link link) {
@@ -381,6 +512,10 @@ public final class GraphRenderer implements AutoCloseable {
 
     /** Tangent-aligned triangle so curved or diagonal routes do not snap to four directions. */
     static void drawArrowHead(GuiGraphics graphics, List<GraphLayoutSnapshot.Point> route, int color) {
+        drawArrowHead(graphics, route, color, 1);
+    }
+
+    static void drawArrowHead(GuiGraphics graphics, List<GraphLayoutSnapshot.Point> route, int color, float scale) {
         var end = cn.dancingsnow.neoecoae.platform.JdkCompat.last(route);
         GraphLayoutSnapshot.Point previous = route.get(route.size() - 2);
         for (int i = route.size() - 2; i >= 0 && previous.equals(end); i--) previous = route.get(i);
@@ -389,10 +524,10 @@ public final class GraphRenderer implements AutoCloseable {
         float length = Math.max(0.001f, (float) Math.hypot(dx, dy));
         float unitX = dx / length;
         float unitY = dy / length;
-        float baseX = end.x() - unitX * 6f;
-        float baseY = end.y() - unitY * 6f;
-        float normalX = -unitY * 3.5f;
-        float normalY = unitX * 3.5f;
+        float baseX = end.x() - unitX * 6f * scale;
+        float baseY = end.y() - unitY * 6f * scale;
+        float normalX = -unitY * 3.5f * scale;
+        float normalY = unitX * 3.5f * scale;
         GraphDraw.triangle(graphics, end.x(), end.y(), baseX + normalX, baseY + normalY,
             baseX - normalX, baseY - normalY, color);
     }

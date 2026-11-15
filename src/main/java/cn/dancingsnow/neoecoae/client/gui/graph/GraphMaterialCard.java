@@ -5,6 +5,7 @@ import cn.dancingsnow.neoecoae.client.gui.ClientModularUITooltipComponent;
 import cn.dancingsnow.neoecoae.crafting.display.format.BigNumberFormatter;
 import cn.dancingsnow.neoecoae.crafting.display.format.DisplayNumbers;
 import cn.dancingsnow.neoecoae.crafting.graph.ClientCraftingGraph;
+import cn.dancingsnow.neoecoae.crafting.graph.CraftingGraphProgress;
 import cn.dancingsnow.neoecoae.crafting.planner.snapshot.CraftingGraphSnapshot.MaterialStatus;
 import cn.dancingsnow.neoecoae.gui.crafting.CraftingListCard;
 import java.math.BigInteger;
@@ -19,22 +20,24 @@ import org.jetbrains.annotations.Nullable;
 
 /** Material details and hover content composed from the shared card rows, measured once per selection. */
 final class GraphMaterialCard {
-    private static final int PRIMARY = 0xffecf3f8, LABEL = 0xffa9c5d6, MUTED = 0xff809bab;
-    private static final int GOLD = 0xffffc45b, CYAN = 0xff63dce9, GREEN = 0xff76dfa0, RED = 0xffff7a7a;
-    private static final int DIVIDER = 0xff39464f, BACKGROUND = 0xff0f1419;
+    /** The shared card rows draw shadowed light text, so material cards stay dark in both themes. */
+    private static final GraphTheme THEME = GraphTheme.DARK;
     private static final int PADDING = 8;
     private final ClientCraftingGraph graph;
     private final ClientCraftingGraph.Node node;
     private final Language language = Language.getInstance();
     private final Font font;
+    private final @Nullable CraftingGraphProgress progress;
     private final ClientModularUITooltipComponent content;
     private final int width, height;
 
-    GraphMaterialCard(ClientCraftingGraph graph, ClientCraftingGraph.Node node, Font font, boolean details) {
+    GraphMaterialCard(ClientCraftingGraph graph, ClientCraftingGraph.Node node, Font font, boolean details,
+            @Nullable CraftingGraphProgress progress) {
         this.graph = graph;
         this.node = node;
         this.font = font;
-        content = new ClientModularUITooltipComponent(builder(graph, node, details).build());
+        this.progress = progress;
+        content = new ClientModularUITooltipComponent(builder(graph, node, details, progress).build());
         width = content.getWidth(font) + PADDING * 2;
         height = content.getHeight() + PADDING * 2;
     }
@@ -45,63 +48,103 @@ final class GraphMaterialCard {
             && node.material() != null && node.recursion() == null;
     }
 
-    boolean matches(ClientCraftingGraph graph, ClientCraftingGraph.Node node, Font font) {
-        return this.graph == graph && this.node == node && this.font == font && language == Language.getInstance();
+    boolean matches(ClientCraftingGraph graph, ClientCraftingGraph.Node node, Font font,
+            @Nullable CraftingGraphProgress progress) {
+        return this.graph == graph && this.node == node && this.font == font && this.progress == progress
+            && language == Language.getInstance();
     }
 
     static CraftingListCard.Builder builder(ClientCraftingGraph graph, ClientCraftingGraph.Node node, boolean details) {
+        return builder(graph, node, details, null);
+    }
+
+    static CraftingListCard.Builder builder(ClientCraftingGraph graph, ClientCraftingGraph.Node node, boolean details,
+            @Nullable CraftingGraphProgress progress) {
+        if (progress != null && progress.amounts().containsKey(node.material().nodeId()))
+            return liveBuilder(node, details, progress);
+        var theme = THEME;
+        int primary = theme.text(), muted = theme.faint(), gold = theme.pending(), cyan = theme.accent();
+        int green = theme.stock(), red = theme.missing(), divider = theme.line();
         var material = node.material();
         var key = material.key();
-        var requested = value(key, material.requestedBigInteger(), !details, PRIMARY);
+        var requested = value(key, material.requestedBigInteger(), !details, primary);
         var inventory = value(key, material.fromInventoryBigInteger(), !details,
-            material.fromInventoryBigInteger().signum() == 0 ? MUTED : CYAN);
+            material.fromInventoryBigInteger().signum() == 0 ? muted : cyan);
         var toCraft = value(key, material.toCraftBigInteger(), !details,
-            material.toCraftBigInteger().signum() == 0 ? MUTED : GOLD);
+            material.toCraftBigInteger().signum() == 0 ? muted : gold);
         var missing = value(key, material.missingBigInteger(), !details,
-            material.missingBigInteger().signum() == 0 ? GREEN : RED);
+            material.missingBigInteger().signum() == 0 ? green : red);
         var consumed = value(key, material.consumedBigInteger(), !details,
-            material.consumedBigInteger().signum() == 0 ? MUTED : PRIMARY);
+            material.consumedBigInteger().signum() == 0 ? muted : primary);
         var produced = value(key, material.producedBigInteger(), !details,
-            material.producedBigInteger().signum() == 0 ? MUTED : CYAN);
-        var title = key.getDisplayName().copy().withStyle(style -> style.withColor(GOLD & 0xffffff));
-        int statusColor = statusColor(material.status());
+            material.producedBigInteger().signum() == 0 ? muted : cyan);
+        var title = key.getDisplayName().copy().withStyle(style -> style.withColor(gold & 0xffffff));
+        int statusColor = statusColor(theme, material.status());
         var status = Component.literal(material.status() == MaterialStatus.SATISFIED ? "✓ " : "○ ")
             .append(Component.translatable("gui.neoecoae.crafting_graph.status." + material.status().name().toLowerCase(Locale.ROOT)))
             .withStyle(style -> style.withColor(statusColor & 0xffffff));
         var card = CraftingListCard.builder().minimumWidth(details ? 272 : 150);
-        if (details) card.header(CraftingListCard.Glyph.SPARKLE, title, label("request"), MUTED);
-        else card.header(null, title, Component.empty(), CYAN, CraftingListCard.Glyph.CUBE);
+        if (details) card.header(CraftingListCard.Glyph.SPARKLE, title, label("request"), muted);
+        else card.header(null, title, Component.empty(), cyan, CraftingListCard.Glyph.CUBE);
         if (node.kind() == ClientCraftingGraph.Kind.REFERENCE) {
             card.space(6).row(null, 0,
-                Component.translatable("gui.neoecoae.crafting_graph.reference.description"), Component.empty(), MUTED);
+                Component.translatable("gui.neoecoae.crafting_graph.reference.description"), Component.empty(), muted);
         }
-        card.space(8).divider(DIVIDER).space(6);
+        card.space(8).divider(divider).space(6);
         if (details) {
-            card.metricColumns(label("requested"), requested, PRIMARY, label("inventory"), inventory, MUTED)
+            card.metricColumns(label("requested"), requested, primary, label("inventory"), inventory, muted)
                 .space(8)
-                .metricColumns(label("to_craft"), toCraft, GOLD, label("missing"), missing, GREEN)
-                .space(8).divider(DIVIDER).space(6)
+                .metricColumns(label("to_craft"), toCraft, gold, label("missing"), missing, green)
+                .space(8).divider(divider).space(6)
                 .row(null, 0, label("consumed").append(" ").append(consumed),
-                    label("produced").append(" ").append(produced), CYAN)
-                .space(6).divider(DIVIDER).space(6)
-                .row(null, 0, status, label("source_patterns", DisplayNumbers.grouped(graph.source().patterns().size())), MUTED);
+                    label("produced").append(" ").append(produced), cyan)
+                .space(6).divider(divider).space(6)
+                .row(null, 0, status, label("source_patterns", DisplayNumbers.grouped(graph.source().patterns().size())), muted);
         } else {
-            card.row(null, 0, label("requested"), requested, PRIMARY).space(7)
-                .row(null, 0, label("inventory"), inventory, MUTED).space(7)
-                .row(null, 0, label("to_craft"), toCraft, GOLD).space(7)
-                .row(null, 0, label("missing"), missing, GREEN)
-                .space(7).divider(DIVIDER).space(6)
-                .row(null, 0, label("consumed"), consumed, MUTED).space(7)
-                .row(null, 0, label("produced"), produced, CYAN)
-                .space(7).divider(DIVIDER).space(6)
+            card.row(null, 0, label("requested"), requested, primary).space(7)
+                .row(null, 0, label("inventory"), inventory, muted).space(7)
+                .row(null, 0, label("to_craft"), toCraft, gold).space(7)
+                .row(null, 0, label("missing"), missing, green)
+                .space(7).divider(divider).space(6)
+                .row(null, 0, label("consumed"), consumed, muted).space(7)
+                .row(null, 0, label("produced"), produced, cyan)
+                .space(7).divider(divider).space(6)
                 .row(null, 0, label("status"), status, statusColor);
         }
         return card;
     }
 
+    private static CraftingListCard.Builder liveBuilder(ClientCraftingGraph.Node node, boolean details,
+            CraftingGraphProgress progress) {
+        var material = node.material();
+        var amounts = progress.amounts().get(material.nodeId());
+        var key = material.key();
+        boolean complete = progress.completed().contains(material.nodeId());
+        int color = progress.cancelled() ? THEME.missing() : complete ? THEME.stock() : THEME.pending();
+        String state = progress.cancelled() ? "gui.neoecoae.crafting_graph.status.cancelled"
+            : progress.paused() ? "gui.neoecoae.cpu.status.suspended"
+            : complete ? "gui.neoecoae.crafting_graph.status.satisfied"
+            : "gui.neoecoae.computation.ui.card.state." + (amounts.active().signum() > 0 ? "crafting" : "scheduled");
+        var card = CraftingListCard.builder().minimumWidth(details ? 272 : 150)
+            .header(CraftingListCard.Glyph.CUBE, key.getDisplayName(), Component.empty(), THEME.accent())
+            .space(8).divider(THEME.line()).space(6)
+            .row(null, 0, label("requested"), value(key, material.requestedBigInteger(), !details, THEME.text()), THEME.text())
+            .space(7).row(null, 0, Component.translatable("gui.neoecoae.computation.ui.card.stored"),
+                value(key, amounts.stored(), !details, THEME.stock()), THEME.muted())
+            .space(7).row(null, 0, Component.translatable("gui.neoecoae.computation.ui.card.crafting"),
+                value(key, amounts.active(), !details, THEME.accent()), THEME.accent())
+            .space(7).row(null, 0, Component.translatable("gui.neoecoae.computation.ui.card.scheduled"),
+                value(key, amounts.pending(), !details, THEME.pending()), THEME.pending())
+            .space(7).row(null, 0, Component.translatable("gui.neoecoae.big_order.completed"),
+                value(key, amounts.produced(), !details, THEME.stock()), THEME.stock())
+            .space(7).divider(THEME.line()).space(6)
+            .row(null, 0, label("status"), Component.translatable(state), color);
+        return card;
+    }
+
     void renderDetails(GuiGraphics graphics, int screenWidth, int contentBottom, int top) {
         float scale = fit(Math.min(242, screenWidth - 16), contentBottom - top - 8);
-        draw(graphics, screenWidth - 8 - (int) Math.ceil(width * scale), top, scale, 300, 0xff556675);
+        draw(graphics, screenWidth - 8 - (int) Math.ceil(width * scale), top, scale, 300);
     }
 
     boolean containsDetails(double mouseX, double mouseY, int screenWidth, int contentBottom, int top) {
@@ -118,22 +161,22 @@ final class GraphMaterialCard {
             mouseX, mouseY, drawnWidth, drawnHeight);
         int left = Math.max(4, Math.min(screenWidth - drawnWidth - 4, position.x()));
         int top = Math.max(4, Math.min(screenHeight - drawnHeight - 4, position.y()));
-        draw(graphics, left, top, scale, 400, 0xff796a94);
+        draw(graphics, left, top, scale, 400);
     }
 
     private float fit(int availableWidth, int availableHeight) {
         return Math.min(1, Math.min(Math.max(1, availableWidth) / (float) width, Math.max(1, availableHeight) / (float) height));
     }
 
-    private void draw(GuiGraphics graphics, int left, int top, float scale, int z, int border) {
+    private void draw(GuiGraphics graphics, int left, int top, float scale, int z) {
         graphics.flush();
         var pose = graphics.pose();
         pose.pushPose();
         try {
             pose.translate(left, top, z);
             pose.scale(scale, scale, 1);
-            rounded(graphics, 0, 0, width, height, border);
-            rounded(graphics, 1, 1, width - 2, height - 2, BACKGROUND);
+            rounded(graphics, 0, 0, width, height, THEME.line());
+            rounded(graphics, 1, 1, width - 2, height - 2, THEME.panel());
             graphics.flush();
             content.renderImage(font, PADDING, PADDING, graphics);
         } finally {
@@ -149,7 +192,7 @@ final class GraphMaterialCard {
     }
 
     private static MutableComponent label(String key, Object... args) {
-        return Component.translatable("gui.neoecoae.crafting_graph.card." + key, args).withStyle(style -> style.withColor(LABEL & 0xffffff));
+        return Component.translatable("gui.neoecoae.crafting_graph.card." + key, args).withStyle(style -> style.withColor(THEME.muted() & 0xffffff));
     }
 
     private static Component value(AEKey key, BigInteger amount, boolean full, int color) {
@@ -158,11 +201,11 @@ final class GraphMaterialCard {
             + (unit == null ? "" : " " + unit)).withStyle(style -> style.withColor(color & 0xffffff));
     }
 
-    private static int statusColor(MaterialStatus status) {
+    private static int statusColor(GraphTheme theme, MaterialStatus status) {
         return switch (status) {
-            case SATISFIED -> GREEN;
-            case CRAFTING, CYCLE -> GOLD;
-            case MISSING, UNSUPPORTED -> RED;
+            case SATISFIED -> theme.stock();
+            case CRAFTING, CYCLE -> theme.pending();
+            case MISSING, UNSUPPORTED -> theme.missing();
         };
     }
 }

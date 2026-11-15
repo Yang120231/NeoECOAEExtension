@@ -144,6 +144,12 @@ public class IntegratedWorkingStationRecipeBuilder implements RecipeBuilder {
         saveWithSerializer(recipeOutput, id, NERecipeTypes.INTEGRATED_WORKING_STATION_SERIALIZER.get());
     }
 
+    public void saveLarge(Consumer<FinishedRecipe> recipeOutput) {
+        saveWithSerializer(recipeOutput,
+            new ResourceLocation("neoecoae", BuiltInRegistries.ITEM.getKey(itemOutput.getItem()).getPath()),
+            NERecipeTypes.LARGE_INTEGRATED_WORKING_STATION_SERIALIZER.get());
+    }
+
     public void saveWithSerializer(Consumer<FinishedRecipe> recipeOutput, ResourceLocation id, RecipeSerializer<?> serializer) {
         // check
         if (itemOutput.isEmpty() && fluidOutput.isEmpty()) {

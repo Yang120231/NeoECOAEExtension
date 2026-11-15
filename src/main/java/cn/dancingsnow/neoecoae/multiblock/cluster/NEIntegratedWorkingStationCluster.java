@@ -4,13 +4,16 @@ import cn.dancingsnow.neoecoae.blocks.entity.ECOMachineInterfaceBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationInputHatchBlockEntity;
 import cn.dancingsnow.neoecoae.blocks.entity.ECOLargeIntegratedWorkingStationOutputHatchBlockEntity;
+import java.util.EnumSet;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 /** Cluster state for the fixed 3x2x2 large integrated working station. */
 public class NEIntegratedWorkingStationCluster extends NECluster<NEIntegratedWorkingStationCluster> {
     private ECOLargeIntegratedWorkingStationBlockEntity controller;
     private ECOLargeIntegratedWorkingStationInputHatchBlockEntity inputHatch;
+    private ECOLargeIntegratedWorkingStationInputHatchBlockEntity smartCoolingController;
     private ECOLargeIntegratedWorkingStationOutputHatchBlockEntity outputHatch;
     private ECOMachineInterfaceBlockEntity<?> communication;
 
@@ -24,6 +27,23 @@ public class NEIntegratedWorkingStationCluster extends NECluster<NEIntegratedWor
 
     public ECOLargeIntegratedWorkingStationInputHatchBlockEntity getInputHatch() {
         return inputHatch;
+    }
+
+    public ECOLargeIntegratedWorkingStationInputHatchBlockEntity getSmartCoolingController() {
+        return smartCoolingController;
+    }
+
+    /** Link the multiblock's own nodes without opening an external cable port. */
+    public EnumSet<Direction> getInternalConnections(BlockEntity member) {
+        EnumSet<Direction> sides = EnumSet.noneOf(Direction.class);
+        var level = member.getLevel();
+        if (!isDestroyed() && level != null) {
+            for (Direction side : Direction.values()) {
+                BlockPos adjacent = member.getBlockPos().relative(side);
+                if (level.hasChunkAt(adjacent) && containsBlockEntity(level.getBlockEntity(adjacent))) sides.add(side);
+            }
+        }
+        return sides;
     }
 
     public ECOLargeIntegratedWorkingStationOutputHatchBlockEntity getOutputHatch() {
@@ -72,7 +92,8 @@ public class NEIntegratedWorkingStationCluster extends NECluster<NEIntegratedWor
         if (blockEntity instanceof ECOLargeIntegratedWorkingStationBlockEntity value) {
             controller = value;
         } else if (blockEntity instanceof ECOLargeIntegratedWorkingStationInputHatchBlockEntity value) {
-            inputHatch = value;
+            if (value.isSmartCoolingModule()) smartCoolingController = value;
+            else inputHatch = value;
         } else if (blockEntity instanceof ECOLargeIntegratedWorkingStationOutputHatchBlockEntity value) {
             outputHatch = value;
         } else if (blockEntity instanceof ECOMachineInterfaceBlockEntity<?> value) {

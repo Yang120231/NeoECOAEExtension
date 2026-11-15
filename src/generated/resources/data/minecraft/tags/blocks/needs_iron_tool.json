@@ -1,12 +1,13 @@
 {
   "values": [
-    "neoecoae:aluminum_ore",
-    "neoecoae:raw_aluminum_block",
-    "neoecoae:aluminum_block",
-    "neoecoae:tungsten_block",
     "neoecoae:aluminum_alloy_block",
     "neoecoae:aluminum_alloy_casing",
+    "neoecoae:aluminum_block",
+    "neoecoae:aluminum_ore",
     "neoecoae:black_tungsten_alloy_block",
-    "neoecoae:black_tungsten_alloy_casing"
+    "neoecoae:black_tungsten_alloy_casing",
+    "neoecoae:cryogenic_aluminum_alloy_casing",
+    "neoecoae:raw_aluminum_block",
+    "neoecoae:tungsten_block"
   ]
 }

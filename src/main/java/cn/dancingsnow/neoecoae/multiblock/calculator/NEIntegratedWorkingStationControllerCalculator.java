@@ -67,7 +67,8 @@ public class NEIntegratedWorkingStationControllerCalculator
         }
 
         BlockPos upperFunctionalCenter = controller.relative(back);
-        return is(level, upperFunctionalCenter, NEBlocks.LARGE_INTEGRATED_WORKING_STATION_CASING)
+        return (is(level, upperFunctionalCenter, NEBlocks.LARGE_INTEGRATED_WORKING_STATION_CASING)
+                || is(level, upperFunctionalCenter, NEBlocks.LARGE_INTEGRATED_WORKING_STATION_SMART_COOLING_MODULE))
             && is(level, upperFunctionalCenter.relative(left), NEBlocks.LARGE_INTEGRATED_WORKING_STATION_CASING)
             && is(level, upperFunctionalCenter.relative(right), NEBlocks.LARGE_INTEGRATED_WORKING_STATION_CASING);
     }

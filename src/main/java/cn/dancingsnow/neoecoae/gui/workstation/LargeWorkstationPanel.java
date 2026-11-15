@@ -131,7 +131,7 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
         overclock = toggle("overclock", 102, config.toggleOverclocked(), config.togglePreheating(),
             () -> overclockCard(true));
         addChild(overclock);
-        cooling = toggle("cooling", 146, config.toggleActiveCooling(), null, () -> coolingCard(true));
+        cooling = toggle("cooling", 120, config.toggleActiveCooling(), null, () -> coolingCard(true));
         addChild(cooling);
         addChild(cardRegion("module-logo", 6, 6, 15, 15, this::moduleCard));
         addChild(region("machine-title", 25, 6, 115, 14, () -> List.of(
@@ -344,6 +344,8 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
             .header(CraftingListCard.Glyph.BATTERY, card("energy_monitor"), card("last_second"), CraftingTooltipCard.MUTED)
             .metricUnit(card("actual_energy"), Component.literal(DisplayNumbers.compact(state.getDouble("energyUsage"))),
                 CraftingTooltipCard.PRIMARY, Component.literal("AE/t"), CraftingTooltipCard.WARN)
+            .row(null, CraftingTooltipCard.MUTED, Component.translatable("gui.neoecoae.workstation.power_priority.peak"),
+                Component.literal(DisplayNumbers.compact(state.getDouble("energyPeak")) + " AE/t"), CraftingTooltipCard.PRIMARY)
             .row(null, CraftingTooltipCard.MUTED, card("internal_storage"),
                 card("ae_stored", HostText.ae2Amount(stored), HostText.ae2Amount(capacity)), CraftingTooltipCard.PRIMARY)
             .bar(fraction, CraftingTooltipCard.WARN)
@@ -361,7 +363,7 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
     /** Overclock card; {@code toggle} adds the mouse hints shown on the toggle button. */
     CraftingListCard.Builder overclockCardBuilder(boolean toggle) {
         boolean enabled = state.getBoolean("overclocked");
-        boolean preheat = temperatureEnabled();
+        boolean preheat = temperatureEnabled() && !state.getBoolean("smartCooling");
         var card = CraftingListCard.builder()
             .header(CraftingListCard.Glyph.BOLT, tr("overclock"), tr(enabled ? "enabled" : "disabled"),
                 enabled ? CraftingTooltipCard.OK : CraftingTooltipCard.MUTED)
@@ -473,6 +475,7 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
 
     CraftingListCard.Builder coolingCardBuilder(boolean toggle) {
         boolean enabled = state.getBoolean("activeCooling");
+        boolean smart = state.getBoolean("smartCooling");
         var card = CraftingListCard.builder()
             .header(CraftingListCard.Glyph.SNOW, tr("active_cooling"), tr(enabled ? "enabled" : "disabled"),
                 enabled ? CraftingTooltipCard.OK : CraftingTooltipCard.MUTED);
@@ -481,23 +484,42 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
             card.banner(CraftingListCard.Glyph.PAUSE, Component.translatable(problem), Component.empty(),
                 CraftingTooltipCard.WARN, CraftingListCard.WARN_BACKGROUND);
         }
+        if (smart) {
+            int target = state.getInt("coolingTarget");
+            card.metric(card("target_temperature"), Component.literal(target + "%"), CraftingTooltipCard.CYAN,
+                    card("smart_constant"), CraftingTooltipCard.MUTED)
+                .bar(target / 100.0, CraftingTooltipCard.CYAN);
+        }
         boolean supplied = state.getInt("coolantTier") > 0;
         card.divider()
             .row(null, CraftingTooltipCard.MUTED, tr("coolant"), supplied ? coolantTitle() : card("coolant_unsupplied"),
                 supplied ? CraftingTooltipCard.CYAN : CraftingTooltipCard.WARN);
         if (temperatureEnabled()) {
+            double circulation = smart
+                ? (double) state.getInt("coolantPerTick") / LargeWorkstationThermal.COOLANT_PER_TICK : 1;
             card.row(null, CraftingTooltipCard.MUTED, card("actual_cooling"),
                     card("rate", precise(state.getDouble("coolingPerSecond"))), CraftingTooltipCard.PRIMARY)
                 .row(null, CraftingTooltipCard.MUTED, card("cooling_capacity"), card("rate",
-                    precise(LargeWorkstationThermal.coolingPerSecond(state.getInt("coolantTier")))),
+                    precise(LargeWorkstationThermal.coolingPerSecond(state.getInt("coolantTier")) * circulation)),
                     CraftingTooltipCard.PRIMARY);
         }
         card.divider();
-        card.text(tr(temperatureEnabled() ? "cooling_thermal_hint" : "cooling_coolant_hint"), Component.empty(),
-                CraftingTooltipCard.MUTED)
-            .text(tr("cooling_preheat_hint"), Component.empty(), CraftingTooltipCard.MUTED);
+        if (smart) {
+            card.row(null, CraftingTooltipCard.MUTED,
+                card("energy", CraftingTooltipCard.group(ECOLargeIntegratedWorkingStationBlockEntity.SMART_COOLING_AE_PER_TICK))
+                    .withStyle(style -> style.withColor(CraftingTooltipCard.MUTED)),
+                card("coolant_usage", CraftingTooltipCard.group(state.getInt("coolantPerTick"))), CraftingTooltipCard.MUTED);
+        } else {
+            card.text(tr(temperatureEnabled() ? "cooling_thermal_hint" : "cooling_coolant_hint"), Component.empty(),
+                    CraftingTooltipCard.MUTED)
+                .text(tr("cooling_preheat_hint"), Component.empty(), CraftingTooltipCard.MUTED);
+        }
         MutableComponent hint = Component.empty();
         if (toggle) hint.append(card("toggle_hint"));
+        if (smart) {
+            if (toggle) hint.append(" · ");
+            hint.append(card("smart_hint"));
+        }
         if (!hint.getString().isEmpty()) card.text(hint, Component.empty(), CraftingTooltipCard.MUTED);
         return card;
     }
@@ -570,7 +592,7 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
         if (parallelWidth > 0) sprite(context, WorkstationTextures.widget(18, 161, parallelWidth, 7), 103, 59, parallelWidth, 7);
         text(context, tr("controls_heading"), 102, 72, 59, 0.7f, TEXT);
         centeredText(context, tr("overclock_short"), 102, 82, 15, 0.65f, TEXT);
-        centeredText(context, tr("cooling"), 140, 82, 27, 0.65f, TEXT);
+        centeredText(context, tr("cooling"), 120, 82, 15, 0.65f, TEXT);
         drawControlReadout(context);
         centeredText(context, temperatureEnabled() ? tr("current_band", temperatureBandName())
             : tr("coolant_mode"), 99, 119, 64, 0.65f, MUTED);
@@ -602,10 +624,10 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
 
     private void drawControlReadout(GUIContext context) {
         boolean enabled = state.getBoolean("overclocked");
-        // Center the readout in the 29-pixel gap between the unchanged toggle slots.
-        fill(context, 119, 90, 25, 24, 0xFF9B9EB0);
-        fill(context, 120, 91, 23, 10, enabled ? 0xFFD4E6DE : 0xFFD5D6DF);
-        fill(context, 120, 102, 23, 11, 0xFFDADBE4);
+        // Keep the readout in the free space to the right of the adjacent toggle slots.
+        fill(context, 137, 90, 25, 24, 0xFF9B9EB0);
+        fill(context, 138, 91, 23, 10, enabled ? 0xFFD4E6DE : 0xFFD5D6DF);
+        fill(context, 138, 102, 23, 11, 0xFFDADBE4);
         controlReadoutText(context, tr(enabled ? "enabled" : "disabled"), 94, 0.6f, enabled ? SUCCESS : MUTED);
         controlReadoutText(context, tr(temperatureEnabled() ? "thermal_mode" : "coolant_mode"), 105, 0.55f, MUTED);
     }
@@ -613,7 +635,7 @@ final class LargeWorkstationPanel extends BindableValue<Tag> {
     private void controlReadoutText(GUIContext context, Component value, int y, float scale, int color) {
         // Fit translated mode names inside the inset without clipping or an ellipsis.
         int width = Minecraft.getInstance().font.width(value.getString());
-        centeredText(context, value, 120, y, 23, Math.min(scale, 22f / Math.max(1, width)), color);
+        centeredText(context, value, 138, y, 23, Math.min(scale, 22f / Math.max(1, width)), color);
     }
 
     private void drawTask(GUIContext context, Task task, int row) {
