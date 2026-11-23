@@ -87,7 +87,7 @@ public abstract class AdvancedAeCraftingCpuLogicMixin implements ECOJobOutputRec
     private void neoecoae$tryFastPath(int maxPatterns, appeng.me.service.CraftingService craftingService,
             IEnergyService energyService, @Nullable Level level, CallbackInfoReturnable<Integer> cir) {
         // Keep OmniSequence's extraction/accounting owner consistent with the AE2 adapter.
-        if (level == null || net.neoforged.fml.ModList.get().isLoaded("molecularmanipulator")) return;
+        if (level == null || cn.dancingsnow.neoecoae.api.me.ECOExternalCrafting.ownsDispatch(this)) return;
         try {
             int pushed = neoecoae$batchDispatcher().execute(job, inventory,
                     maxPatterns, craftingService, energyService, level);

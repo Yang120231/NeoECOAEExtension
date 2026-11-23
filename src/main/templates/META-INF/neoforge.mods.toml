@@ -74,9 +74,6 @@ config="${mod_id}.compat.ae2omnicells.mixins.json"
 config="${mod_id}.compat.thunderbolt.mixins.json"
 
 [[mixins]]
-config="${mod_id}.compat.omnisequence.mixins.json"
-
-[[mixins]]
 config="${mod_id}.compat.fluxnetworks.mixins.json"
 
 [[mixins]]

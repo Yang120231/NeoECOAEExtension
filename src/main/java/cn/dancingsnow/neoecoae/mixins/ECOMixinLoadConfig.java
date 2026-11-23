@@ -19,7 +19,6 @@ import org.slf4j.LoggerFactory;
 public final class ECOMixinLoadConfig implements IMixinConfigPlugin {
     private static final String MIXIN_PACKAGE = "cn.dancingsnow.neoecoae.mixins.";
     private static final String THUNDERBOLT_MIXINS = "compat.thunderbolt.";
-    private static final String OMNI_SEQUENCE_MIXINS = "compat.omnisequence.";
     private static final String KEY_REUSE_MIXINS = "ae2.keyreuse.";
     private static final Map<String, List<String>> REQUIRED_MODS = Map.of(
         "compat.advancedae.", List.of("advanced_ae"),
@@ -28,7 +27,6 @@ public final class ECOMixinLoadConfig implements IMixinConfigPlugin {
         "compat.extendedae.", List.of("extendedae"),
         "compat.fluxnetworks.", List.of("fluxnetworks"),
         "compat.merequester.", List.of("merequester"),
-        OMNI_SEQUENCE_MIXINS, List.of("molecularmanipulator"),
         THUNDERBOLT_MIXINS, List.of("thunderbolt"),
         "jei.client.", List.of("jei")
     );
@@ -75,7 +73,7 @@ public final class ECOMixinLoadConfig implements IMixinConfigPlugin {
                 default -> false;
             };
         }
-        return !mixin.startsWith(OMNI_SEQUENCE_MIXINS) || supportsOmniBatchApi();
+        return true;
     }
 
     private static boolean isModLoaded(String modId) {
@@ -122,15 +120,6 @@ public final class ECOMixinLoadConfig implements IMixinConfigPlugin {
         }
     }
 
-    private static boolean supportsOmniBatchApi() {
-        try {
-            var api = Class.forName("com.atir.molecularmanipulator.api.crafting.OmniBatchCraftingApi",
-                false, ECOMixinLoadConfig.class.getClassLoader());
-            return (int) api.getMethod("apiVersion").invoke(null) == 1;
-        } catch (ReflectiveOperationException | LinkageError unavailable) {
-            return false;
-        }
-    }
 
     private static boolean supportsSharedKey(String targetClassName, String stackType, boolean checkHashCode) {
         try {
